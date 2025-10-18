@@ -202,7 +202,7 @@ class ZGQIndexUnified:
         Parameters:
         -----------
         query : np.ndarray
-            Query vector (d,)
+            Query vector (d,) or batch of query vectors (n_queries, d)
         k : int
             Number of neighbors to return
         n_probe : int
@@ -213,12 +213,26 @@ class ZGQIndexUnified:
         Returns:
         --------
         indices : np.ndarray
-            Indices of k nearest neighbors
+            Indices of k nearest neighbors (k,) or (n_queries, k)
         distances : np.ndarray
-            Distances to k nearest neighbors
+            Distances to k nearest neighbors (k,) or (n_queries, k)
         """
         query = query.astype(np.float32)
         
+        # Handle batch queries
+        if len(query.shape) == 2:
+            n_queries = query.shape[0]
+            all_indices = np.zeros((n_queries, k), dtype=np.int32)
+            all_distances = np.zeros((n_queries, k), dtype=np.float32)
+            
+            for i in range(n_queries):
+                indices, distances = self.search(query[i], k, n_probe, quality_threshold)
+                all_indices[i] = indices
+                all_distances[i] = distances
+            
+            return all_indices, all_distances
+        
+        # Single query
         if self.progressive and n_probe == 1:
             # Progressive search (fastest)
             return self._search_progressive(query, k, quality_threshold)
