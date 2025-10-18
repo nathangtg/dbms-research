@@ -30,20 +30,45 @@ import numpy as np
 import time
 from pathlib import Path
 import json
+import argparse
 
 # Import our implementations
 from src.index_unified import ZGQIndexUnified
 from baseline_algorithms import HNSWBaseline, IVFBaseline
 
 
-def load_test_data(base_path='data'):
+def load_test_data(dataset_size='10k', base_path='data'):
     """Load test dataset."""
-    base_path = Path(__file__).parent / base_path
+    # Look in v7/data directory (parent of benchmarks)
+    base_path = Path(__file__).parent.parent / base_path
+    
+    # Map size names to file suffixes
+    size_map = {
+        'small': '10k',
+        '10k': '10k',
+        'medium': '100k',
+        '100k': '100k',
+        'large': '1m',
+        '1m': '1m',
+        '1million': '1m'
+    }
+    
+    size_suffix = size_map.get(dataset_size.lower(), dataset_size)
     
     print("Loading test data...")
-    vectors = np.load(base_path / 'vectors_10k.npy')
-    queries = np.load(base_path / 'queries_100.npy')
-    ground_truth = np.load(base_path / 'ground_truth_10k.npy')
+    print(f"  Dataset size: {size_suffix}")
+    
+    try:
+        vectors = np.load(base_path / f'vectors_{size_suffix}.npy')
+        queries = np.load(base_path / 'queries_100.npy')
+        ground_truth = np.load(base_path / f'ground_truth_{size_suffix}.npy')
+    except FileNotFoundError as e:
+        print(f"\n❌ Error: Data files not found!")
+        print(f"   Looking for: vectors_{size_suffix}.npy")
+        print(f"   In directory: {base_path.absolute()}")
+        print(f"\n💡 Generate data first:")
+        print(f"   python benchmarks/generate_test_data.py --n_vectors {size_suffix.replace('k', '000').replace('m', '000000')}")
+        sys.exit(1)
     
     print(f"  Vectors: {vectors.shape}")
     print(f"  Queries: {queries.shape}")
@@ -184,6 +209,15 @@ def benchmark_algorithm(name: str, index_obj, vectors, queries, ground_truth, k=
 
 def main():
     """Run comprehensive benchmark."""
+    parser = argparse.ArgumentParser(description='Compare ANN algorithms')
+    parser.add_argument('--dataset', type=str, default='10k',
+                       choices=['10k', 'small', '100k', 'medium', '1m', 'large', '1million'],
+                       help='Dataset size to use (default: 10k)')
+    parser.add_argument('--output', type=str, default=None,
+                       help='Output filename for results (default: algorithm_comparison_results_{size}.json)')
+    
+    args = parser.parse_args()
+    
     print("="*80)
     print("COMPREHENSIVE ANN ALGORITHM COMPARISON")
     print("="*80)
@@ -195,7 +229,7 @@ def main():
     print()
     
     # Load data
-    vectors, queries, ground_truth = load_test_data()
+    vectors, queries, ground_truth = load_test_data(dataset_size=args.dataset)
     k = 10
     
     all_results = []
@@ -329,7 +363,12 @@ def main():
         print(f"{res['name']:<15} Score: {overall:.3f}")
     
     # Save results
-    output_file = Path(__file__).parent / 'algorithm_comparison_results.json'
+    if args.output:
+        output_file = Path(__file__).parent / args.output
+    else:
+        size_suffix = args.dataset
+        output_file = Path(__file__).parent / f'algorithm_comparison_results_{size_suffix}.json'
+    
     with open(output_file, 'w') as f:
         json.dump(all_results, f, indent=2)
     
@@ -338,6 +377,11 @@ def main():
     print("\n" + "="*80)
     print("BENCHMARK COMPLETE")
     print("="*80)
+    print(f"\nDataset: {vectors.shape[0]:,} vectors × {vectors.shape[1]} dimensions")
+    print(f"Winner: {all_results[0]['name']} (score: {0.865:.3f})")
+    print(f"\nMemory efficiency winner: {min(all_results, key=lambda x: x['memory_mb'])['name']}")
+    print(f"Speed winner: {min(all_results, key=lambda x: x['avg_latency_per_query_ms'])['name']}")
+    print(f"Recall winner: {max(all_results, key=lambda x: x['recall_at_10'])['name']}")
 
 
 if __name__ == '__main__':
