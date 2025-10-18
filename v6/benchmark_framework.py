@@ -390,7 +390,7 @@ class ANNSBenchmark:
             algorithm=algo_name,
             config=config,
             build_time=build_stats.build_time,
-            memory_mb=build_stats.memory / (1024**2),
+            memory_mb=build_stats.memory_bytes / (1024**2),
             latencies=all_latencies
         )
         
@@ -506,7 +506,7 @@ class ANNSBenchmark:
             algorithm=algo_name,
             config=config,
             build_time=build_stats.build_time,
-            memory_mb=build_stats.memory / (1024**2),
+            memory_mb=build_stats.memory_bytes / (1024**2),
             latencies=all_latencies
         )
         
