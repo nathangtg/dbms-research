@@ -44,6 +44,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from sklearn.cluster import MiniBatchKMeans
 import warnings
+import hnswlib
 
 # Import our distance metrics
 from distance_metrics import DistanceMetrics
@@ -78,10 +79,10 @@ class SearchStatistics:
 
 class HNSWBaseline:
     """
-    Optimized HNSW (Hierarchical Navigable Small World) baseline implementation.
+    HNSW (Hierarchical Navigable Small World) baseline using hnswlib.
     
-    This is a standalone HNSW index for fair comparison with ZGQ. Unlike ZGQ's
-    per-zone HNSW graphs, this maintains a single global HNSW structure.
+    This wraps the proven hnswlib implementation for accurate baseline comparison.
+    The previous custom implementation had critical bugs causing 0% recall.
     
     Mathematical Model:
     ------------------
@@ -106,23 +107,15 @@ class HNSWBaseline:
         Size of dynamic candidate list during construction
     ef_search : int, default=100
         Size of dynamic candidate list during search
-    m_L : float, optional
-        Level multiplier for layer selection (default: 1/ln(M))
     seed : int, default=42
-        Random seed for reproducibility
+        Random seed for reproducibility (note: hnswlib doesn't use seed)
         
     Attributes:
     ----------
+    index : hnswlib.Index
+        The underlying hnswlib index
     vectors : np.ndarray
         Database vectors [N, d]
-    levels : List[int]
-        Layer assignment for each vector
-    graphs : List[Dict[int, List[int]]]
-        Adjacency lists per layer [layer][node_id] = [neighbor_ids]
-    entry_point : int
-        Node ID of the entry point (highest layer)
-    max_level : int
-        Maximum layer in the graph
     """
     
     def __init__(
@@ -130,68 +123,26 @@ class HNSWBaseline:
         M: int = 16,
         ef_construction: int = 200,
         ef_search: int = 100,
-        m_L: Optional[float] = None,
-        seed: int = 42
+        m_L: Optional[float] = None,  # Ignored, kept for compatibility
+        seed: int = 42  # Ignored by hnswlib
     ):
         self.M = M
-        self.M_max = M  # Max connections at layer 0
-        self.M_max_higher = M  # Max connections at higher layers
         self.ef_construction = ef_construction
         self.ef_search = ef_search
-        
-        # Layer multiplier for exponential decay
-        if m_L is None:
-            self.m_L = 1.0 / np.log(self.M)
-        else:
-            self.m_L = m_L
-            
         self.seed = seed
-        self.rng = np.random.RandomState(seed)
         
         # Index structures
+        self.index = None
         self.vectors = None
-        self.levels = []  # Level assignment per node
-        self.graphs = []  # Adjacency lists per layer
-        self.entry_point = None
-        self.max_level = -1
-        
-        self.distance_metrics = DistanceMetrics()
+        self.N = 0
+        self.d = 0
         
         # Statistics
         self.build_stats = None
         
-    def _select_level(self) -> int:
-        """
-        Select layer for new element using exponential decay probability.
-        
-        Formula: ℓ = ⌊-ln(uniform(0,1)) · m_L⌋
-        
-        Returns:
-        -------
-        level : int
-            Selected layer index (0 = bottom layer)
-        """
-        uniform_sample = self.rng.uniform(0, 1)
-        # Avoid log(0)
-        if uniform_sample < 1e-9:
-            uniform_sample = 1e-9
-        level = int(-np.log(uniform_sample) * self.m_L)
-        return level
-        
     def build(self, vectors: np.ndarray) -> BuildStatistics:
         """
         Build HNSW index from database vectors.
-        
-        Algorithm:
-        ---------
-        For each vector v_i:
-        1. Select layer ℓ using exponential distribution
-        2. Insert at all layers 0..ℓ:
-           - Find M nearest neighbors using beam search
-           - Add bidirectional edges
-           - Prune to maintain degree bounds
-        
-        Complexity: O(N · log(N) · M · d)
         
         Parameters:
         ----------
@@ -206,230 +157,65 @@ class HNSWBaseline:
         start_time = time.time()
         
         self.vectors = vectors.astype(np.float32)
-        N, d = vectors.shape
+        self.N, self.d = vectors.shape
         
         print(f"\n{'='*80}")
         print(f"Building HNSW Index")
         print(f"{'='*80}")
         print(f"Parameters: M={self.M}, ef_construction={self.ef_construction}")
-        print(f"Database: N={N:,} vectors, d={d} dimensions")
+        print(f"Database: N={self.N:,} vectors, d={self.d} dimensions")
         
-        # Initialize entry point with first vector
-        self.entry_point = 0
-        self.max_level = self._select_level()
-        self.levels = [self.max_level]
+        # Initialize hnswlib index
+        self.index = hnswlib.Index(space='l2', dim=self.d)
+        self.index.init_index(
+            max_elements=self.N,
+            ef_construction=self.ef_construction,
+            M=self.M
+        )
         
-        # Initialize graph structures
-        self.graphs = [defaultdict(list) for _ in range(self.max_level + 1)]
+        # Set ef for index building
+        self.index.set_ef(self.ef_construction)
         
-        # Insert remaining vectors
-        for idx in range(1, N):
-            if idx % 10000 == 0:
-                elapsed = time.time() - start_time
-                rate = idx / elapsed
-                eta = (N - idx) / rate
-                print(f"  Inserted {idx:,}/{N:,} vectors ({idx/N*100:.1f}%) - "
-                      f"{rate:.0f} vec/s - ETA: {eta:.1f}s")
+        # Add vectors with progress reporting
+        batch_size = 10000
+        for start_idx in range(0, self.N, batch_size):
+            end_idx = min(start_idx + batch_size, self.N)
+            batch = self.vectors[start_idx:end_idx]
+            ids = np.arange(start_idx, end_idx, dtype=np.int64)
             
-            self._insert(idx)
+            self.index.add_items(batch, ids)
+            
+            if end_idx >= batch_size:
+                elapsed = time.time() - start_time
+                rate = end_idx / elapsed
+                eta = (self.N - end_idx) / rate if rate > 0 else 0
+                print(f"  Inserted {end_idx:,}/{self.N:,} vectors ({end_idx/self.N*100:.1f}%) - "
+                      f"{rate:.0f} vec/s - ETA: {eta:.1f}s")
         
         build_time = time.time() - start_time
-        memory_bytes = self._estimate_memory()
         
-        # Compute statistics
-        avg_degree = self._compute_average_degree()
+        # Estimate memory (hnswlib doesn't provide direct access)
+        # Rough estimate: M connections * 2 layers * 4 bytes per ID
+        memory_bytes = self.N * self.M * 2 * 4 + self.N * self.d * 4
         
         print(f"\n{'='*80}")
         print(f"HNSW Build Complete")
         print(f"{'='*80}")
-        print(f"Build time: {build_time:.3f}s ({N/build_time:.0f} vec/s)")
-        print(f"Max level: {self.max_level}")
-        print(f"Average degree: {avg_degree:.2f}")
+        print(f"Build time: {build_time:.3f}s ({self.N/build_time:.0f} vec/s)")
+        print(f"Max level: {self.index.get_max_level() if hasattr(self.index, 'get_max_level') else 'N/A'}")
+        print(f"Average degree: {self.M:.2f}")
         print(f"Memory usage: {memory_bytes/1e6:.1f} MB")
         
         self.build_stats = BuildStatistics(
             build_time=build_time,
             indexing_time=build_time,
             memory_bytes=memory_bytes,
-            n_vectors=N,
-            dimension=d
+            n_vectors=self.N,
+            dimension=self.d
         )
         
         return self.build_stats
-        
-    def _insert(self, idx: int):
-        """
-        Insert vector at index idx into the HNSW graph.
-        
-        Parameters:
-        ----------
-        idx : int
-            Index of vector to insert
-        """
-        query = self.vectors[idx]
-        level = self._select_level()
-        self.levels.append(level)
-        
-        # Update max level if needed
-        if level > self.max_level:
-            self.max_level = level
-            # Extend graph structures
-            while len(self.graphs) <= level:
-                self.graphs.append(defaultdict(list))
-        
-        # Search for nearest neighbors from top to target layer
-        ep = [self.entry_point]
-        
-        # Layers above target level: greedy search
-        for lc in range(self.max_level, level, -1):
-            if lc < len(self.graphs):
-                nearest = self._search_layer(query, ep, 1, lc)
-                ep = [nearest[0][1]]  # Continue from nearest
-        
-        # Layers from target level to 0: beam search and connect
-        for lc in range(min(level, self.max_level), -1, -1):
-            # Beam search to find candidates
-            candidates = self._search_layer(query, ep, self.ef_construction, lc)
-            
-            # Select M nearest neighbors
-            M = self.M_max if lc == 0 else self.M_max_higher
-            neighbors = self._select_neighbors(candidates, M)
-            
-            # Add bidirectional edges
-            for _, neighbor_idx in neighbors:
-                self.graphs[lc][idx].append(neighbor_idx)
-                self.graphs[lc][neighbor_idx].append(idx)
-                
-                # Prune neighbor's connections if needed
-                if len(self.graphs[lc][neighbor_idx]) > M:
-                    self._prune_connections(neighbor_idx, M, lc)
-            
-            ep = [n[1] for n in neighbors]
-        
-        # Update entry point if this node is higher
-        if level > self.levels[self.entry_point]:
-            self.entry_point = idx
-            
-    def _search_layer(
-        self,
-        query: np.ndarray,
-        entry_points: List[int],
-        num_closest: int,
-        layer: int
-    ) -> List[Tuple[float, int]]:
-        """
-        Beam search at a specific layer.
-        
-        Parameters:
-        ----------
-        query : np.ndarray, shape [d]
-            Query vector
-        entry_points : List[int]
-            Starting nodes for search
-        num_closest : int
-            Number of closest nodes to return
-        layer : int
-            Layer index to search
-            
-        Returns:
-        -------
-        candidates : List[Tuple[float, int]]
-            List of (distance, node_id) sorted by distance
-        """
-        visited = set()
-        candidates = []
-        w = []  # Dynamic list of best candidates
-        
-        # Initialize with entry points
-        for ep in entry_points:
-            if ep >= len(self.vectors):
-                continue
-            dist = self.distance_metrics.euclidean_squared(query, self.vectors[ep])
-            heapq.heappush(candidates, (-dist, ep))  # Max heap
-            heapq.heappush(w, (dist, ep))  # Min heap
-            visited.add(ep)
-        
-        # Beam search expansion
-        while candidates:
-            current_dist, current = heapq.heappop(candidates)
-            current_dist = -current_dist  # Convert back from max heap
-            
-            # Stop if current is farther than furthest in result set
-            if current_dist > -w[0][0] if len(w) >= num_closest else False:
-                break
-            
-            # Explore neighbors
-            if layer < len(self.graphs) and current in self.graphs[layer]:
-                for neighbor in self.graphs[layer][current]:
-                    if neighbor not in visited:
-                        visited.add(neighbor)
-                        dist = self.distance_metrics.euclidean_squared(
-                            query, self.vectors[neighbor]
-                        )
-                        
-                        if dist < -w[0][0] or len(w) < num_closest:
-                            heapq.heappush(candidates, (-dist, neighbor))
-                            heapq.heappush(w, (dist, neighbor))
-                            
-                            # Keep only num_closest best
-                            if len(w) > num_closest:
-                                heapq.heappop(w)
-        
-        # Return as sorted list
-        result = sorted(w, key=lambda x: x[0])
-        return result
-        
-    def _select_neighbors(
-        self,
-        candidates: List[Tuple[float, int]],
-        M: int
-    ) -> List[Tuple[float, int]]:
-        """
-        Select M neighbors from candidates (simple heuristic).
-        
-        Parameters:
-        ----------
-        candidates : List[Tuple[float, int]]
-            Candidate neighbors sorted by distance
-        M : int
-            Number of neighbors to select
-            
-        Returns:
-        -------
-        neighbors : List[Tuple[float, int]]
-            Selected neighbors
-        """
-        # Simple: return M closest
-        return candidates[:M]
-        
-    def _prune_connections(self, idx: int, M: int, layer: int):
-        """
-        Prune connections of node to maintain degree bound.
-        
-        Parameters:
-        ----------
-        idx : int
-            Node ID to prune
-        M : int
-            Maximum number of connections
-        layer : int
-            Layer index
-        """
-        neighbors = self.graphs[layer][idx]
-        if len(neighbors) <= M:
-            return
-        
-        # Compute distances to all neighbors
-        node_vec = self.vectors[idx]
-        neighbor_dists = [
-            (self.distance_metrics.euclidean_squared(node_vec, self.vectors[n]), n)
-            for n in neighbors
-        ]
-        
-        # Keep M closest
-        neighbor_dists.sort()
-        self.graphs[layer][idx] = [n for _, n in neighbor_dists[:M]]
-        
+    
     def search(
         self,
         queries: np.ndarray,
@@ -437,15 +223,6 @@ class HNSWBaseline:
     ) -> Tuple[np.ndarray, np.ndarray, SearchStatistics]:
         """
         Search for k nearest neighbors for each query.
-        
-        Algorithm:
-        ---------
-        1. Start from entry point at top layer
-        2. Greedy descent to layer 0
-        3. Beam search at layer 0 with ef_search candidates
-        4. Return k nearest
-        
-        Complexity: O(Q · log(N) · M · d)
         
         Parameters:
         ----------
@@ -464,80 +241,25 @@ class HNSWBaseline:
             Search performance statistics
         """
         start_time = time.time()
+        queries = queries.astype(np.float32)
         Q = queries.shape[0]
         
-        all_indices = np.zeros((Q, k), dtype=np.int32)
-        all_distances = np.zeros((Q, k), dtype=np.float32)
+        # Set ef for search
+        self.index.set_ef(self.ef_search)
         
-        total_dist_comps = 0
-        total_visited = 0
+        # Query the index
+        indices, distances = self.index.knn_query(queries, k=k)
         
-        for q_idx, query in enumerate(queries):
-            # Start from entry point
-            ep = [self.entry_point]
-            
-            # Greedy search from top to layer 1
-            for lc in range(self.max_level, 0, -1):
-                if lc < len(self.graphs):
-                    nearest = self._search_layer(query, ep, 1, lc)
-                    if nearest:
-                        ep = [nearest[0][1]]
-            
-            # Beam search at layer 0
-            candidates = self._search_layer(query, ep, self.ef_search, 0)
-            
-            # Extract top k
-            top_k = candidates[:k]
-            
-            # Fill results
-            for i, (dist, idx) in enumerate(top_k):
-                all_indices[q_idx, i] = idx
-                all_distances[q_idx, i] = dist
-            
-            # Statistics
-            total_visited += len(candidates)
-            # Distance computations ≈ visited nodes
-            total_dist_comps += len(candidates)
+        total_time = time.time() - start_time
         
-        search_time = time.time() - start_time
-        
+        # Create statistics
         stats = SearchStatistics(
-            total_time=search_time,
-            distance_computations=total_dist_comps,
-            visited_nodes=total_visited
+            total_time=total_time,
+            distance_computations=Q * self.ef_search,  # Approximate
+            visited_nodes=Q * self.ef_search  # Approximate
         )
         
-        return all_indices, all_distances, stats
-        
-    def _compute_average_degree(self) -> float:
-        """Compute average node degree across all layers."""
-        total_edges = 0
-        total_nodes = 0
-        
-        for layer_graph in self.graphs:
-            for neighbors in layer_graph.values():
-                total_edges += len(neighbors)
-                total_nodes += 1
-        
-        return total_edges / total_nodes if total_nodes > 0 else 0.0
-        
-    def _estimate_memory(self) -> int:
-        """Estimate memory usage in bytes."""
-        memory = 0
-        
-        # Vectors
-        if self.vectors is not None:
-            memory += self.vectors.nbytes
-        
-        # Levels
-        memory += len(self.levels) * 8  # int64
-        
-        # Graphs (rough estimate)
-        for layer_graph in self.graphs:
-            for neighbors in layer_graph.values():
-                memory += len(neighbors) * 8  # int64 per neighbor
-        
-        return memory
+        return indices, distances, stats
 
 
 class IVFBaseline:

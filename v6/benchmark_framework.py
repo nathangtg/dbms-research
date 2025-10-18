@@ -192,6 +192,14 @@ class ANNSBenchmark:
         n_probe: int = 5,
         pq_m: int = 16,
         use_pq: bool = True,
+        adaptive_probe: bool = False,
+        min_probe: int = 2,
+        max_probe: int = None,
+        probe_margin_ratio: float = 0.15,
+        adaptive_ef: bool = False,
+        small_zone_threshold: int = 1200,
+        ef_small: int = 32,
+        k_rerank: int = None,
         name_suffix: str = ""
     ) -> BenchmarkResult:
         """
@@ -217,7 +225,15 @@ class ANNSBenchmark:
             'ef_search': ef_search,
             'n_probe': n_probe,
             'pq_m': pq_m,
-            'use_pq': use_pq
+            'use_pq': use_pq,
+            'adaptive_probe': adaptive_probe,
+            'min_probe': min_probe,
+            'max_probe': max_probe if max_probe is not None else n_probe,
+            'probe_margin_ratio': probe_margin_ratio,
+            'adaptive_ef': adaptive_ef,
+            'small_zone_threshold': small_zone_threshold,
+            'ef_small': ef_small,
+            'k_rerank': (k_rerank if k_rerank is not None else max(2 * max(self.k_values), 50))
         }
         
         algo_name = f"ZGQ{name_suffix}"
@@ -260,7 +276,20 @@ class ANNSBenchmark:
             
             for i, query in enumerate(self.queries):
                 start = time.perf_counter()
-                result = index.search(query, k=self.k_max)
+                result = index.search(
+                    query,
+                    k=self.k_max,
+                    n_probe=n_probe,
+                    ef_search=ef_search,
+                    adaptive_probe=adaptive_probe,
+                    min_probe=min_probe,
+                    max_probe=max_probe if max_probe is not None else n_probe,
+                    probe_margin_ratio=probe_margin_ratio,
+                    adaptive_ef=adaptive_ef,
+                    small_zone_threshold=small_zone_threshold,
+                    ef_small=ef_small,
+                    k_rerank=(k_rerank if k_rerank is not None else None)
+                )
                 latency = (time.perf_counter() - start) * 1000  # ms
                 
                 latencies.append(latency)

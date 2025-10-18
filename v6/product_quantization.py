@@ -62,7 +62,13 @@ class ProductQuantizer:
         else:
             self.dtype = np.uint8
     
-    def train(self, training_data: np.ndarray, n_iter: int = 100) -> None:
+    def train(
+        self,
+        training_data: np.ndarray,
+        n_iter: int = 100,
+        batch_size: int | None = None,
+        n_init: int = 1
+    ) -> None:
         """
         Train product quantization codebooks via k-means.
         
@@ -114,9 +120,9 @@ class ProductQuantizer:
             # K-means clustering using MiniBatchKMeans for speed
             kmeans = MiniBatchKMeans(
                 n_clusters=self.k,
-                max_iter=n_iter,
-                batch_size=min(2048, N_train),
-                n_init=3,
+                max_iter=int(n_iter),
+                batch_size=(batch_size if batch_size is not None else min(2048, N_train)),
+                n_init=int(n_init),
                 random_state=42 + j,
                 verbose=0
             )
@@ -133,7 +139,7 @@ class ProductQuantizer:
         
         self.trained = True
     
-    def encode(self, vectors: np.ndarray) -> np.ndarray:
+    def encode(self, vectors: np.ndarray, batch_size: int | None = None) -> np.ndarray:
         """
         Encode vectors using trained codebooks.
         
@@ -166,28 +172,24 @@ class ProductQuantizer:
         if self.verbose:
             print(f"\n  Encoding {N:,} vectors with PQ...")
         
-        # Encode each subspace
+        # Encode each subspace in batches to reduce memory/time spikes
+        bs = batch_size if batch_size is not None else N  # full-batch by default
         for j in range(self.m):
             if self.verbose and j % max(1, self.m // 10) == 0:
                 print(f"    Subspace {j+1}/{self.m}...", end='\r')
-            
             start = j * self.d_sub
             end = start + self.d_sub
-            subvectors = vectors[:, start:end].astype(np.float32)
-            
-            # Find nearest centroid for each subvector
-            # Shape: (N, d/m) vs (k, d/m)
             codebook = self.codebooks[j]
-            
-            # Compute distances to all centroids
-            # Vectorized: (N, d/m) vs (k, d/m) -> (N, k)
-            distances = np.sum(
-                (subvectors[:, np.newaxis, :] - codebook[np.newaxis, :, :]) ** 2,
-                axis=2
-            )
-            
-            # Assign nearest centroid index
-            codes[:, j] = np.argmin(distances, axis=1)
+            # Process in batches over N
+            for beg in range(0, N, bs):
+                end_i = min(N, beg + bs)
+                subv = vectors[beg:end_i, start:end].astype(np.float32, copy=False)
+                # distances: (B, k)
+                distances = np.sum(
+                    (subv[:, np.newaxis, :] - codebook[np.newaxis, :, :]) ** 2,
+                    axis=2
+                )
+                codes[beg:end_i, j] = np.argmin(distances, axis=1)
         
         if self.verbose:
             print(f"    Subspace {self.m}/{self.m}... ✓")

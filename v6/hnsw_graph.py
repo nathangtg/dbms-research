@@ -144,23 +144,25 @@ class HNSWGraph:
         
         start_time = time.time()
         
-        # Initialize with first node at layer 0
-        first_layer = self._select_layer()
-        self.nodes.append(HNSWNode(
-            id=0,
-            layer=first_layer,
-            neighbors={layer: [] for layer in range(first_layer + 1)}
-        ))
-        self.entry_point = 0
-        self.max_layer = first_layer
-        
-        # Insert remaining nodes
-        for node_id in range(1, self.n):
+        # Insert all nodes, starting from an empty graph
+        # First node will become the entry point
+        for node_id in range(self.n):
             if self.verbose and node_id % max(1, self.n // 20) == 0:
                 progress = node_id / self.n * 100
                 print(f"  Progress: {progress:.1f}% ({node_id}/{self.n})", end='\r')
             
-            self._insert_node(node_id)
+            if node_id == 0:
+                # Initialize with first node
+                first_layer = self._select_layer()
+                self.nodes.append(HNSWNode(
+                    id=0,
+                    layer=first_layer,
+                    neighbors={layer: [] for layer in range(first_layer + 1)}
+                ))
+                self.entry_point = 0
+                self.max_layer = first_layer
+            else:
+                self._insert_node(node_id)
         
         if self.verbose:
             print(f"  Progress: 100.0% ({self.n}/{self.n}) ✓")
@@ -198,18 +200,36 @@ class HNSWGraph:
             neighbors={l: [] for l in range(layer + 1)}
         )
         
+        # Save old entry point before potentially updating it
+        old_entry_point = self.entry_point
+        old_max_layer = self.max_layer
+        
         # Update max layer if needed
         if layer > self.max_layer:
             self.max_layer = layer
             self.entry_point = node_id
         
         # Find nearest neighbors via beam search
-        # Search from top to target layer
+        # Use OLD entry point for search (not the new one being inserted!)
+        current_nearest = [old_entry_point]
+        
+        # Greedy search from top to layer 1
+        for lc in range(old_max_layer, 0, -1):
+            neighbors_at_layer = self._search_layer(
+                query=query,
+                entry_points=current_nearest,
+                num_to_return=1,
+                layer=lc,
+                exclude_id=node_id
+            )
+            current_nearest = [nid for _, nid in neighbors_at_layer]
+        
+        # Beam search at layer 0
         nearest = self._search_layer(
             query=query,
-            entry_points=[self.entry_point],
+            entry_points=current_nearest,
             num_to_return=self.ef_construction,
-            layer=min(layer, self.max_layer),
+            layer=0,
             exclude_id=node_id
         )
         
@@ -295,6 +315,7 @@ class HNSWGraph:
             current_dist, current_id = heapq.heappop(candidates)
             
             # Stopping criterion: current is farther than worst in results
+            # w stores (-distance, node_id), so -w[0][0] is the furthest distance
             if w and current_dist > -w[0][0]:
                 break
             

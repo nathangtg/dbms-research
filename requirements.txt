@@ -17,3 +17,6 @@ psutil>=5.8.0              # For system resource monitoring
 
 # numba
 numba>=0.54.0              # For JIT compilation and speedups
+
+# hnsw
+hnswlib>=0.5.0             # For production-grade HNSW comparison

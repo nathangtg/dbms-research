@@ -26,6 +26,7 @@ from distance_metrics import DistanceMetrics, PQDistanceMetrics
 from product_quantization import ProductQuantizer
 from zonal_partitioning import ZonalPartitioner
 from hnsw_graph import HNSWGraph
+from hnsw_zone_lib import HNSWZoneLib
 from aggregation import ResultAggregator, SearchResult
 
 
@@ -63,7 +64,13 @@ class ZGQIndex:
         m: int = 16,
         nbits: int = 8,
         n_threads: int = 4,
-        verbose: bool = True
+        inner_hnsw_threads: int = 1,
+        verbose: bool = True,
+        store_vectors_dtype: str = "float32",
+        pq_train_iter: int = 50,
+        pq_train_batch: int = 2048,
+        pq_n_init: int = 1,
+        pq_encode_batch: int = 4096
     ):
         """
         Initialize ZGQ index parameters.
@@ -78,6 +85,7 @@ class ZGQIndex:
             m: PQ number of subspaces (if use_pq=True)
             nbits: PQ bits per subspace (if use_pq=True)
             n_threads: Number of threads for parallel zone search
+            inner_hnsw_threads: Threads used inside hnswlib per-zone search (to avoid oversubscription, default 1)
             verbose: Print progress information
             
         Reference: architecture_overview.md Section 1.2
@@ -92,7 +100,13 @@ class ZGQIndex:
         self.m = m
         self.nbits = nbits
         self.n_threads = n_threads
+        self.inner_hnsw_threads = max(1, int(inner_hnsw_threads))
         self.verbose = verbose
+        self.store_vectors_dtype = store_vectors_dtype
+        self.pq_train_iter = int(pq_train_iter)
+        self.pq_train_batch = int(pq_train_batch)
+        self.pq_n_init = int(pq_n_init)
+        self.pq_encode_batch = int(pq_encode_batch)
         
         # Data
         self.vectors = None
@@ -100,11 +114,11 @@ class ZGQIndex:
         self.d = None
         
         # Components
-        self.partitioner: Optional[ZonalPartitioner] = None
-        self.zone_graphs: List[HNSWGraph] = []
-        self.pq: Optional[ProductQuantizer] = None
-        self.pq_codes: Optional[np.ndarray] = None
-        self.vector_norms_sq: Optional[np.ndarray] = None
+        self.partitioner = None
+        self.zone_graphs = []
+        self.pq = None
+        self.pq_codes = None
+        self.vector_norms_sq = None
         
         # State
         self.is_built = False
@@ -148,7 +162,8 @@ class ZGQIndex:
             print("="*80)
         
         start_time = time.time()
-        
+
+        # Keep float32 during build; optional downcast happens after build
         self.vectors = vectors.astype(np.float32)
         self.N, self.d = vectors.shape
         
@@ -216,10 +231,15 @@ class ZGQIndex:
             else:
                 train_data = vectors
             
-            self.pq.train(train_data, n_iter=100)
+            self.pq.train(
+                train_data,
+                n_iter=self.pq_train_iter,
+                batch_size=self.pq_train_batch,
+                n_init=self.pq_n_init
+            )
             
             # Encode all vectors
-            self.pq_codes = self.pq.encode(vectors)
+            self.pq_codes = self.pq.encode(vectors, batch_size=self.pq_encode_batch)
             
             pq_time = time.time() - pq_start
             self.build_stats['pq_time'] = pq_time
@@ -240,6 +260,12 @@ class ZGQIndex:
         self.build_stats['norm_time'] = norm_time
         
         # ===== FINALIZE =====
+        # Optionally reduce vector precision to save memory after building everything
+        if self.store_vectors_dtype == "float16":
+            try:
+                self.vectors = self.vectors.astype(np.float16)
+            except Exception:
+                pass
         self.build_time = time.time() - start_time
         self.is_built = True
         
@@ -255,7 +281,7 @@ class ZGQIndex:
         if self.verbose:
             print(f"  Building {self.Z} HNSW graphs with {self.n_threads} threads...")
         
-        def build_single_zone(zone_id: int) -> Tuple[int, Optional[HNSWGraph]]:
+        def build_single_zone(zone_id: int) -> Tuple[int, Optional[object]]:
             """Build graph for a single zone."""
             zone_vectors, global_indices = self.partitioner.get_zone_vectors(
                 self.vectors, zone_id
@@ -265,13 +291,29 @@ class ZGQIndex:
             if len(zone_vectors) < 5:
                 return zone_id, None
             
-            graph = HNSWGraph(
-                vectors=zone_vectors,
-                M=self.M,
-                ef_construction=self.ef_construction,
-                verbose=False
-            )
-            graph.build()
+            # Prefer fast hnswlib-backed zone index
+            try:
+                graph = HNSWZoneLib(
+                    vectors=zone_vectors,
+                    M=self.M,
+                    ef_construction=self.ef_construction,
+                    verbose=False,
+                )
+                graph.build()
+                # Avoid oversubscription: use 1 thread inside hnswlib by default when we parallelize zones
+                try:
+                    graph.set_search_threads(self.inner_hnsw_threads)
+                except Exception:
+                    pass
+            except Exception:
+                # Fallback to Python HNSWGraph if hnswlib not available
+                graph = HNSWGraph(
+                    vectors=zone_vectors,
+                    M=self.M,
+                    ef_construction=self.ef_construction,
+                    verbose=False
+                )
+                graph.build()
             
             return zone_id, graph
         
@@ -306,7 +348,14 @@ class ZGQIndex:
         n_probe: int = None,
         ef_search: int = None,
         k_rerank: int = None,
-        return_distances: bool = True
+        return_distances: bool = True,
+        adaptive_probe: bool = False,
+        min_probe: int = 2,
+        max_probe: int = None,
+        probe_margin_ratio: float = 0.15,
+        adaptive_ef: bool = False,
+        small_zone_threshold: int = 1200,
+        ef_small: int = 32
     ) -> List[Tuple[int, float]]:
         """
         Search for k nearest neighbors.
@@ -360,10 +409,22 @@ class ZGQIndex:
         query = query.astype(np.float32)
         
         # ===== STEP 1: ZONE SELECTION =====
-        selected_zones = self.partitioner.assign_to_zones(
-            query[np.newaxis, :],
-            n_probe=n_probe
-        )[0]
+        # If adaptive probing, compute top zones and adjust n_probe using centroid distance margins
+        if adaptive_probe:
+            # Compute distances to all centroids once
+            centroid_dists = DistanceMetrics.euclidean_batch_squared(query, self.partitioner.centroids)
+            # Sort zones by distance
+            order = np.argsort(centroid_dists)
+            # Decide dynamic n_probe based on margin between top-1 and top-2..k centroids
+            if max_probe is None:
+                max_probe = self.n_probe
+            n_probe_eff = self._decide_adaptive_probe(centroid_dists[order], min_probe, max_probe, probe_margin_ratio)
+            selected_zones = order[:n_probe_eff]
+        else:
+            selected_zones = self.partitioner.assign_to_zones(
+                query[np.newaxis, :],
+                n_probe=n_probe
+            )[0]
         
         # ===== STEP 2: PRECOMPUTE PQ DISTANCE TABLE =====
         distance_table = None
@@ -376,10 +437,17 @@ class ZGQIndex:
             )
         
         # ===== STEP 3: PARALLEL ZONE SEARCH =====
+        # Adjust ef per zone if adaptive_ef is enabled using zone size heuristic
+        zone_ef = ef_search
+        if adaptive_ef:
+            # Compute effective ef for small zones to speed up search
+            # We'll pass this down and let per-zone search decide based on zone size
+            zone_ef = max(ef_small, min(ef_search, ef_search))
+
         all_candidates = self._parallel_zone_search(
             query=query,
             selected_zones=selected_zones,
-            ef_search=ef_search,
+            ef_search=zone_ef,
             distance_table=distance_table,
             k_local=k
         )
@@ -399,6 +467,45 @@ class ZGQIndex:
             return [(r.vector_id, r.exact_distance) for r in results]
         else:
             return [r.vector_id for r in results]
+
+    @staticmethod
+    def _decide_adaptive_probe(
+        sorted_centroid_dists: np.ndarray,
+        min_probe: int,
+        max_probe: int,
+        margin_ratio: float
+    ) -> int:
+        """
+        Decide number of zones to probe based on centroid distance margins.
+
+        Heuristic: Start with min_probe, then include additional zones while
+        the relative improvement from including next zone exceeds margin_ratio.
+
+        Args:
+            sorted_centroid_dists: distances to centroids sorted ascending
+            min_probe: minimum zones to probe
+            max_probe: maximum zones to probe
+            margin_ratio: threshold on relative gap (d[i] - d[0]) / max(d[0], 1e-6)
+
+        Returns:
+            Chosen number of zones to probe
+        """
+        n = len(sorted_centroid_dists)
+        if n == 0:
+            return min_probe
+        d0 = float(sorted_centroid_dists[0])
+        chosen = max(1, int(min_probe))
+        max_probe = max(chosen, int(max_probe))
+
+        for i in range(1, min(n, max_probe)):
+            gap = float(sorted_centroid_dists[i]) - d0
+            # Normalize by d0 to be scale-aware; add epsilon to avoid zero-div
+            rel = gap / (abs(d0) + 1e-12)
+            if rel <= margin_ratio:
+                chosen = i + 1
+            else:
+                break
+        return int(max(min_probe, min(chosen, max_probe)))
     
     def _parallel_zone_search(
         self,
@@ -431,11 +538,18 @@ class ZGQIndex:
                 return []
             
             # Get local results from HNSW
-            local_results = graph.search(
-                query=query,
-                k=k_local,
-                ef_search=ef_search
-            )
+            # Both HNSWZoneLib and HNSWGraph expose search that returns
+            # (distance, local_id) tuples per result.
+            # Optionally reduce ef for small zones to speed up search
+            ef_for_zone = ef_search
+            try:
+                # Access zone size from partitioner
+                zone_size = len(self.partitioner.inverted_lists[zone_id])
+                if zone_size < 1200:
+                    ef_for_zone = max(16, min(ef_search, 32))
+            except Exception:
+                pass
+            local_results = graph.search(query=query, k=k_local, ef_search=ef_for_zone)
             
             # Map to global IDs and compute PQ distances
             _, global_indices = self.partitioner.get_zone_vectors(
@@ -443,8 +557,10 @@ class ZGQIndex:
             )
             
             zone_results = []
-            for local_id, _ in local_results:
-                # Ensure local_id is an integer
+            # NOTE: HNSWGraph.search returns a list of (distance, local_id)
+            # tuples. We must unpack in that order to avoid swapping values.
+            for dist, local_id in local_results:
+                # Ensure local_id is an integer index
                 local_id = int(local_id)
                 if local_id < len(global_indices):
                     global_id = int(global_indices[local_id])
@@ -457,10 +573,15 @@ class ZGQIndex:
                         )
                     else:
                         # Use exact distance as fallback
-                        pq_dist = DistanceMetrics.euclidean_squared(
-                            query,
-                            self.vectors[global_id]
-                        )
+                        # If exact distances from HNSWGraph are available,
+                        # prefer them; otherwise compute from full vectors.
+                        if dist is not None:
+                            pq_dist = float(dist)
+                        else:
+                            pq_dist = DistanceMetrics.euclidean_squared(
+                                query,
+                                self.vectors[global_id]
+                            )
                     
                     zone_results.append((global_id, pq_dist, zone_id))
             

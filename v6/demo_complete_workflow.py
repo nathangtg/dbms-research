@@ -136,18 +136,24 @@ def run_complete_demo(dataset_size: str = "small"):
     print(f"{'='*80}")
     
     # Scale parameters based on dataset size
+    # Key insight: Fewer zones = larger zones = better balance = higher recall
     if dataset_size == "small":
-        n_zones = min(50, N // 200)  # ~200 vectors per zone minimum
+        n_zones = 50              # 10K / 50 = 200 vectors/zone
         ef_search_zgq = 50
         ef_search_hnsw = 50
+        n_probe = 5
     elif dataset_size == "medium":
-        n_zones = min(100, N // 500)  # ~500 vectors per zone minimum
-        ef_search_zgq = 100
-        ef_search_hnsw = 100
+        # Tuned profile for 50K vectors: faster with high recall
+        # From tuning sweep: best trade-off ~ Z=30, n_probe=3, ef_search=50
+        n_zones = 30              # ~1,666 vectors/zone; avoids tiny zones and stays balanced
+        ef_search_zgq = 50
+        ef_search_hnsw = 50
+        n_probe = 3
     else:  # large
-        n_zones = min(50, N // 2000)  # ~2000 vectors per zone minimum for stability
+        n_zones = 50              # 100K / 50 = 2000 vectors/zone
         ef_search_zgq = 200
         ef_search_hnsw = 200
+        n_probe = 10
     
     # Default configuration with scaled parameters
     zgq_result = benchmark.benchmark_zgq(
@@ -155,9 +161,17 @@ def run_complete_demo(dataset_size: str = "small"):
         M=16,
         ef_construction=200,
         ef_search=ef_search_zgq,
-        n_probe=5,
+        n_probe=n_probe,
         pq_m=16,
         use_pq=True,
+        adaptive_probe=True if dataset_size == "medium" else False,
+        min_probe=2,
+        max_probe=n_probe,
+        probe_margin_ratio=0.10,
+        adaptive_ef=True if dataset_size == "medium" else False,
+        small_zone_threshold=1200,
+        ef_small=32,
+        k_rerank=30 if config["k"] == 10 else None,
         name_suffix=""
     )
     
