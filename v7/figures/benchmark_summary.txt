@@ -1,0 +1,45 @@
+======================================================================
+BENCHMARK SUMMARY REPORT
+======================================================================
+
+Dataset: gaussian_10000x128
+Vectors: 10,000, Dimension: 128
+
+----------------------------------------------------------------------
+
+
+ZGQ:
+  Build Time: 4.00s
+  Index Size: 5.77 MB
+
+  Best Recall Configuration:
+    Recall@10: 0.9880
+    Latency: 3.010ms
+    Throughput: 332.3 QPS
+    Parameters: {'n_probe': 50, 'n_zones': 100}
+
+  Fastest Configuration:
+    Latency: 0.534ms
+    Recall@10: 0.2800
+    Throughput: 1870.9 QPS
+
+----------------------------------------------------------------------
+
+HNSW:
+  Build Time: 0.28s
+  Index Size: 5.49 MB
+
+  Best Recall Configuration:
+    Recall@10: 0.9650
+    Latency: 0.181ms
+    Throughput: 5528.2 QPS
+    Parameters: {'ef': 200}
+
+  Fastest Configuration:
+    Latency: 0.017ms
+    Recall@10: 0.3650
+    Throughput: 59169.0 QPS
+
+----------------------------------------------------------------------
+
+FAISS-IVF-PQ: No valid results (all recall = 0)
