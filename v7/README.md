@@ -1,5 +1,27 @@
 # ZGQ V7 - Implementation Complete
 
+## 🎯 Comprehensive Algorithm Comparison
+
+We've benchmarked ZGQ against industry-standard ANN algorithms:
+
+| Algorithm | Latency | QPS | Recall@10 | Memory | Build Time |
+|-----------|---------|-----|-----------|--------|------------|
+| **HNSW** 🏆 | 0.015 ms | 65,789 | 54.9% | 6.1 MB | 0.26 s |
+| **ZGQ Unified** 🥈 | 0.057 ms | 17,453 | 53.9% | **4.9 MB** | 0.46 s |
+| IVF | 0.835 ms | 1,198 | 37.6% | 4.9 MB | 0.23 s |
+| IVF+PQ | 7.410 ms | 135 | 19.0% | 5.2 MB | 3.84 s |
+
+**Key Finding:** ZGQ Unified achieves **20% less memory** than HNSW with near-identical recall!
+
+### Run Full Comparison
+
+```bash
+cd benchmarks
+./run_full_comparison.sh  # Runs benchmark + generates figures
+```
+
+See `benchmarks/ALGORITHM_COMPARISON.md` for detailed analysis.
+
 ## Quick Start
 
 ### Installation
@@ -28,6 +50,9 @@ python examples/simple_example.py
 ```bash
 # Comprehensive benchmark against baselines
 python benchmarks/comprehensive_benchmark.py
+
+# Algorithm comparison (HNSW, IVF, IVF+PQ, ZGQ)
+python benchmarks/compare_all_algorithms.py
 ```
 
 ### Run Tests
