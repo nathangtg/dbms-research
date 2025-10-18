@@ -135,12 +135,26 @@ def run_complete_demo(dataset_size: str = "small"):
     print("Benchmarking ZGQ V6...")
     print(f"{'='*80}")
     
-    # Default configuration
+    # Scale parameters based on dataset size
+    if dataset_size == "small":
+        n_zones = min(50, N // 200)  # ~200 vectors per zone minimum
+        ef_search_zgq = 50
+        ef_search_hnsw = 50
+    elif dataset_size == "medium":
+        n_zones = min(100, N // 500)  # ~500 vectors per zone minimum
+        ef_search_zgq = 100
+        ef_search_hnsw = 100
+    else:  # large
+        n_zones = min(50, N // 2000)  # ~2000 vectors per zone minimum for stability
+        ef_search_zgq = 200
+        ef_search_hnsw = 200
+    
+    # Default configuration with scaled parameters
     zgq_result = benchmark.benchmark_zgq(
-        n_zones=min(100, N // 100),
+        n_zones=n_zones,
         M=16,
         ef_construction=200,
-        ef_search=50,
+        ef_search=ef_search_zgq,
         n_probe=5,
         pq_m=16,
         use_pq=True,
@@ -157,7 +171,7 @@ def run_complete_demo(dataset_size: str = "small"):
     hnsw_result = benchmark.benchmark_hnsw(
         M=16,
         ef_construction=200,
-        ef_search=50,
+        ef_search=ef_search_hnsw,
         name_suffix=""
     )
     
