@@ -104,12 +104,6 @@ Visualizations are saved to `v6/figures/` and `v6/figures_version_comparison/`
 - GPU: RTX 3050
 - Dataset: Random 128D vectors (uniform distribution)
 
-## References
-
-- HNSW: Malkov & Yashunin (2018)
-- Product Quantization: Jégou et al. (2011)
-- K-Means: Lloyd (1982)
-
 ## Team
 
 Internal research project - use GitHub Issues for questions and discussions.

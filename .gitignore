@@ -61,11 +61,6 @@ ipython_config.py
 # Generated Figures and Results
 figures/
 figures_*/
-*.png
-*.jpg
-*.jpeg
-*.pdf
-*.svg
 
 # Benchmark Results
 benchmark_results*.json
