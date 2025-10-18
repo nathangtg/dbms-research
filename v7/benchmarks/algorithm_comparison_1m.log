@@ -1,0 +1,129 @@
+================================================================================
+COMPREHENSIVE ANN ALGORITHM COMPARISON
+================================================================================
+
+Algorithms:
+  1. HNSW - Hierarchical Navigable Small World
+  2. IVF - Inverted File Index (flat)
+  3. IVF+PQ - IVF with Product Quantization
+  4. ZGQ Unified - Zone-aware Graph Quantization (our method)
+
+Loading test data...
+  Dataset size: 1m
+  Vectors: (1000000, 128)
+  Queries: (100, 128)
+  Ground truth: (100, 10)
+
+================================================================================
+1/4: HNSW Baseline
+================================================================================
+
+================================================================================
+Benchmarking: HNSW
+================================================================================
+
+Building index...
+
+================================================================================
+Building HNSW Index
+================================================================================
+Parameters: M=16, ef_construction=200
+Database: N=1,000,000 vectors, d=128 dimensions
+  Inserted 10,000/1,000,000 vectors (1.0%) - 5767 vec/s - ETA: 171.7s
+  Inserted 20,000/1,000,000 vectors (2.0%) - 9094 vec/s - ETA: 107.8s
+  Inserted 30,000/1,000,000 vectors (3.0%) - 10448 vec/s - ETA: 92.8s
+  Inserted 40,000/1,000,000 vectors (4.0%) - 11143 vec/s - ETA: 86.2s
+  Inserted 50,000/1,000,000 vectors (5.0%) - 11145 vec/s - ETA: 85.2s
+  Inserted 60,000/1,000,000 vectors (6.0%) - 10902 vec/s - ETA: 86.2s
+  Inserted 70,000/1,000,000 vectors (7.0%) - 10283 vec/s - ETA: 90.4s
+  Inserted 80,000/1,000,000 vectors (8.0%) - 9804 vec/s - ETA: 93.8s
+  Inserted 90,000/1,000,000 vectors (9.0%) - 9183 vec/s - ETA: 99.1s
+  Inserted 100,000/1,000,000 vectors (10.0%) - 8783 vec/s - ETA: 102.5s
+  Inserted 110,000/1,000,000 vectors (11.0%) - 8309 vec/s - ETA: 107.1s
+  Inserted 120,000/1,000,000 vectors (12.0%) - 7862 vec/s - ETA: 111.9s
+  Inserted 130,000/1,000,000 vectors (13.0%) - 9052 vec/s - ETA: 96.1s
+  Inserted 140,000/1,000,000 vectors (14.0%) - 8627 vec/s - ETA: 99.7s
+  Inserted 150,000/1,000,000 vectors (15.0%) - 8319 vec/s - ETA: 102.2s
+  Inserted 160,000/1,000,000 vectors (16.0%) - 8025 vec/s - ETA: 104.7s
+  Inserted 170,000/1,000,000 vectors (17.0%) - 7803 vec/s - ETA: 106.4s
+  Inserted 180,000/1,000,000 vectors (18.0%) - 7586 vec/s - ETA: 108.1s
+  Inserted 190,000/1,000,000 vectors (19.0%) - 7426 vec/s - ETA: 109.1s
+  Inserted 200,000/1,000,000 vectors (20.0%) - 7286 vec/s - ETA: 109.8s
+  Inserted 210,000/1,000,000 vectors (21.0%) - 7150 vec/s - ETA: 110.5s
+  Inserted 220,000/1,000,000 vectors (22.0%) - 7017 vec/s - ETA: 111.2s
+  Inserted 230,000/1,000,000 vectors (23.0%) - 6879 vec/s - ETA: 111.9s
+  Inserted 240,000/1,000,000 vectors (24.0%) - 6744 vec/s - ETA: 112.7s
+  Inserted 250,000/1,000,000 vectors (25.0%) - 6642 vec/s - ETA: 112.9s
+  Inserted 260,000/1,000,000 vectors (26.0%) - 6544 vec/s - ETA: 113.1s
+  Inserted 270,000/1,000,000 vectors (27.0%) - 6452 vec/s - ETA: 113.1s
+  Inserted 280,000/1,000,000 vectors (28.0%) - 6369 vec/s - ETA: 113.1s
+  Inserted 290,000/1,000,000 vectors (29.0%) - 6290 vec/s - ETA: 112.9s
+  Inserted 300,000/1,000,000 vectors (30.0%) - 6630 vec/s - ETA: 105.6s
+  Inserted 310,000/1,000,000 vectors (31.0%) - 6550 vec/s - ETA: 105.3s
+  Inserted 320,000/1,000,000 vectors (32.0%) - 6476 vec/s - ETA: 105.0s
+  Inserted 330,000/1,000,000 vectors (33.0%) - 6401 vec/s - ETA: 104.7s
+  Inserted 340,000/1,000,000 vectors (34.0%) - 6330 vec/s - ETA: 104.3s
+  Inserted 350,000/1,000,000 vectors (35.0%) - 6265 vec/s - ETA: 103.8s
+  Inserted 360,000/1,000,000 vectors (36.0%) - 6198 vec/s - ETA: 103.3s
+  Inserted 370,000/1,000,000 vectors (37.0%) - 6143 vec/s - ETA: 102.6s
+  Inserted 380,000/1,000,000 vectors (38.0%) - 6094 vec/s - ETA: 101.7s
+  Inserted 390,000/1,000,000 vectors (39.0%) - 6045 vec/s - ETA: 100.9s
+  Inserted 400,000/1,000,000 vectors (40.0%) - 6003 vec/s - ETA: 99.9s
+  Inserted 410,000/1,000,000 vectors (41.0%) - 5963 vec/s - ETA: 98.9s
+  Inserted 420,000/1,000,000 vectors (42.0%) - 5925 vec/s - ETA: 97.9s
+  Inserted 430,000/1,000,000 vectors (43.0%) - 5887 vec/s - ETA: 96.8s
+  Inserted 440,000/1,000,000 vectors (44.0%) - 5852 vec/s - ETA: 95.7s
+  Inserted 450,000/1,000,000 vectors (45.0%) - 6047 vec/s - ETA: 91.0s
+  Inserted 460,000/1,000,000 vectors (46.0%) - 6009 vec/s - ETA: 89.9s
+  Inserted 470,000/1,000,000 vectors (47.0%) - 5971 vec/s - ETA: 88.8s
+  Inserted 480,000/1,000,000 vectors (48.0%) - 5935 vec/s - ETA: 87.6s
+  Inserted 490,000/1,000,000 vectors (49.0%) - 5900 vec/s - ETA: 86.4s
+  Inserted 500,000/1,000,000 vectors (50.0%) - 5867 vec/s - ETA: 85.2s
+  Inserted 510,000/1,000,000 vectors (51.0%) - 5836 vec/s - ETA: 84.0s
+  Inserted 520,000/1,000,000 vectors (52.0%) - 5805 vec/s - ETA: 82.7s
+  Inserted 530,000/1,000,000 vectors (53.0%) - 5775 vec/s - ETA: 81.4s
+  Inserted 540,000/1,000,000 vectors (54.0%) - 5738 vec/s - ETA: 80.2s
+  Inserted 550,000/1,000,000 vectors (55.0%) - 5708 vec/s - ETA: 78.8s
+  Inserted 560,000/1,000,000 vectors (56.0%) - 5681 vec/s - ETA: 77.5s
+  Inserted 570,000/1,000,000 vectors (57.0%) - 5654 vec/s - ETA: 76.1s
+  Inserted 580,000/1,000,000 vectors (58.0%) - 5627 vec/s - ETA: 74.6s
+  Inserted 590,000/1,000,000 vectors (59.0%) - 5761 vec/s - ETA: 71.2s
+  Inserted 600,000/1,000,000 vectors (60.0%) - 5730 vec/s - ETA: 69.8s
+  Inserted 610,000/1,000,000 vectors (61.0%) - 5698 vec/s - ETA: 68.4s
+  Inserted 620,000/1,000,000 vectors (62.0%) - 5668 vec/s - ETA: 67.0s
+  Inserted 630,000/1,000,000 vectors (63.0%) - 5642 vec/s - ETA: 65.6s
+  Inserted 640,000/1,000,000 vectors (64.0%) - 5617 vec/s - ETA: 64.1s
+  Inserted 650,000/1,000,000 vectors (65.0%) - 5593 vec/s - ETA: 62.6s
+  Inserted 660,000/1,000,000 vectors (66.0%) - 5566 vec/s - ETA: 61.1s
+  Inserted 670,000/1,000,000 vectors (67.0%) - 5539 vec/s - ETA: 59.6s
+  Inserted 680,000/1,000,000 vectors (68.0%) - 5513 vec/s - ETA: 58.0s
+  Inserted 690,000/1,000,000 vectors (69.0%) - 5491 vec/s - ETA: 56.5s
+  Inserted 700,000/1,000,000 vectors (70.0%) - 5469 vec/s - ETA: 54.9s
+  Inserted 710,000/1,000,000 vectors (71.0%) - 5450 vec/s - ETA: 53.2s
+  Inserted 720,000/1,000,000 vectors (72.0%) - 5431 vec/s - ETA: 51.6s
+  Inserted 730,000/1,000,000 vectors (73.0%) - 5535 vec/s - ETA: 48.8s
+  Inserted 740,000/1,000,000 vectors (74.0%) - 5513 vec/s - ETA: 47.2s
+  Inserted 750,000/1,000,000 vectors (75.0%) - 5494 vec/s - ETA: 45.5s
+  Inserted 760,000/1,000,000 vectors (76.0%) - 5475 vec/s - ETA: 43.8s
+  Inserted 770,000/1,000,000 vectors (77.0%) - 5457 vec/s - ETA: 42.1s
+  Inserted 780,000/1,000,000 vectors (78.0%) - 5439 vec/s - ETA: 40.4s
+  Inserted 790,000/1,000,000 vectors (79.0%) - 5420 vec/s - ETA: 38.7s
+  Inserted 800,000/1,000,000 vectors (80.0%) - 5403 vec/s - ETA: 37.0s
+  Inserted 810,000/1,000,000 vectors (81.0%) - 5387 vec/s - ETA: 35.3s
+  Inserted 820,000/1,000,000 vectors (82.0%) - 5370 vec/s - ETA: 33.5s
+  Inserted 830,000/1,000,000 vectors (83.0%) - 5351 vec/s - ETA: 31.8s
+  Inserted 840,000/1,000,000 vectors (84.0%) - 5335 vec/s - ETA: 30.0s
+  Inserted 850,000/1,000,000 vectors (85.0%) - 5321 vec/s - ETA: 28.2s
+  Inserted 860,000/1,000,000 vectors (86.0%) - 5305 vec/s - ETA: 26.4s
+  Inserted 870,000/1,000,000 vectors (87.0%) - 5387 vec/s - ETA: 24.1s
+  Inserted 880,000/1,000,000 vectors (88.0%) - 5370 vec/s - ETA: 22.3s
+  Inserted 890,000/1,000,000 vectors (89.0%) - 5348 vec/s - ETA: 20.6s
+  Inserted 900,000/1,000,000 vectors (90.0%) - 5330 vec/s - ETA: 18.8s
+  Inserted 910,000/1,000,000 vectors (91.0%) - 5312 vec/s - ETA: 16.9s
+  Inserted 920,000/1,000,000 vectors (92.0%) - 5294 vec/s - ETA: 15.1s
+  Inserted 930,000/1,000,000 vectors (93.0%) - 5277 vec/s - ETA: 13.3s
+  Inserted 940,000/1,000,000 vectors (94.0%) - 5260 vec/s - ETA: 11.4s
+  Inserted 950,000/1,000,000 vectors (95.0%) - 5245 vec/s - ETA: 9.5s
+  Inserted 960,000/1,000,000 vectors (96.0%) - 5228 vec/s - ETA: 7.7s
+  Inserted 970,000/1,000,000 vectors (97.0%) - 5213 vec/s - ETA: 5.8s
+  Inserted 980,000/1,000,000 vectors (98.0%) - 5198 vec/s - ETA: 3.8s

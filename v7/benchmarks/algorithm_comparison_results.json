@@ -1,0 +1,38 @@
+[
+  {
+    "name": "HNSW",
+    "build_time": 0.2506742477416992,
+    "avg_latency_per_query_ms": 0.012797832489013674,
+    "throughput_qps": 78138.23167778233,
+    "recall_at_10": 54.699999999999996,
+    "memory_mb": 6.103515625,
+    "distance_computations": 5000
+  },
+  {
+    "name": "IVF",
+    "build_time": 0.2345116138458252,
+    "avg_latency_per_query_ms": 0.8397793769836426,
+    "throughput_qps": 1190.788946963481,
+    "recall_at_10": 37.59999999999999,
+    "memory_mb": 4.931640625,
+    "distance_computations": 130438
+  },
+  {
+    "name": "IVF+PQ",
+    "build_time": 3.749410629272461,
+    "avg_latency_per_query_ms": 6.145643711090087,
+    "throughput_qps": 162.71688483916753,
+    "recall_at_10": 19.0,
+    "memory_mb": 5.209228515625,
+    "distance_computations": 10000
+  },
+  {
+    "name": "ZGQ Unified",
+    "build_time": 0.45358943939208984,
+    "avg_latency_per_query_ms": 0.05824565887451172,
+    "throughput_qps": 17168.66148178469,
+    "recall_at_10": 55.099999999999994,
+    "memory_mb": 4.931640625,
+    "distance_computations": 0
+  }
+]

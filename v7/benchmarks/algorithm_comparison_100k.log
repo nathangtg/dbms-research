@@ -1,0 +1,245 @@
+================================================================================
+COMPREHENSIVE ANN ALGORITHM COMPARISON
+================================================================================
+
+Algorithms:
+  1. HNSW - Hierarchical Navigable Small World
+  2. IVF - Inverted File Index (flat)
+  3. IVF+PQ - IVF with Product Quantization
+  4. ZGQ Unified - Zone-aware Graph Quantization (our method)
+
+Loading test data...
+  Dataset size: 100k
+  Vectors: (100000, 128)
+  Queries: (100, 128)
+  Ground truth: (100, 10)
+
+================================================================================
+1/4: HNSW Baseline
+================================================================================
+
+================================================================================
+Benchmarking: HNSW
+================================================================================
+
+Building index...
+
+================================================================================
+Building HNSW Index
+================================================================================
+Parameters: M=16, ef_construction=200
+Database: N=100,000 vectors, d=128 dimensions
+  Inserted 10,000/100,000 vectors (10.0%) - 37123 vec/s - ETA: 2.4s
+  Inserted 20,000/100,000 vectors (20.0%) - 31881 vec/s - ETA: 2.5s
+  Inserted 30,000/100,000 vectors (30.0%) - 25877 vec/s - ETA: 2.7s
+  Inserted 40,000/100,000 vectors (40.0%) - 21741 vec/s - ETA: 2.8s
+  Inserted 50,000/100,000 vectors (50.0%) - 19058 vec/s - ETA: 2.6s
+  Inserted 60,000/100,000 vectors (60.0%) - 16763 vec/s - ETA: 2.4s
+  Inserted 70,000/100,000 vectors (70.0%) - 15036 vec/s - ETA: 2.0s
+  Inserted 80,000/100,000 vectors (80.0%) - 13754 vec/s - ETA: 1.5s
+  Inserted 90,000/100,000 vectors (90.0%) - 12677 vec/s - ETA: 0.8s
+  Inserted 100,000/100,000 vectors (100.0%) - 11873 vec/s - ETA: 0.0s
+
+================================================================================
+HNSW Build Complete
+================================================================================
+Build time: 8.422s (11873 vec/s)
+Max level: N/A
+Average degree: 16.00
+Memory usage: 64.0 MB
+
+Warming up...
+
+Benchmarking search...
+
+================================================================================
+Results: HNSW
+================================================================================
+Build time:       8.422s
+Query latency:    0.0453ms
+Throughput:       22,066 QPS
+Recall@10:        17.7%
+Memory:           61.0 MB
+
+================================================================================
+2/4: IVF (Flat, no compression)
+================================================================================
+
+================================================================================
+Benchmarking: IVF
+================================================================================
+
+Building index...
+
+================================================================================
+Building IVF Index
+================================================================================
+Parameters: nlist=100, nprobe=10, use_pq=False
+Database: N=100,000 vectors, d=128 dimensions
+
+Step 1: Running K-Means clustering...
+  K-Means completed in 0.482s
+
+Step 2: Building inverted lists...
+  Cluster sizes: avg=1000.0, max=1131, min=797
+
+================================================================================
+IVF Build Complete
+================================================================================
+Build time: 0.512s (195435 vec/s)
+Memory usage: 52.1 MB
+
+Warming up...
+
+Benchmarking search...
+
+================================================================================
+Results: IVF
+================================================================================
+Build time:       0.512s
+Query latency:    7.5059ms
+Throughput:       133 QPS
+Recall@10:        34.4%
+Memory:           48.9 MB
+
+================================================================================
+3/4: IVF+PQ (with Product Quantization)
+================================================================================
+
+================================================================================
+Benchmarking: IVF+PQ
+================================================================================
+
+Building index...
+
+================================================================================
+Building IVF Index
+================================================================================
+Parameters: nlist=100, nprobe=10, use_pq=True
+PQ Parameters: m=16, nbits=8
+Database: N=100,000 vectors, d=128 dimensions
+
+Step 1: Running K-Means clustering...
+  K-Means completed in 0.367s
+
+Step 2: Building inverted lists...
+  Cluster sizes: avg=1000.0, max=1131, min=797
+
+Step 3: Training Product Quantization...
+
+======================================================================
+Training Product Quantization
+======================================================================
+  Training samples: 100,000
+  Dimension: 128
+  Subspaces (m): 16
+  Subspace dim (d/m): 8
+  Codebook size (k): 256
+  Memory per codebook: 8.0 KB
+  Training subspace 1/16...  Training subspace 2/16...  Training subspace 3/16...  Training subspace 4/16...  Training subspace 5/16...  Training subspace 6/16...  Training subspace 7/16...  Training subspace 8/16...  Training subspace 9/16...  Training subspace 10/16...  Training subspace 11/16...  Training subspace 12/16...  Training subspace 13/16...  Training subspace 14/16...  Training subspace 15/16...  Training subspace 16/16...  Training subspace 16/16... ✓
+  Total codebook memory: 0.12 MB
+
+  Encoding 100,000 vectors with PQ...
+    Subspace 1/16...    Subspace 2/16...    Subspace 3/16...    Subspace 4/16...    Subspace 5/16...    Subspace 6/16...    Subspace 7/16...    Subspace 8/16...    Subspace 9/16...    Subspace 10/16...    Subspace 11/16...    Subspace 12/16...    Subspace 13/16...    Subspace 14/16...    Subspace 15/16...    Subspace 16/16...    Subspace 16/16... ✓
+    Code memory: 1.53 MB
+    Original memory: 48.83 MB
+    Compression ratio: 32.0×
+  PQ training completed in 15.048s
+  Compression: 51.2MB → 1.6MB (ratio: 32.0×)
+
+================================================================================
+IVF Build Complete
+================================================================================
+Build time: 15.448s (6473 vec/s)
+Memory usage: 2.6 MB
+
+Warming up...
+
+Benchmarking search...
+
+================================================================================
+Results: IVF+PQ
+================================================================================
+Build time:       15.448s
+Query latency:    34.7259ms
+Throughput:       29 QPS
+Recall@10:        12.7%
+Memory:           50.5 MB
+
+================================================================================
+4/4: ZGQ Unified (our method)
+================================================================================
+
+================================================================================
+Benchmarking: ZGQ Unified
+================================================================================
+
+Building index...
+
+Warming up...
+
+Benchmarking search...
+
+================================================================================
+Results: ZGQ Unified
+================================================================================
+Build time:       8.866s
+Query latency:    0.1397ms
+Throughput:       7,160 QPS
+Recall@10:        21.2%
+Memory:           48.9 MB
+
+================================================================================
+COMPREHENSIVE COMPARISON TABLE
+================================================================================
+
+Algorithm       Latency (ms)    Throughput      Recall@10    Memory (MB)  Build (s) 
+--------------------------------------------------------------------------------
+HNSW            0.0453          22066           17.7         61.0         8.422     
+IVF             7.5059          133             34.4         48.9         0.512     
+IVF+PQ          34.7259         29              12.7         50.5         15.448    
+ZGQ Unified     0.1397          7160            21.2         48.9         8.866     
+
+================================================================================
+SPEEDUP vs HNSW (baseline)
+================================================================================
+
+Algorithm       Speed           Memory          Recall Diff    
+------------------------------------------------------------
+HNSW            1.00x           1.00x ✓         +0.0% ✓        
+IVF             0.01x ✗         0.80x ✓         +16.7%         
+IVF+PQ          0.00x ✗         0.83x ✓         -5.0%          
+ZGQ Unified     0.32x ✗         0.80x ✓         +3.5%          
+
+================================================================================
+WINNER ANALYSIS
+================================================================================
+
+🏆 Fastest Query:      HNSW (0.0453ms)
+🏆 Highest Recall:     IVF (34.4%)
+🏆 Lowest Memory:      IVF (48.9 MB)
+🏆 Highest Throughput: HNSW (22,066 QPS)
+
+================================================================================
+OVERALL SCORE (weighted)
+================================================================================
+
+Weights: Speed 40%, Recall 30%, Memory 20%, Build 10%
+
+HNSW            Score: 0.753
+IVF             Score: 2.001
+IVF+PQ          Score: 0.335
+ZGQ Unified     Score: 0.538
+
+✓ Results saved to: /home/nathan/Development/dbms-research/v7/benchmarks/algorithm_comparison_results_100k.json
+
+================================================================================
+BENCHMARK COMPLETE
+================================================================================
+
+Dataset: 100,000 vectors × 128 dimensions
+Winner: HNSW (score: 0.865)
+
+Memory efficiency winner: IVF
+Speed winner: HNSW
+Recall winner: IVF
