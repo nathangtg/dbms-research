@@ -1,0 +1,153 @@
+@startuml
+' ====================================================
+' Zonal Graph Quantization (ZGQ) - IEEE Style Flowchart
+' ====================================================
+
+' === Diagram Aesthetic Settings ===
+skinparam backgroundColor white
+skinparam handwritten false
+skinparam monochrome true
+skinparam defaultFontName "Arial"
+skinparam activity {
+    FontSize 12
+    FontColor black
+    BackgroundColor white
+    BorderColor black
+    ArrowColor black
+    DiamondBackgroundColor white
+    DiamondBorderColor black
+}
+skinparam note {
+    BackgroundColor white
+    BorderColor black
+    FontColor black
+}
+skinparam arrow {
+    Color black
+    Thickness 1
+}
+
+title **Zonal Graph Quantization (ZGQ) - Research Methodology Flow**
+
+start
+
+:Define Research Objectives;
+note right
+Identify performance trade-off in
+billion-scale ANNS systems.
+Design ZGQ to balance
+memory, speed, and accuracy.
+end note
+
+:Conduct Literature Review and Analysis;
+note right
+Study prior ANNS methods:
+- HNSW (graph-based)
+- IVF / IVF-PQ (partition-based)
+Identify research gaps and hybrid design opportunities.
+end note
+
+:Design ZGQ Framework;
+note right
+ZGQ combines localized HNSW graphs,
+IVF-style partitioning, and quantization
+for memory-performance trade-offs.
+end note
+
+fork
+  :Partitioning;
+  note right
+  Apply K-Means clustering to divide
+  vector space into Z zones.
+  end note
+fork again
+  :Local Indexing;
+  note right
+  Construct smaller HNSW graphs
+  within each zone to reduce memory.
+  end note
+fork again
+  :Quantization;
+  note right
+  Compress vectors using PQ/RQ
+  to optimize index size.
+  end note
+end fork
+
+:Implement Baselines (HNSW, IVF, IVF-PQ);
+note right
+Use:
+- hnswlib (v0.8.0)
+- scikit-learn (v1.3.0)
+Ensure standardized evaluation.
+end note
+
+:Implement ZGQ Components;
+note right
+Z=4 zones, local HNSW (M=8),
+Product Quantizer (16×8 bits),
+Parallel search orchestration.
+end note
+
+:Setup Experimental Environment;
+note right
+Intel i5-12500H, RTX3050, 16GB RAM,
+WSL2 Ubuntu 24 under Windows 11.
+end note
+
+:Generate Synthetic Datasets;
+note right
+Create L2-normalized random vectors:
+- n_vectors: 10K → 100K+
+- dim: 128
+- n_queries: 100–1000
+end note
+
+:Index Construction Phase;
+note right
+Build all indexes, measure:
+- Build Time (s)
+- Index Size (MB)
+- Peak Memory
+end note
+
+:Query Execution Phase;
+note right
+Execute fixed queries (100–1000),
+measure:
+- Latency (ms)
+- Throughput (QPS)
+- 95th percentile latency
+end note
+
+:Parameter Sweeping;
+note right
+Vary search params:
+- HNSW: ef_search
+- IVF/ZGQ: n_probe
+Plot Recall@10 vs Latency curves.
+end note
+
+:Compute Recall@k;
+note right
+Recall = Correct Neighbors / k
+Average across all queries.
+end note
+
+:Comparative Analysis;
+note right
+Compare:
+- Recall (50–95%)
+- Latency
+- Build Time
+- Memory-recall trade-offs
+end note
+
+:Visualize Results;
+note right
+Use Matplotlib, Seaborn, Pandas
+for standardized visual reporting.
+end note
+
+stop
+@enduml
