@@ -13,6 +13,7 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
+\usepackage{cuted}
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -128,12 +129,14 @@ Yang et al. \cite{yang2025} handles a different topic than the previous papers w
 
 Zhao et al. \cite{zhao2020} addresses the challenge of that a typical graph-based ANNS algorithms. Most graph-based ANN algorithms are deemed to be efficient and is effective to run on the CPUs, but despite this it faced difficulties when adapting to GPUs environment due to the iterative nature as well as the execution dependencies when traversing through a graph which hinders parallel processing. In order to mitigate this issue, the paper proposes an approach named as Search On neighborhood Graph (SONG). The proposed approach aims to enable parallel processing with a target to simplify the distance computation phase of the search. The SONG approach introduces a new ANN-specific optimization for GPUs with the purpose of eliminating dynamic memory allocation as well as to reduce the memory consumption. The paper achieved speed-ups of 50-180x compared to conventional CPU-based HNSW even outperforming FAISS.
 
+\begin{strip}
+\small
 \begin{longtable}{
-    >{\RaggedRight}p{0.15\textwidth} 
-    >{\RaggedRight}p{0.24\textwidth} 
-    >{\RaggedRight}p{0.30\textwidth} 
-    >{\RaggedRight\arraybackslash}p{0.24\textwidth}
-}x
+    >{\RaggedRight}p{0.13\textwidth} 
+    >{\RaggedRight}p{0.22\textwidth} 
+    >{\RaggedRight}p{0.32\textwidth} 
+    >{\RaggedRight\arraybackslash}p{0.25\textwidth}
+}
 
 \caption{Comparison of ANNS Research Literature}
 \label{tab:comparison} \\ 
@@ -157,126 +160,126 @@ Zhao et al. \cite{zhao2020} addresses the challenge of that a typical graph-base
 \endlastfoot
 
 Malkov \& Yashunin \cite{malkov2020} & 
-NSW algorithm degrades with clustered data and has polylogarithmic complexity. & 
-HNSW: Builds multi-layer graph with exponentially decaying layer probability, separating links by distance scale. Search starts from top layer and descends greedily. & 
-Achieves $O(\log N)$ complexity, outperforming NSW on clustered data. \\
+NSW degrades with clustered data; has polylogarithmic complexity. & 
+HNSW: Multi-layer graph with exponentially decaying layer probability. Search descends from top layer greedily. & 
+Achieves $O(\log N)$ complexity, outperforms NSW on clustered data. \\
 \midrule
 
 Wang et al. \cite{wang2021} & 
-Lack of systematic comparison for diverse graph-based ANNS algorithms. & 
-Survey and comparison of 13 graph algorithms. Taxonomy based on base graphs (DG, RNG, KNNG, MST) with fine-grained component analysis. & 
-Performance is highly dataset-dependent. Increased graph quality does not guarantee better search. \\
+Lack of systematic comparison for graph-based ANNS algorithms. & 
+Survey of 13 algorithms. Taxonomy: DG, RNG, KNNG, MST with component analysis. & 
+Performance is dataset-dependent. Graph quality doesn't guarantee better search. \\
 \midrule
 
 Prokhorenkova \& Shekhovtsov \cite{prokhorenkova2020} & 
-Lack of theoretical guarantees for graph-based ANNS, especially in low dimensions ($d \ll \log n$). & 
-Theoretical analysis of greedy graph search. Investigated long-range links and Beam Search. & 
-Long-range links reduce steps to $O(\log^2 N)$. Beam Search improves accuracy and enables sparser graphs. \\
+Lack of theoretical guarantees for graph ANNS in low dimensions ($d \ll \log n$). & 
+Theoretical analysis of greedy search. Long-range links and Beam Search investigation. & 
+Long-range links reduce steps to $O(\log^2 N)$. Beam Search improves accuracy, enables sparser graphs. \\
 \midrule
 
 Chen et al. \cite{chen2021} & 
-High memory cost of in-memory ANNS (HNSW) for billion-scale datasets. & 
-SPANN: Hybrid approach storing centroids in memory, full vectors on SSD. Uses balanced hierarchical clustering. & 
-Outperforms DiskANN on billion-scale data, achieving $>90\%$ recall with lower latency. \\
+High memory cost of HNSW for billion-scale datasets. & 
+SPANN: Centroids in memory, full vectors on SSD. Balanced hierarchical clustering. & 
+Outperforms DiskANN, achieving $>90\%$ recall with lower latency. \\
 \midrule
 
 Manohar et al. \cite{manohar2024} & 
-Scalability limitations of parallel graph-based ANNS due to locks and sequential bottlenecks. & 
-ParlayANN: Deterministic parallel graph-based ANNS library using prefix doubling for batch insertions. & 
-Efficient scalable construction on multi-core processors, outperforming HNSW and DiskANN. \\
+Scalability limits of parallel graph ANNS due to locks and bottlenecks. & 
+ParlayANN: Deterministic parallel library using prefix doubling for batch insertions. & 
+Efficient scalable construction on multi-core, outperforms HNSW and DiskANN. \\
 \midrule
 
 Akhil \& Sivashankar \cite{akhil2025} & 
-HNSW performance degradation on billion-scale datasets. & 
-ZHNSW: Partitions dataset into zones via K-Means. Each zone maintains independent HNSW graph. & 
-Improves HNSW scalability but introduces memory overhead from multiple graphs. \\
+HNSW degrades on billion-scale datasets. & 
+ZHNSW: K-Means partitioning into zones, each with independent HNSW graph. & 
+Improves scalability but introduces memory overhead from multiple graphs. \\
 \midrule
 
 Zhang et al. \cite{zhang2025} & 
-I/O latency bottleneck in disk-based ANNS with SSD-resident indices. & 
-XN-Graph with extended neighborhood coverage; BBP for construction; IMF Search prioritizing cached nodes. & 
-Achieves $>4000$ QPS and $>0.9$ recall on billion-scale disk search with fewer hops and optimized I/O. \\
+I/O latency bottleneck in disk-based ANNS with SSD indices. & 
+XN-Graph: Extended neighborhood coverage, BBP construction, IMF Search strategy. & 
+Achieves $>4000$ QPS and $>0.9$ recall with fewer hops and optimized I/O. \\
 \midrule
 
 Gollapudi et al. \cite{gollapudi2023} & 
-Poor performance when queries include metadata filters, especially with low specificity. & 
-FilteredVamana, StitchedVamana: Label-aware graph construction. Edges based on proximity and shared labels. & 
-$>10\times$ speedup over post-processing methods, achieving high throughput and recall on SSDs. \\
+Poor performance with metadata filters, especially low specificity. & 
+FilteredVamana, StitchedVamana: Label-aware graph construction based on proximity and labels. & 
+$>10\times$ speedup over post-processing, high throughput and recall on SSDs. \\
 \midrule
 
 Cai et al. \cite{cai2024} & 
-Lack of versatility in filtered ANNS to handle diverse label constraints efficiently. & 
-UNG: Framework combining vector proximity graph with LNG (DAG encoding label relationships). & 
-Guarantees versatility, fidelity, completeness, and adaptability for filtered search. \\
+Lack of versatility in filtered ANNS for diverse label constraints. & 
+UNG: Combines vector proximity graph with LNG (DAG encoding label relationships). & 
+Guarantees versatility, fidelity, completeness, adaptability for filtered search. \\
 \midrule
 
 Xu et al. \cite{xu2023} & 
-Difficulty maintaining performance and avoiding costly rebuilds under incremental updates. & 
-SPFRESH: SPANN extension with LIRE protocol for local partition rebalancing after splits. & 
+Difficulty maintaining performance, avoiding costly rebuilds with incremental updates. & 
+SPFRESH: SPANN extension with LIRE protocol for partition rebalancing after splits. & 
 Enables efficient in-place updates for billion-scale indices without full reconstruction. \\
 \midrule
 
 Gong et al. \cite{gong2025} & 
-High latency and inefficiency when using detached vector DBs with streaming systems. & 
-VStream: Integrated streaming vector search engine with dynamic LSH-based partitioning. & 
-Achieves $373\times$ faster throughput with lower CPU and memory consumption. \\
+High latency, inefficiency with detached vector DBs and streaming systems. & 
+VStream: Integrated streaming engine with dynamic LSH-based partitioning. & 
+Achieves $373\times$ faster throughput with lower CPU and memory usage. \\
 \midrule
 
 Coleman et al. \cite{coleman2022} & 
-Inefficient memory access in graph-based ANNS leads to poor CPU cache utilization. & 
-Graph Reordering: Reorganizes node memory layout to place co-accessed nodes physically closer. & 
-Up to 40\% faster query latency through improved cache hit rates. \\
+Inefficient memory access in graph ANNS causes poor CPU cache utilization. & 
+Graph Reordering: Reorganizes node memory layout for co-accessed node proximity. & 
+Up to 40\% faster query latency through improved cache hits. \\
 \midrule
 
 Gao \& Long \cite{gao2023} & 
-DCOs dominate runtime, performing full $O(D)$ computation even for discarded candidates. & 
-ADSampling: Randomized DCO with offline transformation and online incremental dimension sampling. & 
-Reduces DCO complexity from $O(D)$ to $O(\log D)$ with negligible accuracy loss. \\
+DCOs dominate runtime with full $O(D)$ computation for discarded candidates. & 
+ADSampling: Randomized DCO with offline transformation, online incremental sampling. & 
+Reduces DCO from $O(D)$ to $O(\log D)$ with negligible accuracy loss. \\
 \midrule
 
 Chen et al. \cite{chen2023} & 
-Many distance computations during search don't influence final results. & 
-FINGER: Approximates distances using vector decomposition relative to center node and LSH-based angle estimation. & 
+Many distance computations don't influence final search results. & 
+FINGER: Approximates distances via vector decomposition and LSH-based angle estimation. & 
 Speeds up HNSW by 20\%--60\% without significantly impacting accuracy. \\
 \midrule
 
 Peng et al. \cite{peng2023} & 
-Lack of practical theoretical guarantees; existing ones rely on impractical assumptions. & 
-$\tau$-MG: Guarantees finding 1-NN if $\delta(q,\bar{p}_1) < \tau$ with $O(n^{1/d}(\ln n)^2)$ complexity. Proposes $\tau$-MNG variant. & 
-Provides theoretical guarantee with better complexity. $\tau$-MNG shows strong empirical performance. \\
+Lack of practical theoretical guarantees; impractical assumptions. & 
+$\tau$-MG: Guarantees 1-NN if $\delta(q,\bar{p}_1) < \tau$ with $O(n^{1/d}(\ln n)^2)$. Proposes $\tau$-MNG. & 
+Theoretical guarantee with better complexity. $\tau$-MNG shows strong empirical performance. \\
 \midrule
 
 Xie et al. \cite{xie2025} & 
-No guarantees for $k$-NN ($k>1$) search; requires impractical predefined global $\tau$. & 
-LMG: Edges labeled with minimum $\tau$. Two-phase: Adaptive Search (1-NN) + Refinement Search ($k-1$ neighbors). & 
-First approach guaranteeing exact $k$-NN for arbitrary queries without predefined $\tau$. \\
+No guarantees for $k$-NN ($k>1$); requires impractical predefined $\tau$. & 
+LMG: Edges labeled with minimum $\tau$. Adaptive + Refinement Search phases. & 
+First approach guaranteeing exact $k$-NN without predefined $\tau$. \\
 \midrule
 
 Vecchiato et al. \cite{vecchiato2024} & 
-Routing bottleneck in cluster-based ANNS due to simple heuristics. & 
-Reformulates cluster selection as Learning to Rank problem. Trains function to rank clusters. & 
-Consistently improves Top-1 accuracy and search performance through learned routing. \\
+Routing bottleneck in cluster ANNS due to simple heuristics. & 
+Learning to Rank: Trains function to rank clusters based on query features. & 
+Consistently improves Top-1 accuracy and search performance. \\
 \midrule
 
 Yang et al. \cite{yang2025} & 
 Super-linear construction time for SOTA graph ANNS limits scalability. & 
-Identifies $k$-CNA as bottleneck. Proposes RNG-based pruning before $k$-CNA and global layering for HNSW. & 
-Accelerates construction up to $5.6\times$ (NSW) and $4.6\times$ (HNSW) without degrading search. \\
+Identifies $k$-CNA bottleneck. RNG-based pruning before $k$-CNA, global layering for HNSW. & 
+Accelerates construction $5.6\times$ (NSW), $4.6\times$ (HNSW) without search degradation. \\
 \midrule
 
 Zhao et al. \cite{zhao2020} & 
-Difficulty adapting iterative, dependency-heavy graph ANNS for GPU parallelization. & 
-SONG: Decouples search into parallelizable stages (Seed Selection, Expansion, Merging) with GPU optimizations. & 
-Achieves $50$--$180\times$ speedup over single-thread CPU HNSW, outperforms Faiss GPU. \\
+Difficulty adapting iterative graph ANNS for GPU parallelization. & 
+SONG: Decouples search into parallelizable stages with GPU optimizations. & 
+Achieves $50$--$180\times$ speedup over CPU HNSW, outperforms Faiss GPU. \\
 \midrule
 
-Li et al. \cite{(li2023)} & 
-Lack of comprehensive survey of deep learning applications in ANNS. & 
-Categorizes DL-based ANNS into "Learning to Index" and "Learning to Search". Proposes end-to-end learning. & 
-Provides systematic overview of DL in ANNS. Highlights benefits of end-to-end optimization. \\
+Li et al. \cite{li2023} & 
+Lack of comprehensive DL applications survey in ANNS. & 
+Categorizes DL into "Learning to Index" and "Learning to Search". Proposes end-to-end. & 
+Systematic overview of DL in ANNS. Highlights end-to-end optimization benefits. \\
 
 \end{longtable}
-
+\end{strip}
 
 \subsection{Synthesis, Gaps, and Opportunities}
 The reviewed literatures displayed a divergence in ANNS research. Graph-based methods like HNSW and NSG provides state of the art recalls as well as minimum latency for in-memory search yet, it still struggles with memory consumption and build times at extreme scales. Disk-based solutions like DiskANN, SPANN, and XN-Graph address the scale issue by leveraging SSDs but introduce I/O latency as the new bottleneck. In this case, the more recent Quantization methods like IVF-PQ and MRQ excel in memory efficiency but traditionally trade off accuracy, especially at high recall data memory targets.
@@ -287,6 +290,7 @@ While partitioning reduces memory and enable the usage of parallelism and local 
 
 \subsection{Summary of Literature Review}
 The common trade-offs in ANNS algorithm design are highlighted in this review, especially those involving memory usage, construction time, search latency, and recall. While partitioning and quantisation techniques are memory-efficient but may sacrifice accuracy, graph-based techniques provide excellent performance but have scalability problems. Although existing solutions are frequently designed for disc I/O or maintain partitions' relative independence, hybrid approaches show promise. In order to overcome the drawbacks of both pure graph and pure partitioning approaches, this review presented us with a new research opportunity to create a novel hybrid in-memory framework that cleverly combines partitioning with localised graph search to achieve a superior balance between memory efficiency and high recall. Zonal Graph Quantisation (ZGQ), our suggested work, attempts to close this gap.
+
 
 \section{Research Methodology}
 
