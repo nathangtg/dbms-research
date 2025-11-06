@@ -1,6 +1,6 @@
 # DBMS Research - ZGQ Algorithm
 
-**Internal research on Approximate Nearest Neighbor Search (ANNS) algorithms**
+**Research on Approximate Nearest Neighbor Search (ANNS) algorithms**
 
 ## Overview
 
@@ -20,12 +20,8 @@ dbms-research/
 ├── v0/          # Initial exploration
 ├── v1/          # First implementation
 ├── v2/          # Optimized version
-├── v6/          # Current implementation
-│   ├── Core modules (distance_metrics.py, product_quantization.py, etc.)
-│   ├── Integration (zgq_index.py, baseline_algorithms.py)
-│   ├── Evaluation (benchmark_framework.py, visualization.py)
-│   └── Demos (demo_complete_workflow.py, compare_zgq_versions.py)
-└── requirements.txt
+├── v6/          # Pre-optimized Version
+├── v7/          # Current implementation
 ```
 
 ## Quick Start
@@ -69,12 +65,6 @@ ZGQ combines four techniques:
 3. **Product Quantization** - Compresses vectors 32× with minimal accuracy loss
 4. **Smart Aggregation** - Merges multi-zone results and re-ranks top candidates
 
-## Documentation
-
-- **v6/README.md** - Detailed usage guide
-- **v6/PROJECT_SUMMARY.md** - Technical details
-- Code is documented inline
-
 ## Example Results
 
 Testing with 10K vectors (128 dimensions):
@@ -115,3 +105,4 @@ Internal research project - use GitHub Issues for questions and discussions.
 - Want details? → Read v6/PROJECT_SUMMARY.md
 - Run code? → `cd v6 && python demo_complete_workflow.py`
 - See evolution? → `cd v6 && python compare_zgq_versions.py`
+
