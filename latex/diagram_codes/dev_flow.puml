@@ -1,9 +1,5 @@
 @startuml
-' ====================================================
-' Zonal Graph Quantization (ZGQ) - IEEE Style Flowchart
-' ====================================================
 
-' === Diagram Aesthetic Settings ===
 skinparam backgroundColor white
 skinparam handwritten false
 skinparam monochrome true
