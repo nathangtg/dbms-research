@@ -596,6 +596,20 @@ The experimental evaluation of Zonal Graph Quantization (ZGQ) has revealed findi
     A critical finding of the study that was conducted is that the zonal quantization principle allows for a strategic "bifurcation" into two different architectures:
 
     \subsubsection{ZGQ Multi-Graph (Memory Optimized)}
+    By enforcing strict isolation between each zone and constructing separate, lightweight graphs for every partition, the Multi-Graph architecture ensures a consistent decrease in memory consumption.
+    \begin{itemize}
+        \item Memory Savings: The Multi-Graph approach reveals a 20\% reduction in index size in comparison to the HNSW baseline (4.9 MB vs. 6.1 MB at the 10K scale).
+        \item Trade-off: This efficiency is realized at the cost of query latency, which increased by a factor of 3-4x (0.058 ms vs. 0.015 ms). This is due to the overhead of searching multiple independent subgraphs sequentially in the absence of a global navigation layer.
+        \item Use Case: This architecture is ideal for memory-limited environments, such as edge devices or mobile applications, where minimizing RAM usage is key.
+    \end{itemize}
+
+    \subsubsection{ZGQ Unified (Latency Optimized)}
+    In contrast, the Unified architecture constructs a single graph where nodes are pre-sorted graphically before insertion. This "zone-aware" order leads to a more favorable graph topology.
+    \begin{itemize}
+        \item Latency Improvement: ZGQ Unified achieved a 35\% 
+    \end{itemize}
+    
+    
     
 \section*{V. Conclusion}
 
