@@ -1,0 +1,13 @@
+# ZGQ v8 Requirements
+# ====================
+# 
+# All dependencies are managed at the project root level.
+# Install from: /home/nathan/Development/dbms-research/requirements.txt
+#
+# Quick install:
+#   pip install -r ../requirements.txt
+#
+# Or use the root virtual environment:
+#   source ../venv/bin/activate
+
+-r ../requirements.txt
