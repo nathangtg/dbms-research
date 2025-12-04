@@ -135,10 +135,6 @@ data/
 benchmark_results_*.json
 !benchmark_results.json
 
-# Figures (generated)
-figures/
-figures_*/
-
 # IDE settings
 .idea/
 .vscode/
