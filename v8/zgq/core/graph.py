@@ -120,7 +120,7 @@ class ZoneGuidedGraph:
         return self
     
     def _build_hnsw(self, vectors: np.ndarray) -> None:
-        """Build underlying HNSW index."""
+        """Build underlying HNSW index with zone-ordered insertion."""
         
         self.hnsw = hnswlib.Index(
             space=self.config.space,
@@ -134,9 +134,37 @@ class ZoneGuidedGraph:
             random_seed=self.config.random_seed
         )
         
-        # Add all vectors
-        ids = np.arange(self.n_vectors, dtype=np.int64)
-        self.hnsw.add_items(vectors, ids)
+        # ZONE-ORDERED INSERTION: Key innovation for better graph connectivity
+        # Insert vectors zone-by-zone, with zone centroids first
+        # This creates stronger intra-zone connections and better cross-zone bridges
+        
+        # First, add zone centroids as anchor points (if we have zone info)
+        if self.zone_centroids is not None and len(self.zone_centroids) > 0:
+            # Create insertion order: sort by zone, then by distance to centroid
+            zone_order = []
+            for zone_id in range(self.n_zones):
+                zone_mask = self.zone_assignments == zone_id
+                zone_vids = np.where(zone_mask)[0]
+                
+                if len(zone_vids) > 0:
+                    # Sort vectors within zone by distance to centroid (closest first)
+                    zone_vectors = vectors[zone_vids]
+                    centroid = self.zone_centroids[zone_id]
+                    dists_to_centroid = np.sum((zone_vectors - centroid) ** 2, axis=1)
+                    sorted_local_idx = np.argsort(dists_to_centroid)
+                    sorted_global_idx = zone_vids[sorted_local_idx]
+                    zone_order.extend(sorted_global_idx.tolist())
+            
+            # Convert to numpy arrays
+            insertion_order = np.array(zone_order, dtype=np.int64)
+            ordered_vectors = vectors[insertion_order]
+            
+            # Add in zone order - this creates better graph structure
+            self.hnsw.add_items(ordered_vectors, insertion_order)
+        else:
+            # Fallback: standard insertion
+            ids = np.arange(self.n_vectors, dtype=np.int64)
+            self.hnsw.add_items(vectors, ids)
         
         # Set search parameter
         self.hnsw.set_ef(self.config.ef_search)
