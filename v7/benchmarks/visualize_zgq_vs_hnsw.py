@@ -32,7 +32,7 @@ colors = {'HNSW': '#2E86AB', 'ZGQ': '#06A77D'}
 fig = plt.figure(figsize=(16, 10))
 
 # ============================================================================
-# 1. Recall Comparison (The Most Important!)
+# 1. Recall Comparison 
 # ============================================================================
 ax1 = plt.subplot(2, 3, 1)
 x = np.arange(2)
@@ -62,7 +62,7 @@ ax1.legend(loc='upper right', fontsize=10)
 ax1.grid(axis='y', alpha=0.3)
 
 # ============================================================================
-# 2. Memory Comparison (Your Main Claim)
+# 2. Memory Comparison 
 # ============================================================================
 ax2 = plt.subplot(2, 3, 2)
 
