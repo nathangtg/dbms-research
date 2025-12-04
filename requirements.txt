@@ -1,18 +1,21 @@
-# Core Dependencies
-numpy>=1.24.0
-scikit-learn>=1.3.0
-numba>=0.57.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-
-# Real Datasets & Analysis
+# Core Scientific Computing
+numpy>=1.24.0,<2.0.0
+scipy>=1.7.0
 pandas>=1.3.0
 h5py>=3.1.0
+
+# Machine Learning Utilities
+scikit-learn>=1.3.0
+numba>=0.57.0
 tqdm>=4.65.0
 
 # HNSW & FAISS Baselines
 hnswlib>=0.7.0
 faiss-cpu>=1.7.4
+
+# Visualization (Optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0
 
 # Profiling & Optimization
 memory_profiler>=0.60.0
@@ -22,6 +25,15 @@ psutil>=5.9.0
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
+pytest-benchmark>=4.0.0
+
+# Type Checking
+mypy>=1.0.0
+
+# Code Quality
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
 
 # Optional: Notebooks
 jupyter>=1.0.0
