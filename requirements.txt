@@ -1,52 +1,28 @@
-# Core dependencies for ZGQ Benchmark
-numpy>=1.21.0
-matplotlib>=3.4.0
-
-# Optional: For enhanced benchmarking and real datasets
-scikit-learn>=1.0.0        # For better K-Means and metrics
-pandas>=1.3.0              # For results analysis
-seaborn>=0.11.0            # For prettier visualizations
-h5py>=3.1.0                # For loading real ANNS datasets (SIFT1M, etc.)
-faiss-cpu>=1.7.0           # For comparing against production HNSW/IVF
-hnswlib>=0.5.0             # For production-grade HNSW comparison
-
-# Optional: For profiling and optimization
-memory_profiler>=0.60.0    # For detailed memory analysis
-line_profiler>=3.3.0       # For line-by-line timing
-psutil>=5.8.0              # For system resource monitoring
-
-# numba
-numba>=0.54.0              # For JIT compilation and speedups
-
-# hnsw
-hnswlib>=0.5.0             # For production-grade HNSW comparison
-
-# ZGQ V7 Requirements
-
-# Core dependencies
+# Core Dependencies
 numpy>=1.24.0
 scikit-learn>=1.3.0
 numba>=0.57.0
-
-# HNSW implementation
-hnswlib>=0.7.0
-
-# FAISS for baselines (choose one)
-faiss-cpu>=1.7.4  # CPU version
-# faiss-gpu>=1.7.4  # GPU version (uncomment if you have CUDA)
-
-# Visualization and analysis
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# Utilities
+# Real Datasets & Analysis
+pandas>=1.3.0
+h5py>=3.1.0
 tqdm>=4.65.0
+
+# HNSW & FAISS Baselines
+hnswlib>=0.7.0
+faiss-cpu>=1.7.4
+
+# Profiling & Optimization
+memory_profiler>=0.60.0
+line_profiler>=3.3.0
 psutil>=5.9.0
 
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
 
-# Optional: Jupyter for notebooks
+# Optional: Notebooks
 jupyter>=1.0.0
 ipykernel>=6.25.0
