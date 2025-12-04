@@ -58,10 +58,6 @@ coverage.xml
 profile_default/
 ipython_config.py
 
-# Generated Figures and Results
-figures/
-figures_*/
-
 # Benchmark Results
 benchmark_results*.json
 results/
