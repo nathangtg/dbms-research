@@ -34,26 +34,38 @@
 \newlabel{tab:results@cref}{{[table][2][]2}{[1][5][]5}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Key Comparisons}{6}{subsection.4.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Theoretical vs Empirical Correlation}{6}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Figure References}{6}{section.6}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Summary comparison at 100K scale showing metric-by-metric winners}}{6}{figure.1}\protected@file@percent }
-\newlabel{fig:summary}{{1}{6}{Summary comparison at 100K scale showing metric-by-metric winners}{figure.1}{}}
-\newlabel{fig:summary@cref}{{[figure][1][]1}{[1][6][]6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Pareto frontier showing ZGQ's superior recall-throughput trade-off}}{6}{figure.2}\protected@file@percent }
-\newlabel{fig:pareto}{{2}{6}{Pareto frontier showing ZGQ's superior recall-throughput trade-off}{figure.2}{}}
-\newlabel{fig:pareto@cref}{{[figure][2][]2}{[1][6][]6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Latency comparison demonstrating ZGQ's lower query response time}}{6}{figure.3}\protected@file@percent }
-\newlabel{fig:latency}{{3}{6}{Latency comparison demonstrating ZGQ's lower query response time}{figure.3}{}}
-\newlabel{fig:latency@cref}{{[figure][3][]3}{[1][6][]6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Radar chart showing ZGQ's advantages across multiple dimensions}}{7}{figure.4}\protected@file@percent }
-\newlabel{fig:radar}{{4}{7}{Radar chart showing ZGQ's advantages across multiple dimensions}{figure.4}{}}
-\newlabel{fig:radar@cref}{{[figure][4][]4}{[1][6][]7}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusions}{7}{section.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{7}{subsection.7.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Key Findings}{7}{subsection.7.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Practical Implications}{7}{subsection.7.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {A}Derivation Details}{7}{appendix.A}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Zone Density Factor $\alpha $}{7}{subsection.A.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Zone-Guidance Efficiency Factor $\beta $}{8}{subsection.A.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}QPS Calculation}{8}{subsection.A.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {B}Reproducibility}{8}{appendix.B}\protected@file@percent }
-\gdef \@abspage@last{8}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Empirical Results and Visualizations}{6}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusions}{6}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{6}{subsection.7.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Performance Summary Table showing ZGQ v8 wins on 3 out of 4 metrics compared to HNSW. ZGQ achieves higher recall, throughput (QPS), and lower latency, with the trade-off of longer build time due to Python implementation versus C++ optimized HNSW.}}{7}{figure.1}\protected@file@percent }
+\newlabel{fig:summary}{{1}{7}{Performance Summary Table showing ZGQ v8 wins on 3 out of 4 metrics compared to HNSW. ZGQ achieves higher recall, throughput (QPS), and lower latency, with the trade-off of longer build time due to Python implementation versus C++ optimized HNSW}{figure.1}{}}
+\newlabel{fig:summary@cref}{{[figure][1][]1}{[1][6][]7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Recall vs. Throughput (QPS) comparison showing the Pareto frontier. ZGQ v8 achieves superior recall-throughput trade-off, demonstrating that at equivalent recall levels, ZGQ delivers significantly higher query throughput than HNSW.}}{7}{figure.2}\protected@file@percent }
+\newlabel{fig:pareto}{{2}{7}{Recall vs. Throughput (QPS) comparison showing the Pareto frontier. ZGQ v8 achieves superior recall-throughput trade-off, demonstrating that at equivalent recall levels, ZGQ delivers significantly higher query throughput than HNSW}{figure.2}{}}
+\newlabel{fig:pareto@cref}{{[figure][2][]2}{[1][6][]7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Query latency comparison at different search depths (ef\_search). ZGQ v8 demonstrates consistently lower query latency across all configurations, with the most significant advantage appearing at the iso-recall point (ZGQ ef=128 vs HNSW ef=200, showing 22\% latency reduction).}}{8}{figure.3}\protected@file@percent }
+\newlabel{fig:latency}{{3}{8}{Query latency comparison at different search depths (ef\_search). ZGQ v8 demonstrates consistently lower query latency across all configurations, with the most significant advantage appearing at the iso-recall point (ZGQ ef=128 vs HNSW ef=200, showing 22\% latency reduction)}{figure.3}{}}
+\newlabel{fig:latency@cref}{{[figure][3][]3}{[1][6][]8}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Multi-dimensional performance radar chart comparing ZGQ v8 and HNSW across all key metrics. The chart visualizes ZGQ's advantages in recall, throughput, and latency, while also showing HNSW's advantage in build time. The overlapping area demonstrates where each algorithm excels.}}{9}{figure.4}\protected@file@percent }
+\newlabel{fig:radar}{{4}{9}{Multi-dimensional performance radar chart comparing ZGQ v8 and HNSW across all key metrics. The chart visualizes ZGQ's advantages in recall, throughput, and latency, while also showing HNSW's advantage in build time. The overlapping area demonstrates where each algorithm excels}{figure.4}{}}
+\newlabel{fig:radar@cref}{{[figure][4][]4}{[1][6][]9}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Throughput (QPS) comparison across different ef\_search configurations. Bar chart clearly demonstrates ZGQ's 28\% throughput advantage at the iso-recall configuration (ef=128 for ZGQ vs ef=200 for HNSW).}}{10}{figure.5}\protected@file@percent }
+\newlabel{fig:throughput}{{5}{10}{Throughput (QPS) comparison across different ef\_search configurations. Bar chart clearly demonstrates ZGQ's 28\% throughput advantage at the iso-recall configuration (ef=128 for ZGQ vs ef=200 for HNSW)}{figure.5}{}}
+\newlabel{fig:throughput@cref}{{[figure][5][]5}{[1][6][]10}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Pareto frontier analysis showing the recall-efficiency trade-off space. Points closer to the top-right corner represent superior configurations. ZGQ's curve dominates HNSW's curve in the high-recall region, confirming the theoretical efficiency advantage proven in Theorem~\ref {thm:efficiency}.}}{11}{figure.6}\protected@file@percent }
+\newlabel{fig:pareto_frontier}{{6}{11}{Pareto frontier analysis showing the recall-efficiency trade-off space. Points closer to the top-right corner represent superior configurations. ZGQ's curve dominates HNSW's curve in the high-recall region, confirming the theoretical efficiency advantage proven in Theorem~\ref {thm:efficiency}}{figure.6}{}}
+\newlabel{fig:pareto_frontier@cref}{{[figure][6][]6}{[1][6][]11}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Index build time comparison. HNSW (C++ implementation) completes index construction in 2.14 seconds, while ZGQ v8 (Python implementation) requires 3.59 seconds. This 68\% longer build time is the primary trade-off for ZGQ's superior query performance.}}{12}{figure.7}\protected@file@percent }
+\newlabel{fig:buildtime}{{7}{12}{Index build time comparison. HNSW (C++ implementation) completes index construction in 2.14 seconds, while ZGQ v8 (Python implementation) requires 3.59 seconds. This 68\% longer build time is the primary trade-off for ZGQ's superior query performance}{figure.7}{}}
+\newlabel{fig:buildtime@cref}{{[figure][7][]7}{[1][6][]12}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref {thm:path-length}.}}{12}{figure.8}\protected@file@percent }
+\newlabel{fig:scaling}{{8}{12}{Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref {thm:path-length}}{figure.8}{}}
+\newlabel{fig:scaling@cref}{{[figure][8][]8}{[1][6][]12}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Key Findings}{13}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Practical Implications}{13}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A}Derivation Details}{13}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Zone Density Factor $\alpha $}{13}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Zone-Guidance Efficiency Factor $\beta $}{13}{subsection.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}QPS Calculation}{13}{subsection.A.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Reproducibility}{14}{appendix.B}\protected@file@percent }
+\gdef \@abspage@last{14}

@@ -39,7 +39,7 @@
 }
 \author{%
     Research Documentation\\
-    \texttt{Draft Findings - 4th December 2025}
+    \texttt{Draft Findings - 22nd December 2025}
 }
 \date{}
 
@@ -354,53 +354,65 @@ Difference: $|1.30 - 1.28| = 0.02 < 0.05$ \checkmark
 \end{proof}
 
 %==============================================================================
-\section{Figure References}
+\section{Empirical Results and Visualizations}
 %==============================================================================
 
-The following figures from the benchmark suite support our theoretical analysis:
+The following figures from the benchmark suite support our theoretical analysis. All figures are generated from the comprehensive benchmark suite at 100K scale.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.8\textwidth}{
-\centering
-\textit{Reference: \texttt{figures\_ieee/fig\_summary\_table.pdf}}\\[1em]
-Performance Summary Table showing ZGQ wins on 3/4 metrics
-}}
-\caption{Summary comparison at 100K scale showing metric-by-metric winners}
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_summary_table.pdf}
+\caption{Performance Summary Table showing ZGQ v8 wins on 3 out of 4 metrics compared to HNSW. ZGQ achieves higher recall, throughput (QPS), and lower latency, with the trade-off of longer build time due to Python implementation versus C++ optimized HNSW.}
 \label{fig:summary}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.8\textwidth}{
-\centering
-\textit{Reference: \texttt{figures\_ieee/fig\_recall\_vs\_qps.pdf}}\\[1em]
-Recall-QPS Pareto frontier comparison
-}}
-\caption{Pareto frontier showing ZGQ's superior recall-throughput trade-off}
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_recall_vs_qps.pdf}
+\caption{Recall vs. Throughput (QPS) comparison showing the Pareto frontier. ZGQ v8 achieves superior recall-throughput trade-off, demonstrating that at equivalent recall levels, ZGQ delivers significantly higher query throughput than HNSW.}
 \label{fig:pareto}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.8\textwidth}{
-\centering
-\textit{Reference: \texttt{figures\_ieee/fig\_latency\_comparison.pdf}}\\[1em]
-Query latency distribution comparison
-}}
-\caption{Latency comparison demonstrating ZGQ's lower query response time}
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_latency_comparison.pdf}
+\caption{Query latency comparison at different search depths (ef\_search). ZGQ v8 demonstrates consistently lower query latency across all configurations, with the most significant advantage appearing at the iso-recall point (ZGQ ef=128 vs HNSW ef=200, showing 22\% latency reduction).}
 \label{fig:latency}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.8\textwidth}{
-\centering
-\textit{Reference: \texttt{figures\_ieee/fig\_radar\_chart.pdf}}\\[1em]
-Multi-dimensional performance radar chart
-}}
-\caption{Radar chart showing ZGQ's advantages across multiple dimensions}
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_radar_chart.pdf}
+\caption{Multi-dimensional performance radar chart comparing ZGQ v8 and HNSW across all key metrics. The chart visualizes ZGQ's advantages in recall, throughput, and latency, while also showing HNSW's advantage in build time. The overlapping area demonstrates where each algorithm excels.}
 \label{fig:radar}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_throughput_bars.pdf}
+\caption{Throughput (QPS) comparison across different ef\_search configurations. Bar chart clearly demonstrates ZGQ's 28\% throughput advantage at the iso-recall configuration (ef=128 for ZGQ vs ef=200 for HNSW).}
+\label{fig:throughput}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_pareto_frontier.pdf}
+\caption{Pareto frontier analysis showing the recall-efficiency trade-off space. Points closer to the top-right corner represent superior configurations. ZGQ's curve dominates HNSW's curve in the high-recall region, confirming the theoretical efficiency advantage proven in Theorem~\ref{thm:efficiency}.}
+\label{fig:pareto_frontier}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_build_time.pdf}
+\caption{Index build time comparison. HNSW (C++ implementation) completes index construction in 2.14 seconds, while ZGQ v8 (Python implementation) requires 3.59 seconds. This 68\% longer build time is the primary trade-off for ZGQ's superior query performance.}
+\label{fig:buildtime}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_scaling_analysis.pdf}
+\caption{Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref{thm:path-length}.}
+\label{fig:scaling}
 \end{figure}
 
 %==============================================================================

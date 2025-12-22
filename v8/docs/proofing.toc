@@ -12,13 +12,13 @@
 \contentsline {subsection}{\numberline {4.3}Benchmark Results}{5}{subsection.4.3}%
 \contentsline {subsection}{\numberline {4.4}Key Comparisons}{6}{subsection.4.4}%
 \contentsline {section}{\numberline {5}Theoretical vs Empirical Correlation}{6}{section.5}%
-\contentsline {section}{\numberline {6}Figure References}{6}{section.6}%
-\contentsline {section}{\numberline {7}Conclusions}{7}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{7}{subsection.7.1}%
-\contentsline {subsection}{\numberline {7.2}Key Findings}{7}{subsection.7.2}%
-\contentsline {subsection}{\numberline {7.3}Practical Implications}{7}{subsection.7.3}%
-\contentsline {section}{\numberline {A}Derivation Details}{7}{appendix.A}%
-\contentsline {subsection}{\numberline {A.1}Zone Density Factor $\alpha $}{7}{subsection.A.1}%
-\contentsline {subsection}{\numberline {A.2}Zone-Guidance Efficiency Factor $\beta $}{8}{subsection.A.2}%
-\contentsline {subsection}{\numberline {A.3}QPS Calculation}{8}{subsection.A.3}%
-\contentsline {section}{\numberline {B}Reproducibility}{8}{appendix.B}%
+\contentsline {section}{\numberline {6}Empirical Results and Visualizations}{6}{section.6}%
+\contentsline {section}{\numberline {7}Conclusions}{6}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Summary of Contributions}{6}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Key Findings}{13}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Practical Implications}{13}{subsection.7.3}%
+\contentsline {section}{\numberline {A}Derivation Details}{13}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}Zone Density Factor $\alpha $}{13}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Zone-Guidance Efficiency Factor $\beta $}{13}{subsection.A.2}%
+\contentsline {subsection}{\numberline {A.3}QPS Calculation}{13}{subsection.A.3}%
+\contentsline {section}{\numberline {B}Reproducibility}{14}{appendix.B}%
