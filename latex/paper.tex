@@ -541,7 +541,7 @@ The diagram below displays the experimental flow of the methodology as stated:
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\columnwidth]{Phases.jpeg}
+    \includegraphics[width=0.95\columnwidth]{figures/Phases.jpeg}
     \caption{Methodology Flowchart}
     \label{fig:flowchart}
 \end{figure}
@@ -604,21 +604,20 @@ Table~\ref{tab:benchmark_results} summarizes the performance metrics for the HNS
 \begin{table}[htbp]
 \caption{Comparative Performance Benchmarks (100K Vectors)}
 \label{tab:benchmark_results}
-\begin{center}
-\begin{tabular}{|l|c|c|c|c|c|}
-\hline
-\textbf{Algorithm} & \textbf{$ef_{search}$} & \textbf{Recall@10} & \textbf{QPS} & \textbf{Latency (ms)} & \textbf{Build (s)} \\
-\hline
+\centering
+\begin{tabularx}{\columnwidth}{@{}l c c c c c@{}}
+\toprule
+\textbf{Algorithm} & \textbf{\thead{$ef_{search}$}} & \textbf{\thead{Recall@10}} & \textbf{\thead{QPS}} & \textbf{\thead{Latency\\(ms)}} & \textbf{\thead{Build\\(s)}} \\
+\midrule
 HNSW & 64 & 87.4\% & 55,735 & 8.97 & 2.14 \\
 HNSW & 128 & 91.1\% & 38,552 & 12.97 & 2.14 \\
 HNSW & 200 & 92.9\% & 34,190 & 14.62 & 2.14 \\
-\hline
+\midrule
 \textbf{ZGQ} & 64 & \textbf{90.3\%} & 55,449 & 9.02 & 3.59 \\
 \textbf{ZGQ} & 128 & \textbf{93.2\%} & \textbf{43,794} & \textbf{11.42} & 3.59 \\
 \textbf{ZGQ} & 200 & \textbf{94.8\%} & 35,594 & 14.07 & 3.59 \\
-\hline
-\end{tabular}
-\end{center}
+\bottomrule
+\end{tabularx}
 \end{table}
 
 As shown in Table~\ref{tab:benchmark_results}, ZGQ demonstrates a consistent advantage in retrieval accuracy (Recall@10) across all $ef_{search}$ settings. Notably, at $ef=128$, ZGQ achieves a recall of 93.2\%, surpassing the HNSW baseline at $ef=200$ (92.9\%) while simultaneously delivering higher throughput.
@@ -668,14 +667,14 @@ The results indicate that ZGQ successfully modifies the graph topology to favor 
 \subsection{Visual Representation of Results}
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\columnwidth]{figures/pareto_frontier.png} % Placeholder for Figure 2
+\includegraphics[width=0.9\columnwidth]{figures/fig_pareto_frontier.pdf} % Placeholder for Figure 2
 \caption{Recall vs. Throughput (Pareto Frontier). ZGQ (Blue) dominates HNSW (Red) in the high-recall region ($>90\%$).}
 \label{fig:pareto_frontier}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\columnwidth]{figures/latency_comparison.png} % Placeholder for Figure 3
+\includegraphics[width=0.9\columnwidth]{figures/fig_latency_comparison.pdf} % Placeholder for Figure 3
 \caption{Query Latency vs. Recall. ZGQ achieves lower latency at equivalent recall levels.}
 \label{fig:latency_comparison}
 \end{figure}
