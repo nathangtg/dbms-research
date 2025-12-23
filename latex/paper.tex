@@ -690,7 +690,6 @@ The theoretical advantages of ZGQ are realized through a highly optimized implem
 Standard partitioning methods (like IVF) suffer from the "boundary problem," where a query vector located near the edge of a Voronoi cell fails to retrieve neighbors in the adjacent cell. ZGQ addresses this via an adaptive mechanism.
 The \texttt{\_select\_zones\_adaptive} method (Listing \ref{lst:zone_select}) implements a dynamic expansion strategy. Instead of a fixed \texttt{n\_probe}, the algorithm calculates the differential distance between the nearest and second-nearest centroids. If this difference falls below a learned threshold $\delta$, the search space is automatically expanded to include the neighbor's zone. This probabilistic expansion ensures that queries in ambiguous regions maintain high recall without penalizing easy queries with unnecessary computations.
 
-\begin{figure}[htbp]
 \begin{lstlisting}[language=Python, caption=Adaptive Zone Selection Logic, label=lst:zone_select]
 def _select_zones_adaptive(self, query, n_probe):
     # Get initial zones
@@ -706,13 +705,11 @@ def _select_zones_adaptive(self, query, n_probe):
              
     return selected
 \end{lstlisting}
-\end{figure}
 
 \paragraph{Vectorized Batch Re-ranking}
 In high-throughput scenarios, the cost of computing exact distances for the final candidate list can become a dominant factor. ZGQ mitigates this by replacing iterative distance calculations with vectorized matrix operations.
 Listing \ref{lst:rerank} demonstrates the \texttt{\_batch\_rerank\_fast} function. By utilizing \texttt{numpy.einsum} for Einstein summation, the implementation computes the squared Euclidean distance $||q - c||^2 = ||q||^2 - 2q \cdot c + ||c||^2$ across the entire batch simultaneously. This approach leverages CPU SIMD instructions (AVX2/AVX-512) far more effectively than a loop-based approach. Furthermore, the use of \texttt{np.argpartition} instead of a full sort reduces the complexity of the top-k selection from $\mathcal{O}(k \log k)$ to $\mathcal{O}(k)$ on average.
 
-\begin{figure}[htbp]
 \begin{lstlisting}[language=Python, caption=Fast Batch Re-ranking, label=lst:rerank]
 def _batch_rerank_fast(queries, vectors, candidates, k):
     # Vectorized distance computation
@@ -733,7 +730,6 @@ def _batch_rerank_fast(queries, vectors, candidates, k):
     # Gather final results
     return candidates[top_k_idx], dists[top_k_idx]
 \end{lstlisting}
-\end{figure}
 
 \paragraph{Hierarchical Zone Management}
 Beyond the core search logic, the ZGQ implementation utilizes a hierarchical zone management system (Adaptive Hierarchical Zones). For datasets exceeding $10^5$ vectors, a single-level partition becomes inefficient due to the linear scan cost of centroids. ZGQ constructs a multi-level tree of centroids, allowing the zone selection phase to scale logarithmically $\mathcal{O}(\log Z)$ rather than linearly $\mathcal{O}(Z)$. This ensures that the "overhead" term in Theorem 4 remains negligible even at scale.
@@ -829,18 +825,27 @@ This section provides a visual analysis of the performance differences between Z
     \label{fig:pareto_frontier}
 \end{figure}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\columnwidth]{figures/fig_latency_comparison.pdf}
-    \caption{Query Latency vs. Recall. ZGQ achieves lower latency for equivalent recall levels compared to HNSW. The gap widens at higher recall targets, demonstrating ZGQ's efficiency in navigating the graph to find hard-to-reach neighbors.}
-    \label{fig:latency_comparison}
-\end{figure}
+
 
 \subsection{Critical Evaluation}
 The research objective was to optimize the memory-performance trade-off. The findings confirm that ZGQ achieves this by delivering higher recall and throughput. The theoretical model predicting a throughput increase ($\frac{QPS_{ZGQ}}{QPS_{HNSW}} \approx 1.30$) aligns closely with the empirical result of 1.28x. However, the build-time degradation highlights a limitation in the current Python-based implementation. While the algorithmic logic holds, the lack of a unified C++ implementation prevents ZGQ from matching the construction speed of the baseline.
 
 \subsection{Linking to Literature Review}
 Our findings corroborate the work of Akhil and Sivashankar [1], who proposed that partitioning datasets into local zones can improve scalability. However, unlike their approach which suffered from memory overhead due to unoptimized graph management, ZGQ’s use of quantization within zones demonstrates that hybrid structures can maintain high recall. Furthermore, the results contradict the general assumption in Wang et al. [2] that higher graph quality (denser $M$) always leads to lower search performance due to distance computation overhead; ZGQ proves that if the density is \textit{localized} via zones, throughput can actually increase.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\columnwidth]{figures/latency_ivf.png}
+    \caption{Latency to Reach >90\% Recall. ZGQ is significantly faster than IVF-PQ, achieving the target recall with 13.3x lower latency. This highlights the advantage of the hybrid graph-quantization approach over pure partitioning methods.}
+    \label{fig:latency_ivf}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\columnwidth]{figures/trade_off.png}
+    \caption{Memory vs. Latency Trade-off. ZGQ achieves a balanced performance profile, offering lower latency than HNSW with a comparable memory footprint.}
+    \label{fig:trade_off}
+\end{figure}
 
 \subsection{Conclude the Results and Discussion}
 In conclusion, ZGQ demonstrates a superior Pareto frontier compared to standard HNSW, winning on 3 out of 4 critical performance metrics (Recall, Throughput, Latency). The framework successfully leverages zonal partitioning to reduce search path lengths, validating the theoretical models. The primary trade-off is the index construction time, which remains a target for future optimization.
