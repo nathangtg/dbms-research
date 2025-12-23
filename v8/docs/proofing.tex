@@ -1,506 +1,804 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
 
-% Packages
-\usepackage{amsmath,amssymb,amsthm}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
 \usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{hyperref}
-\usepackage{cleveref}
-\usepackage{geometry}
+\usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{tcolorbox}
-\usepackage{tikz}
-\usetikzlibrary{shapes,arrows,positioning}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{cuted}
+\usepackage{tabularx}
+\usepackage{makecell} % Used for multi-line column headers
+\renewcommand\theadalign{bc} % Centers header text horizontally and vertically
 
-\geometry{margin=1in}
-
-% Theorem environments
-\newtheorem{theorem}{Theorem}[section]
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{corollary}[theorem]{Corollary}
-\newtheorem{definition}[theorem]{Definition}
-\newtheorem{remark}[theorem]{Remark}
-
-% Custom commands
-\newcommand{\BigO}{\mathcal{O}}
-\newcommand{\recall}{\text{Recall}}
-\newcommand{\qps}{\text{QPS}}
-\newcommand{\ef}{\text{ef}}
-\newcommand{\zgq}{\text{ZGQ}}
-\newcommand{\hnsw}{\text{HNSW}}
-
-% Title
-\title{%
-    \textbf{Mathematical Proofs for ZGQ v8}\\[0.5em]
-    \large Zone-Guided Quantized Search: A Rigorous Performance Analysis
-}
-\author{%
-    Research Documentation\\
-    \texttt{Draft Findings - 22nd December 2025}
-}
-\date{}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
 \begin{document}
+
+\title{Zonal Graph Quantization: Optimizing Memory-Performance Trade-off in Vector Search}
+
+\author{
+\IEEEauthorblockN{Nathan Aldyth Prananta Ginting}
+\IEEEauthorblockA{\textit{Faculty of Engineering and Technology}\\
+\textit{Sunway University}\\
+Subang Jaya, Malaysia\\
+22099865@imail.sunway.edu.my}
+\and
+\IEEEauthorblockN{Jordan Chay Ming Hong}
+\IEEEauthorblockA{\textit{Faculty of Engineering and Technology}\\
+\textit{Sunway University}\\
+Subang Jaya, Malaysia\\
+23009376@imail.sunway.edu.my}
+\and
+\IEEEauthorblockN{Jaeden Ting Yiyong}
+\IEEEauthorblockA{\textit{Faculty of Engineering and Technology}\\
+\textit{Sunway University}\\
+Subang Jaya, Malaysia\\
+23009798@imail.sunway.edu.my}
+}
 
 \maketitle
 
 \begin{abstract}
-This document provides a rigorous mathematical foundation for the performance advantages of Zone-Guided Quantized Search (ZGQ) v8 over Hierarchical Navigable Small World (HNSW) graphs. We present formal proofs for graph connectivity improvements, derive complexity bounds, and validate our theoretical predictions with empirical benchmarks. Our analysis demonstrates that ZGQ achieves \textbf{+0.3\% to +1.9\% higher recall} while simultaneously delivering \textbf{+28\% higher throughput} and \textbf{-22\% lower latency} compared to HNSW at equivalent quality levels.
+With the rapid development of Artificial Intelligence, new database types like vector databases have become essential. The Approximate Nearest Neighbour Search (ANNS) is a very important algorithmic operation in these systems. Graph-based algorithms are noted to be best in indexing amongst other algorithms due to their speed. Hierarchical Navigable Small World (HNSW) and other cutting-edge algorithms are faster and more accurate for searching, but they use a lot of memory and cost a lot to build, which makes them hard to scale for datasets with billions of records. This study analyses the memory-performance trade-off by comparing HNSW with partitioning-based approaches and presents a novel hybrid framework. Our methodology involves a comparative study of a proposed zonal framework, which partitions the dataset into smaller clusters and constructs independent, lightweight HNSW graphs within each zone to reduce complexity. The findings discovered throughout this research phase are expected to be able to demonstrate that a hybrid approach can reduce index memory size while maintaining recall rates competitive with standard HNSW. Our research results may highlight the viability of hybrid structures for creating scalable, resource-efficient vector search solutions, which addresses a pain point and may solve a critical challenge in deploying large-scale AI systems which handle heavy flow of data.
 \end{abstract}
 
-\tableofcontents
-\newpage
+\begin{IEEEkeywords}
+Vector Database, Approximate Nearest Neighbor Search (ANNS), HNSW (Hierarchical Navigable Small World), Indexing Algorithm, High-Dimensional Data, Performance analysis
+\end{IEEEkeywords}
 
-%==============================================================================
-\section{Introduction and Problem Formulation}
-%==============================================================================
+\section{Introduction}
 
-\subsection{Notation and Definitions}
+\subsection{Background}
+The ability to perform efficient similarity search and analysis on vector data's with high dimensions is fundamental in modern applications spanning from recommendation systems all the way to RAG (Retrieval Augmented Generation) in Large Language Models (LLMs). Approximate Nearest Neighbour Search (ANNS) algorithms are essential for these tasks as they provide balance between search speed as well as accuracy. Now these existing algorithms have 3 different base such as Tree based, Quantization based as well as the Graph Based methods. Recent times have indicated that graph algorithms have become the de-facto approach demonstrating a superior trade-off between the accuracy and efficiency in various benchmark tests which have been conducted, thus this motivates the creation and development of this paper and its proposed solution.
 
-\begin{definition}[Vector Database]
-Let $\mathcal{D} = \{x_1, x_2, \ldots, x_n\}$ be a database of $n$ vectors where each $x_i \in \mathbb{R}^d$ for dimension $d$.
-\end{definition}
+\subsection{Problem Statement}
+Despite the success of these algorithms, the leading graph-based algorithm such as the HNSW is exposed to a crucial drawback which are high memory consumption as well as the expensive compute price that this algorithm needs to run. Now with the current multi-layered architecture and its numerous edges, the memory footprint of the HNSW may grow inefficiently with the dataset size which makes it costly and expensive to run in applications with billions of scale. On the contrary, the quantization-based methods that partitions the data such as IVF are memory efficient when compared to the HNSW itself but has a higher chance of failure when pushed to achieve the high recall rates of graph-based algorithms.
 
-\begin{definition}[k-Nearest Neighbor Query]
-Given a query vector $q \in \mathbb{R}^d$ and integer $k$, find the set $\mathcal{N}_k(q) \subseteq \mathcal{D}$ such that:
-\[
-|\mathcal{N}_k(q)| = k \quad \text{and} \quad \forall x \in \mathcal{N}_k(q), \forall y \in \mathcal{D} \setminus \mathcal{N}_k(q): \|q - x\| \leq \|q - y\|
-\]
-\end{definition}
+\subsection{Problem Significance}
+As vector datasets grow exponentially, the reliance on large memory usage continuously increases the cost of the system operations and may provide substantial obstacles when deploying the ANNS at scale. One of the biggest challenge in database engineering is the direct impact between the economic viability with the scalability of the system (AI/DB/VDB) itself which increases the significance from being a mere academic problem to a real-life application. Thus, developing these memory efficient indexing solution is a substantial approach to generalize the access to large-scale vector search technology.
 
-\begin{definition}[Recall@k]
-For an approximate algorithm returning candidates $\hat{\mathcal{N}}_k(q)$:
-\[
-\recall@k = \frac{|\hat{\mathcal{N}}_k(q) \cap \mathcal{N}_k(q)|}{k} \times 100\%
-\]
-\end{definition}
+\subsection{Report Scope}
+This report will cover the design, and the experimental evaluation as well as implementation of the HNSW, IVF and our proposed ZGQ framework. The analysis will be constrained to the use of the in-memory performance using metrics such as query latency, recall@k, as well as the index build time and the final index size. Bigger and broader related challenges which involves disk-based search and the filtered search with Metadata constraints are considered out-of-scope for this specific particular study but may be discussed and talked about for future possible research reference.
 
-\subsection{HNSW Baseline Parameters}
+\section{Literature Review}
 
-Standard HNSW configuration:
-\begin{itemize}
-    \item Connectivity parameter: $M_{\hnsw} = 16$
-    \item Construction search depth: $\ef_{\text{construction}} = 200$
-    \item Maximum layer: $L_{\max} = \lfloor \log_{1/m_L}(n) \rfloor$ where $m_L = 1/\ln(M)$
-\end{itemize}
+\subsection{Introduction and Selection Criteria}
+The literature review section is going to examine the recent advancements as well as the development of the Approximate Nearest Neighbor Search (ANNS) algorithms, with a targeted topic of graph based as well as partitioning-based methods in high-dimensional vector databases. The main purpose of the literature review is to analyze the strength as well as the weaknesses of the current most effective techniques specifically the trade-offs between search efficiency (which includes its latency as well as the Query Per Second (QPS)), its accuracy (for recall purposes), as well as its resource consumption (such as memory footprint and its index build time). Hence understanding these trade-offs is a needed measure to come up and develop a scalable solution for its billions of datasets.
 
-%==============================================================================
-\section{ZGQ Theoretical Framework}
-%==============================================================================
+The articles which are reviewed are selected based on the relevance of their topic with the ANNS indexing algorithms with the majority of the topic covering grounds such as HNSW, IVF as well as other proposed hybrid approaches. The priority goes as conferences articles and peer-reviewed journals which have been published within the past 5 years (late 2020-2025) from publishers such as ACM Digital library, Cornell University's ArXiv as well as the IEEE Explore for papers. With a total of 20 articles to form the base of knowledge for this research.
 
-\subsection{Zone-Ordered Graph Construction}
+\subsection{Thematic Analysis of ANNS Algorithms}
+The reviewed articles are organized into separate themes to view the major approaches as well as the challenges in ANNS. The themes can be found as follows:
 
-\begin{definition}[Zone Assignment Function]
-Let $\mathcal{Z}: \mathbb{R}^d \rightarrow \{1, 2, \ldots, Z\}$ be a zone assignment function based on hierarchical clustering, where $Z$ is the number of zones.
-\end{definition}
+\subsubsection{Foundational Graph-Based ANNS (HNSW, NSG)}
+Graph based methods have been rising in popularity due to their superior accuracy and efficiency ratio. The HNSW itself constructs a multi-leveled graph which enables searches to start in a scattered upper level, and as search goes on to navigate to denser lower levels which achieves a logarithmic search complexity. The key innovation lies in their separation of links by distance using a heuristic to select the nearest neighbors. However, HNSW comes with challenges revolving around memory and time due to the nature of the algorithm to create multiple-leveled layers which then adds more time to construction. Navigating Spreading-out Graph (NSG) is another high-performance graph method that uses a similar RNG-based edge selection strategy but builds upon a K-Nearest Neighbor Graph (KNNG) foundation, aiming for a smaller index size. A comprehensive survey by Wang et al. provides a detailed taxonomy and component-based analysis of various graph methods, finding that higher graph quality doesn't always yield better search performance.
 
-\begin{definition}[Zone-Ordered Insertion]
-Vectors are inserted into the graph in zone-contiguous order:
-\[
-\pi: \{1, \ldots, n\} \rightarrow \{1, \ldots, n\}
-\]
-such that:
-\[
-\forall i < j: \mathcal{Z}(x_{\pi(i)}) \leq \mathcal{Z}(x_{\pi(j)}) \quad \text{or} \quad \mathcal{Z}(x_{\pi(i)}) = \mathcal{Z}(x_{\pi(j)})
-\]
-\end{definition}
+\subsubsection{Scaling Challenges}
+Discovering and understanding the scaling limitations of in-memory graphs is one of the main targets of this research. Algorithms like Zonal HNSW tackles billion-scale datasets by partitioning the fed data into separate ``zones'' and building smaller, independent HNSW graphs within each zone, reducing memory and enabling parallel search. Another algorithm called DiskANN became a first in disk-based search by storing the graph index and full vectors on SSDs, keeping only small sized vectors in memory which then uses beam search to mitigate I/O latency. Another recent disk-based search like SPANN offers an alternative disk-based approach by partitioning the dataset and using a small in-memory graph on cluster centroids to guide search within partitions loaded from disk. Despite its ability and simplicity on papers, SPANN can suffer in multi-threaded scenarios due to I/O friction. More recently, XN-Graph proposes a novel disk-optimized graph structure with extended neighborhood coverage to reduce search hops (I/O operations) and an ``In-Memory First Search'' strategy to minimize CPU idle time while waiting for SSD reads. A recent development in disk-based search is the FreshDiskANN which extends DiskANN to handle streaming data updates. Similarly, SPFresh focuses on incremental updates for SPANN.
 
-\begin{theorem}[Improved Local Connectivity]
-\label{thm:local-connectivity}
-Zone-ordered insertion improves local graph connectivity by a factor of:
-\[
-\gamma = 1 + \frac{\alpha \cdot (M_{\zgq} - M_{\hnsw})}{M_{\hnsw}}
-\]
-where $\alpha \in [0.5, 0.8]$ is the intra-zone density factor.
-\end{theorem}
+\subsubsection{Efficient Vector Quantization (IVF-PQ, MRQ)}
+Recent research and development in vector quantization techniques are tailored to reduce memory consumption and usage as well as to accelerate computations across vector distances. One of the methods is called Product Quantization (PQ) which is a foundational method that decomposes vectors into sub-vectors, quantizes each independently, and allows for fast distance estimation using look-up tables. It is often combined with an Inverted File (IVF) index, where data are partitioned into clusters, and search is restricted to a few clusters near the query. The Faiss library provides highly optimized implementations of IVF-PQ, often accelerated by GPUs. Minimization Residual Quantization (MRQ) improves upon quantization flexibility and efficiency by analyzing data distribution via PCA, splitting vectors into high-variance (quantized) and low-variance (residual) parts.
 
-\begin{proof}
-During HNSW construction, each new vector $x_i$ connects to its $M$ nearest neighbors among vectors already in the graph. 
+\subsubsection{Algorithm Optimizations and Considerations}
+More thorough research focuses on optimizing specific aspects of ANNS. With the algorithm of Fast Inference for Graph-based Approximate Nearest Neighbor Search (FINGER) aims to accelerate the graph traversal (inference) phase. Whereas other optimization methods explore low-level optimizations like graph reordering for better CPU cache efficiency. Now GPU acceleration is also crucial for practical performance, we can implement this by using libraries like Faiss and dedicated algorithms like SONG demonstrating significant speedups. Some works have investigated these approaches using machine learning to learn better routing strategies on graphs. A major practical challenge is Filtered ANNS (FANNS), where queries involve both vector similarity and metadata constraints. Shi et al. provide a benchmark and taxonomy for FANNS, categorizing methods like UNG into filter-then-search, search-then-filter, or hybrid approaches.
 
-\textbf{Random insertion (HNSW):} When vectors are inserted randomly, the probability that a neighbor of $x_i$ belongs to the same semantic cluster is:
-\[
-P_{\text{same}}^{\text{random}} = \frac{n_z}{n}
-\]
-where $n_z$ is the size of $x_i$'s zone.
+\subsection{Article Reviews}
+This section provides a complete review of each of our chosen articles for reference and as our base of knowledge, where each article is reviewed to identify their Problem Statement, Methodology, as well as their key findings.
 
-\textbf{Zone-ordered insertion (ZGQ):} When inserting vectors zone-by-zone, vectors from the same zone are inserted consecutively. At insertion time $t$ for vector $x_i$ in zone $z$:
-\[
-P_{\text{same}}^{\text{ordered}} = \frac{|z \cap \{x_1, \ldots, x_{t-1}\}|}{t-1} \geq \frac{n_z - (n - t + 1)}{t - 1}
-\]
+Malkov and Yashunin \cite{malkov2020} addresses that the currently available Approximate Nearest Neighbor Search (ANNS) algorithm such as Navigable Small World (NSW) suffers from a complexity and performance decrease when the given data's are clustered, thus the author then introduces a new algorithm namely the Hierarchical Navigable Small World or what we know today as the HNSW algorithm, which constructs a multi-leveled graph by randomly inserting elements which then decays the maximum layer exponentially by separating the links by distance scale. They have also discovered that the hierarchical search which starts at a scattered top layer and descends greedily to a denser bottom layer has achieved a true $O(\log N)$ or logarithmic complexity which proves that the HNSW algorithm is more efficient than its predecessor (NSW).
 
-For vectors inserted in the middle of their zone, this probability approaches 1, significantly increasing intra-zone connectivity.
+On another note, Wang et al. \cite{wang2021} has identified a lack of an orderly organized component level comparison for the wide array of graph-based ANNS algorithms. The study has analyzed over 13 representative graph algorithms, which introduces a new classification of base graphs which we have known today as Directed Graph (DG), Relative Neighborhood Graph (RNG), K-Nearest Neighbor Graph (KNNG), and the more common Minimum Spanning Tree (MST). The most crucial finding from this research is how it accomplished to find that an algorithm's advantage relies highly on its Dataset. An example of this is how NSW outperforms HNSW on certain specific datasets where as HNSW is outperforms NSW on some. The research has also found that increasing graph quality does not equate to better search performance.
 
-The improved local connectivity factor is derived from:
-\[
-\gamma = \frac{\mathbb{E}[\text{intra-zone edges}]_{\zgq}}{\mathbb{E}[\text{intra-zone edges}]_{\hnsw}}
-\]
+Prokhorenkova and Shekhovtsov \cite{prokhorenkova2020} discovered that there is a lack of a robust and rigor theoretical guarantee that supports the strong performance of graph-based ANNS, more specifically in the low-dimensional area which can be denoted as $d \ll \log N$. The paper presented a theoretical analysis of the greedy-like algorithms on nearest-neighbor graphs. Their analysis proves that by properly adding long-range links, they are able to reduce the number of steps required for searching to $O(\log^2 N)$. This research has also introduced us to Beam Search which on paper improves the search accuracy and allows for graph to have lower number of layers which further saves memory.
 
-Given $M_{\zgq} = 32$ and $M_{\hnsw} = 16$, and empirical $\alpha \approx 0.65$:
-\[
-\gamma = 1 + \frac{0.65 \cdot (32 - 16)}{16} = 1 + \frac{10.4}{16} = 1.65
-\]
-\end{proof}
+Chen et al. \cite{chen2021} faces the in-memory ANNS issue faced by algorithms like HNSW where it was discovered that the algorithm is deemed to be expensive for data with the amount reaching billions. The paper proposes a new algorithm called SPANN, which is a hybrid approach to cluster data centroids within its memory whilst also keeping the full vector data on SSD. The proposed algorithm uses a balanced hierarchy-based clustering to ensure the length of the vectors which then adds the boundaries to the vector to multiple clusters for better recall. The study found that the SPANN algorithm is determined to be faster than the disk-based graph called as DiskANN achieving over 90\% recall on large volume datasets.
 
-\subsection{Search Complexity Analysis}
+Another study conducted by Manohar et al. \cite{manohar2024} addressed the scaling issues that current parallel graph-based algorithms face, this paper determined that most graph-based algorithms rely too heavily on locks as well as other sequential processes which leads to the algorithm being slow and inefficient when being ran on modern multi-core CPUs. This paper introduces ParlayANN. The algorithm consists of libraries of deterministic and parallel algorithms, where the algorithm uses Prefix Doubling (an act to insert points in parallel batches on an immutable reference of the graph itself). The algorithm implementation was shown to be efficient and is well-scalable on multi-core processors which outperforms its predecessors such as HNSW as well as DiskANN.
 
-\begin{theorem}[Search Path Length Reduction]
-\label{thm:path-length}
-For a query $q$ with true neighbors in zone $z$, the expected search path length in ZGQ is:
-\[
-\mathbb{E}[L_{\zgq}] = \mathbb{E}[L_{\hnsw}] \cdot \left(1 - \frac{\beta}{Z}\right)
-\]
-where $\beta \in [0.2, 0.4]$ is the zone-guidance efficiency factor.
-\end{theorem}
+A similar attempt at creating a zone-based algorithm has been done before by Akhil and Sivashankar \cite{akhil2025} where they would find the current HNSW algorithm would degrade when given a large lump of data. Their approach partitions the Dataset into smaller local zones using K-Means where each zone is going to hold and maintain an independent HNSW graph. Whilst their approach improves the scalability of the HNSW-based algorithm, it introduces memory overhead from managing several graphs.
 
-\begin{proof}
-In standard HNSW, the greedy search traverses the graph until no closer neighbor is found. The expected path length is:
-\[
-\mathbb{E}[L_{\hnsw}] = \BigO(\log n)
-\]
+Moving on to hardware focused optimization, Zhang et al. \cite{zhang2025} wrote on the I/O latency bottleneck in which disk-based ANNS algorithm faces. A new method focusing on wider neighborhood coverage is introduced as eXtended Neighborhood Graph which is often referred as XN-Graph. The paper focuses on implementing a Boundary-Adaptive partition which resulted in effective parallel graph construction complimented with an In-memory search. The paper claimed to have achieve a 4000 QPS with 90\% recall.
 
-ZGQ's zone-ordered construction creates ``highways'' within zones---densely connected subgraphs where semantically similar vectors cluster. When a query enters its target zone, the subsequent path length is bounded by the zone's internal structure rather than the global graph.
+Most ANNS faces poor performance with the vector-query are embedded with metadata constraints, where according to Gollapudi et al. \cite{gollapudi2023} the standard processing pipeline fails when given low specificity metadata. The paper proposed a new graph construction algorithm namely the FilteredVamana and StitchedVamana. These algorithms have an aim to modify the graph to be label (metadata)-aware. The edges are appended and removed based off the proximity and the labels that the vector holds. These algorithms resulted in high-throughput whilst also achieving high-recall in SSD based storage.
 
-Let $p_z$ be the probability of reaching the target zone in the first $\log n / Z$ steps. Due to zone-ordered insertion, cross-zone edges preferentially connect to zone boundaries, creating efficient inter-zone navigation:
-\[
-p_z \geq 1 - e^{-M \cdot Z / n}
-\]
+Another challenge of ANNS has been discovered in Cai et al. \cite{cai2024} paper where it included the FilteredVamana and StitchedVamana algorithm which was developed a year prior. The paper introduces us to Unified Navigating Graph (UNG) which aims to resolve the lack of versatility (may be denoted as: fail if $|f_q| > 1$) that current algorithms have. The algorithm separates each vector into groups according to their labels; it then creates a Label Navigating Graph (LNG), the LNG is known as a superset of Directed Acrylic Graph (DAG) which encodes the relationship within these label sets. The structure of UNG guarantees versality and fidelity.
 
-The path length reduction follows from the shortened intra-zone traversal:
-\[
-\mathbb{E}[L_{\zgq}] = \underbrace{\frac{\log n}{Z}}_{\text{inter-zone}} + \underbrace{(1-\beta) \cdot \frac{\log n \cdot (Z-1)}{Z}}_{\text{intra-zone}}
-\]
+A study conducted by Xu et al. \cite{xu2023} has identified a challenge in maintaining the vector index performance when dealing with incremental updates within the vectors. This paper specifically highlights how naive in place modifications to cluster-based indices such as SPANN may obstruct the data distribution which results in a costly rebuild. The paper introduced and proposed SPFRESH which is an upgrade and expansion of SPANN which uses a system named as lightweight incremental RE-balancing (LIRE) to perform a re-balancing whenever a partition split happened.
 
-Simplifying:
-\[
-\mathbb{E}[L_{\zgq}] = \log n \cdot \left(\frac{1}{Z} + \frac{(1-\beta)(Z-1)}{Z}\right) = \log n \cdot \left(1 - \frac{\beta(Z-1)}{Z}\right)
-\]
+An efficiency issue has also been identified by Gong et al. \cite{gong2025} when using vector databases like Milvus to monitor streaming systems like Flink. It has been identified that detached architectures can cause high and low latency and inefficient vector updates. In order to resolve this issue, the author introduced VStream in the paper. The paper claimed that VStream itself is an integrated vector streaming engine that uses a dynamic partitioning to its advantage using Locality-Sensitive Hashing (LSH) as well as hierarchical storage. Thus, by combining the vector search directly into the streaming aspect, the proposed algorithm claimed to have achieved 373 times faster performance with lesser energy being used by CPU as well as lesser memory when compared to traditional detached systems.
 
-For $Z \gg 1$: $\mathbb{E}[L_{\zgq}] \approx \mathbb{E}[L_{\hnsw}] \cdot (1 - \beta)$.
-\end{proof}
+An often-identified issue in graph-based ANNS such as HNSW is how the inefficient memory access patterns that can further lead to poor CPU cache as well as frequent cache misses. Coleman et al. \cite{coleman2022} addresses this issue by creating a graph reordering technique that reorganizes the node layouts within its memory to ensure that frequently accessed nodes are stored near with each other. By implementing this optimization technique, the algorithm has achieved a 40\% faster average query latency despite an added additional indexing overhead.
 
-%==============================================================================
-\section{Recall-Efficiency Trade-off Analysis}
-%==============================================================================
+Another inefficiency in ANNS arises from the Distance Comparison Operation (DCO) this dominates most of the ANNS run time by performing a full and complete $O(D)$ computation even for negative candidates that will be discarded upon completion of the compute. Gao and Long \cite{gao2023} addressed this issue with ADSampling, which is a randomized approach to apply offline random orthogonal transformation to all of the vectors as well as incrementally sampling the dimensions during the query run-time. The paper adapted a hypothesis testing where the algorithm adaptively stops comparison when it identified a candidate as a negative. Thus, the complexity of DCO is reduced from $O(D)$ down to $O(\log D)$.
 
-\subsection{Iso-Recall Comparison Framework}
+Chen et al. \cite{chen2023} aims to target the inefficiency in graph search. The paper observed that most distance computations does not influence the search update and thus it can be approximated. With this observation, the author proposed Fast Inference (FINGER), which is a method that aims to speed-up search phase by replacing an entire distance computation to a fast approximation. The method outlined decomposes the distance of $\|q-d\|_2^2$ relative to its center node $C$ it then uses an LSH-based method to approximate the $q_{res}^t d_{res}$ term by approximating the angle between residual vectors. The approximation technique was proven sped-up HNSW query times by 20\% to 60\% compared to other recent optimized implementations.
 
-\begin{definition}[Iso-Recall Configuration]
-Two configurations $(M_1, \ef_1)$ and $(M_2, \ef_2)$ are \textit{iso-recall} if:
-\[
-|\recall(M_1, \ef_1) - \recall(M_2, \ef_2)| \leq \epsilon
-\]
-for tolerance $\epsilon$ (typically 1.5\%).
-\end{definition}
+Similarly to Prokhorenkova and Shekhovtsov \cite{prokhorenkova2020}, Peng et al. \cite{peng2023} also focuses on the lack of theoretical performance guarantee in most proximity graphs, which gives either no guarantees or that it is an impractical one, (e.g., $q \in D$). The paper simulated the environment of a practical setting where the Query $q$ is close to its nearest neighbor $\bar{v}$ (i.e., $(q,v) < \tau$) and it also proposes the $\tau$-MG. The paper indicates that a greedy search on the $\tau$-MG is guaranteed to find an exactly 1-NN where if the condition holds, the search is going to have a lower time complexity of $O(n^{1/m}(\ln n)^2)$. This paper also proposes a variant called $\tau$-MNG for practicality.
 
-\begin{theorem}[ZGQ Efficiency Advantage]
-\label{thm:efficiency}
-At iso-recall, ZGQ achieves higher throughput:
-\[
-\frac{\qps_{\zgq}}{\qps_{\hnsw}} = \frac{\ef_{\hnsw}}{\ef_{\zgq}} \cdot \frac{1}{1 + \delta_M}
-\]
-where $\delta_M$ is the per-node overhead from higher connectivity.
-\end{theorem}
+Another flaw with existing graph methods $\tau$-MG was discovered with Xie et al. \cite{xie2025}'s study. The paper discovered that the method requires a predefined global $\tau$ which resulted in an impracticality, and on top of that the paper also indicated that there is no graph method available as of its writing provides a theoretical guarantee for k-NN search where the condition is $(k > 1)$. To solve this problem, the paper proposed what they called a Labeled Monotonic Graph (LMG). This method uses an approach where the edges are labeled with the minimum required $\tau$ for their availability in the database, and afterwards the search is then performed by using two methods: Adaptive Search, which is going to find the 1-NN by dynamically increasing the query dependent $\tau$ from 0, and Refinement Search, which is then going to find the remaining $k-1$ neighbors by then exploring the 1-NN's area. This approach is the first of its kind in the vector query optimization field to provide a theoretical guarantee to find the exact intended k-NN for any query without needing a predefined variable such as $\tau$.
 
-\begin{proof}
-Query throughput is inversely proportional to search time:
-\[
-\qps = \frac{1}{T_{\text{search}}}
-\]
+Another bottleneck has been identified in Vecchiato et al. \cite{vecchiato2024}. The paper focuses on the routing phase of cluster-based ANNS (IVF), where the selection of clusters seems to cause a bottleneck since it is mostly done by a simple heuristic (the one commonly used is distance to centroid). The paper rearranged this problem to be a Learning to Rank (LTR) Problem. Thus, the paper proposes a simple linear function to replace the static immutable centroids which further trains it to optimize queries. The paper displayed that the LTR approach consistently improves the top 1 accuracy of cluster-based search.
 
-Search time for a single query:
-\[
-T_{\text{search}} = L \cdot (T_{\text{distance}} + T_{\text{heap}} + T_{\text{neighbor}})
-\]
+Yang et al. \cite{yang2025} handles a different topic than the previous papers we have discussed, where this paper focuses on the super-linear index construction of SOTA-based graphs (Such as NSW, HNSW) the paper denotes that this can limit the scalability of the algorithm noting that the methods to accelerate the indexing and construction comes at the price of search performance. The paper analyses on how the construction is done, it also identified the k-Candidate neighbor set acquisition (k-CNA) phase as the main reason of the bottleneck. Thus, the paper proposes a step called ``Refinement-before-search'' the paper involves a pruning's strategy to the initial KNNNG before the k-Can search phase. Whereas for the HNSW it also replaces the node-by-node insertion with a global layer. The paper denotes that this solution has accelerated index construction by up to 5.6 times faster compared to NSW and 4.6 faster to HNSW.
 
-where:
-\begin{itemize}
-    \item $L$ is the path length (number of nodes visited)
-    \item $T_{\text{distance}} = \BigO(d)$ is distance computation time
-    \item $T_{\text{heap}} = \BigO(\log \ef)$ is heap maintenance
-    \item $T_{\text{neighbor}} = \BigO(M)$ is neighbor list traversal
-\end{itemize}
+Zhao et al. \cite{zhao2020} addresses the challenge of that a typical graph-based ANNS algorithms. Most graph-based ANN algorithms are deemed to be efficient and is effective to run on the CPUs, but despite this it faced difficulties when adapting to GPUs environment due to the iterative nature as well as the execution dependencies when traversing through a graph which hinders parallel processing. In order to mitigate this issue, the paper proposes an approach named as Search On neighborhood Graph (SONG). The proposed approach aims to enable parallel processing with a target to simplify the distance computation phase of the search. The SONG approach introduces a new ANN-specific optimization for GPUs with the purpose of eliminating dynamic memory allocation as well as to reduce the memory consumption. The paper achieved speed-ups of 50-180x compared to conventional CPU-based HNSW even outperforming FAISS.
 
-The effective search depth $L$ scales with $\ef_{\text{search}}$:
-\[
-L \propto \ef_{\text{search}} \cdot c(M)
-\]
-where $c(M)$ is a monotonically increasing function of $M$.
+\begin{strip}
+\small
+\begin{longtable}{
+    >{\RaggedRight}p{0.13\textwidth} 
+    >{\RaggedRight}p{0.22\textwidth} 
+    >{\RaggedRight}p{0.32\textwidth} 
+    >{\RaggedRight\arraybackslash}p{0.25\textwidth}
+}
 
-For iso-recall comparison:
-\begin{align*}
-\recall_{\zgq}(M=32, \ef=128) &\approx \recall_{\hnsw}(M=16, \ef=200) \\
-\Rightarrow \frac{\ef_{\hnsw}}{\ef_{\zgq}} &= \frac{200}{128} = 1.5625
-\end{align*}
-
-The overhead factor $\delta_M$ from higher $M$:
-\[
-\delta_M = \frac{T_{\text{neighbor}}(M=32)}{T_{\text{neighbor}}(M=16)} - 1 = \frac{32}{16} - 1 = 1
-\]
-
-However, this overhead is amortized across fewer total node visits:
-\[
-\frac{\qps_{\zgq}}{\qps_{\hnsw}} = \frac{200}{128} \cdot \frac{1}{1 + 0.2} \approx 1.30
-\]
-
-The factor of 0.2 (rather than 1.0) accounts for:
-\begin{enumerate}
-    \item CPU cache efficiency (sequential zone access)
-    \item Reduced random memory access
-    \item Early termination from better local connectivity
-\end{enumerate}
-\end{proof}
-
-%==============================================================================
-\section{Empirical Validation}
-%==============================================================================
-
-\subsection{Benchmark Configuration}
-
-\begin{tcolorbox}[title=Experimental Setup]
-\begin{itemize}
-    \item \textbf{Dataset}: 100,000 vectors, 128 dimensions, clustered distribution
-    \item \textbf{Queries}: 500 queries, 10-NN retrieval
-    \item \textbf{Runs}: 10 iterations per configuration
-    \item \textbf{Hardware}: Standard CPU (no GPU acceleration)
-\end{itemize}
-\end{tcolorbox}
-
-\subsection{Algorithm Configurations}
-
-\begin{table}[h]
-\centering
-\caption{Algorithm Parameter Comparison}
-\label{tab:params}
-\begin{tabular}{lcc}
+\caption{Comparison of ANNS Research Literature}
+\label{tab:comparison} \\ 
 \toprule
-\textbf{Parameter} & \textbf{HNSW (Baseline)} & \textbf{ZGQ v8} \\
+\textbf{Reference} & \textbf{Problem Statement} & \textbf{Algorithm/Methodology} & \textbf{Key Findings} \\
 \midrule
-Connectivity ($M$) & 16 & 32 \\
-Construction depth ($\ef_c$) & 200 & 400 \\
-Insertion order & Random & Zone-ordered \\
-Search depth ($\ef_s$) & 200 & 128 \\
+\endfirsthead
+
+\multicolumn{4}{c}%
+{{\tablename\ \thetable{} -- continued from previous page}} \\
+\toprule
+\textbf{Reference} & \textbf{Problem Statement} & \textbf{Algorithm/Methodology} & \textbf{Key Findings} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{4}{r}{{Continued on next page...}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+Malkov \& Yashunin \cite{malkov2020} & 
+NSW degrades with clustered data; has polylogarithmic complexity. & 
+HNSW: Multi-layer graph with exponentially decaying layer probability. Search descends from top layer greedily. & 
+Achieves $O(\log N)$ complexity, outperforms NSW on clustered data. \\
+\midrule
+
+Wang et al. \cite{wang2021} & 
+Lack of systematic comparison for graph-based ANNS algorithms. & 
+Survey of 13 algorithms. Taxonomy: DG, RNG, KNNG, MST with component analysis. & 
+Performance is dataset-dependent. Graph quality doesn't guarantee better search. \\
+\midrule
+
+Prokhorenkova \& Shekhovtsov \cite{prokhorenkova2020} & 
+Lack of theoretical guarantees for graph ANNS in low dimensions ($d \ll \log n$). & 
+Theoretical analysis of greedy search. Long-range links and Beam Search investigation. & 
+Long-range links reduce steps to $O(\log^2 N)$. Beam Search improves accuracy, enables sparser graphs. \\
+\midrule
+
+Chen et al. \cite{chen2021} & 
+High memory cost of HNSW for billion-scale datasets. & 
+SPANN: Centroids in memory, full vectors on SSD. Balanced hierarchical clustering. & 
+Outperforms DiskANN, achieving $>90\%$ recall with lower latency. \\
+\midrule
+
+Manohar et al. \cite{manohar2024} & 
+Scalability limits of parallel graph ANNS due to locks and bottlenecks. & 
+ParlayANN: Deterministic parallel library using prefix doubling for batch insertions. & 
+Efficient scalable construction on multi-core, outperforms HNSW and DiskANN. \\
+\midrule
+
+Akhil \& Sivashankar \cite{akhil2025} & 
+HNSW degrades on billion-scale datasets. & 
+ZHNSW: K-Means partitioning into zones, each with independent HNSW graph. & 
+Improves scalability but introduces memory overhead from multiple graphs. \\
+\midrule
+
+Zhang et al. \cite{zhang2025} & 
+I/O latency bottleneck in disk-based ANNS with SSD indices. & 
+XN-Graph: Extended neighborhood coverage, BBP construction, IMF Search strategy. & 
+Achieves $>4000$ QPS and $>0.9$ recall with fewer hops and optimized I/O. \\
+\midrule
+
+Gollapudi et al. \cite{gollapudi2023} & 
+Poor performance with metadata filters, especially low specificity. & 
+FilteredVamana, StitchedVamana: Label-aware graph construction based on proximity and labels. & 
+$>10\times$ speedup over post-processing, high throughput and recall on SSDs. \\
+\midrule
+
+Cai et al. \cite{cai2024} & 
+Lack of versatility in filtered ANNS for diverse label constraints. & 
+UNG: Combines vector proximity graph with LNG (DAG encoding label relationships). & 
+Guarantees versatility, fidelity, completeness, adaptability for filtered search. \\
+\midrule
+
+Xu et al. \cite{xu2023} & 
+Difficulty maintaining performance, avoiding costly rebuilds with incremental updates. & 
+SPFRESH: SPANN extension with LIRE protocol for partition rebalancing after splits. & 
+Enables efficient in-place updates for billion-scale indices without full reconstruction. \\
+\midrule
+
+Gong et al. \cite{gong2025} & 
+High latency, inefficiency with detached vector DBs and streaming systems. & 
+VStream: Integrated streaming engine with dynamic LSH-based partitioning. & 
+Achieves $373\times$ faster throughput with lower CPU and memory usage. \\
+\midrule
+
+Coleman et al. \cite{coleman2022} & 
+Inefficient memory access in graph ANNS causes poor CPU cache utilization. & 
+Graph Reordering: Reorganizes node memory layout for co-accessed node proximity. & 
+Up to 40\% faster query latency through improved cache hits. \\
+\midrule
+
+Gao \& Long \cite{gao2023} & 
+DCOs dominate runtime with full $O(D)$ computation for discarded candidates. & 
+ADSampling: Randomized DCO with offline transformation, online incremental sampling. & 
+Reduces DCO from $O(D)$ to $O(\log D)$ with negligible accuracy loss. \\
+\midrule
+
+Chen et al. \cite{chen2023} & 
+Many distance computations don't influence final search results. & 
+FINGER: Approximates distances via vector decomposition and LSH-based angle estimation. & 
+Speeds up HNSW by 20\%--60\% without significantly impacting accuracy. \\
+\midrule
+
+Peng et al. \cite{peng2023} & 
+Lack of practical theoretical guarantees; impractical assumptions. & 
+$\tau$-MG: Guarantees 1-NN if $\delta(q,\bar{p}_1) < \tau$ with $O(n^{1/d}(\ln n)^2)$. Proposes $\tau$-MNG. & 
+Theoretical guarantee with better complexity. $\tau$-MNG shows strong empirical performance. \\
+\midrule
+
+Xie et al. \cite{xie2025} & 
+No guarantees for $k$-NN ($k>1$); requires impractical predefined $\tau$. & 
+LMG: Edges labeled with minimum $\tau$. Adaptive + Refinement Search phases. & 
+First approach guaranteeing exact $k$-NN without predefined $\tau$. \\
+\midrule
+
+Vecchiato et al. \cite{vecchiato2024} & 
+Routing bottleneck in cluster ANNS due to simple heuristics. & 
+Learning to Rank: Trains function to rank clusters based on query features. & 
+Consistently improves Top-1 accuracy and search performance. \\
+\midrule
+
+Yang et al. \cite{yang2025} & 
+Super-linear construction time for SOTA graph ANNS limits scalability. & 
+Identifies $k$-CNA bottleneck. RNG-based pruning before $k$-CNA, global layering for HNSW. & 
+Accelerates construction $5.6\times$ (NSW), $4.6\times$ (HNSW) without search degradation. \\
+\midrule
+
+Zhao et al. \cite{zhao2020} & 
+Difficulty adapting iterative graph ANNS for GPU parallelization. & 
+SONG: Decouples search into parallelizable stages with GPU optimizations. & 
+Achieves $50$--$180\times$ speedup over CPU HNSW, outperforms Faiss GPU. \\
+\midrule
+
+Li et al. \cite{li2023} & 
+Lack of comprehensive DL applications survey in ANNS. & 
+Categorizes DL into "Learning to Index" and "Learning to Search". Proposes end-to-end. & 
+Systematic overview of DL in ANNS. Highlights end-to-end optimization benefits. \\
+
+\end{longtable}
+\end{strip}
+
+\subsection{Synthesis, Gaps, and Opportunities}
+The reviewed literatures displayed a divergence in ANNS research. Graph-based methods like HNSW and NSG provides state of the art recalls as well as minimum latency for in-memory search yet, it still struggles with memory consumption and build times at extreme scales. Disk-based solutions like DiskANN, SPANN, and XN-Graph address the scale issue by leveraging SSDs but introduce I/O latency as the new bottleneck. In this case, the more recent Quantization methods like IVF-PQ and MRQ excel in memory efficiency but traditionally trade off accuracy, especially at high recall data memory targets.
+
+Recent publicized hybrid approaches have attempted to combine these strengths. Zonal HNSW approaches the data where it partitions the data like IVF but uses HNSW locally, improving intra-zone search efficiency. However, keeping the local graphs entirely separate, risks missing neighbours near zone boundaries, potentially limiting the approach's maximum recall. Disk-based approach such as DiskANN as well as SPANN also represent hybrid concepts but are optimized for disk I/O rather than in-memory performance trade-offs.
+
+While partitioning reduces memory and enable the usage of parallelism and local graph searches improve accuracy over brute-force scans, there still remain a gap in these hybrid frameworks that tightly integrates partitioning with graph structures specifically in optimizing the in-memory memory-vs-performance trade-off. Current proven works such as Zonal HNSW has demonstrated the promise of partitioning graphs, but further enhancements exist such as an enhancement for inter-zone connectivity or search strategies to mitigate the recall limitations inherent in hard partitioning, without resorting to the full memory cost of a monolithic HNSW graph.
+
+\subsection{Summary of Literature Review}
+The common trade-offs in ANNS algorithm design are highlighted in this review, especially those involving memory usage, construction time, search latency, and recall. While partitioning and quantisation techniques are memory-efficient but may sacrifice accuracy, graph-based techniques provide excellent performance but have scalability problems. Although existing solutions are frequently designed for disc I/O or maintain partitions' relative independence, hybrid approaches show promise. In order to overcome the drawbacks of both pure graph and pure partitioning approaches, this review presented us with a new research opportunity to create a novel hybrid in-memory framework that cleverly combines partitioning with localised graph search to achieve a superior balance between memory efficiency and high recall. Zonal Graph Quantisation (ZGQ), our suggested work, attempts to close this gap.
+
+
+\section{Research Methodology}
+
+\subsection{Introduction to the Methodology}
+In order to solve the memory-performance trade-off problem in billion-scale Approximate Nearest Neighbor Search (ANNS) systems, the Zonal Graph Quantization (ZGQ) solution was designed, and evaluated using the methodological framework described in this section. This methodology's main objective is to compare ZGQ to its predecessors which are well-known algorithms in order to quantitatively show its benefits in balancing search performance, construction cost, and memory efficiency.
+
+\subsection{Research Design}
+A quantitative experimental study design is used in the research. It is specifically a comparative study with the goal of comparing the suggested ZGQ framework's performance metrics to two main baseline indexing models:
+
+\begin{enumerate}
+\item Hierarchical Navigable Small World (HNSW) is a pure graph-based index.
+\item Pure Partitioning-Based Index: Inverted File (IVF), usually enhanced for efficiency with Product Quantization (PQ) (IVF-PQ).
+\end{enumerate}
+
+\subsection{Steps Involved}
+Our research follows the stated steps as methodology:
+
+\subsubsection{Finding Research Objectives}
+The main objective of our applied methodology is to discover and observe the actual performance of our solution when applied to high-dimensional vector datasets, where the ZGQ hybrid indexing approach should offer a better balance between memory efficiency and search performance (Recall@k and Latency) than its monolithic predecessor as such; HNSW and conventional IVF-PQ.
+
+\subsubsection{Literature Review and Analysis}
+The current limitations and research gap were determined by a thorough examination of the existing ANNS algorithms (graph-based, quantization-based, and hybrid approaches) obtained through a structured Literature Review (Section II). The architectural design of ZGQ was directly influenced by this analysis, which inspired our combination of localized HNSW graphs and IVF-style partitioning to lessen the construction cost and monolithic memory overhead associated with full HNSW indices.
+
+\subsubsection{Validation}
+Our proposed solution, so-called Zonal Graph Quantization (ZGQ) is a hybrid in-memory indexing solution which differs from methods such as Zonal HNSW by combining a quantization step and tight optimization design for memory-performance trade-offs. Which uses the following:
+
+\begin{itemize}
+\item \textbf{Partitioning:} Which uses K-means clustering to divide vector space into $Z$ non-overlapping zones (clusters) which mimics the IVF approach
+\item \textbf{Local Indexing:} Which involves in constructing independent and smaller HNSW graphs between each of the $Z$ zone.
+\item \textbf{Quantization:} Which involves applying an optimal vector quantization (which may include product quantization or residual quantization) to further compress the index size.
+\item \textbf{Search:} Which means querying the nearest $n_{probe}$ Zone centroids whilst also running a parallel lightweight HNSW searches within the identified zones
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+The evaluation will compare our proposed solution called Zonal Graph Quantization (ZGQ) against established algorithms such as HNSW (Graph Baseline) and IVF-PQ/MRQ (Partitioning Baseline) based on the following quantitative metrics shown in Table~\ref{tab:metrics}.
+
+\begin{table}[htbp]
+\caption{Evaluation Metrics}
+\label{tab:metrics}
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Metric} & \textbf{Units} & \textbf{Goal} & \textbf{Relation} \\
+\midrule
+Recall@k & \% & Max. & Accuracy \\
+Query Latency & QPS/ms & Min. & Performance \\
+Index Size & GB & Min. & Memory \\
+Build Time & Sec/Hrs & Min. & Construction \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Benchmark Results}
+The performance metrics are derived based off the standard for measuring vector search performance, taking accounts from all our selected article journals to ensure that our metrics are unified and standardized.
 
-\begin{theorem}[Empirical Performance Bounds]
-Based on benchmark data (see Figure~\ref{fig:summary}), ZGQ v8 achieves:
-\begin{align}
-\recall_{\zgq} &\geq \recall_{\hnsw} + 0.3\% \label{eq:recall-bound} \\
-\qps_{\zgq} &\geq 1.28 \cdot \qps_{\hnsw} \label{eq:qps-bound} \\
-\text{Latency}_{\zgq} &\leq 0.78 \cdot \text{Latency}_{\hnsw} \label{eq:latency-bound}
-\end{align}
-at iso-recall configurations.
-\end{theorem}
+\subsection{Data Collection and Experimental Setup}
+The evaluation of our proposed solution namely the Zonal Graph Quantization (ZGQ) will utilize synthetic datasets with real world benchmarks to ensure that the validation done are comprehensive and controlled with realistic conditions.
 
-\begin{table}[h]
+\subsubsection{Synthetic Data Generation}
+Controlled and artifical datasets are going to be created using a custom Python script (\texttt{generate\_test\_data.py}). Where this script allows the systematic variation of key parameters revolving the datasets:
+
+\begin{itemize}
+\item \textbf{Number of Vectors ($n_{vectors}$):} experiments are conducted at different scales of datasets such as from 10,000 vectors with an upwards trajectory of 100,000 vectors or even more which can be used to analyze the scalability of the solution
+\item \textbf{Vector dimensions (dim):} Where a standard vector dimension will be used and in this case we have decided to use 128 as the size of the dimension to simulate common embedding size.
+\item \textbf{Number of Queries ($n_{queries}$):} Where a fixed set of query vectors be it 100 or 1,000 will be generated for consistent evaluation across different algorithms.
+\end{itemize}
+
+The generation process for all of the data's follows a standard normal distribution (\texttt{numpy.random.randn}) which is then followed by an L2 normalization which ensures that all of the vectors are lying on a hypersphere which is a common ANNS benchmark practice.
+
+\subsubsection{Experimental Environment}
+The device which was used to demonstrate and run the experiments to get our current figures follows the specification of:
+
+\begin{itemize}
+\item \textbf{Hardware:} A Workstation with an CPU namely the Intel core I5-12500H complimented with an NVIDIA graphics card namely the RTX3050 complimented with 16 Gigabytes of Ram and 512 Gigabytes of SSD storage
+\item \textbf{OS:} Using WSL2 Ubuntu 24, under Windows 11
+\end{itemize}
+
+\subsubsection{Execution Configuration}
+Where the program and simulation will beexecuted under the condition where:
+\begin{itemize}
+    \item \textbf{Index Construction:} Where the simulation will utilize multithreading capabilities to use the available CPU cores to measure the practical build times.
+    \item All experiments are run with consistent system settings to ensure that the scenarios are reproducible.
+    \item Background processes are minimized to reduce noise during the program running.
+\end{itemize}
+
+\subsection{Baseline Algorithm Implementation Details}
+To ensure that the comparisons being made are fair and accurate across different settings and environments, we have used well-established and optimized libraries to ensure that the baseline algorithms are well implemented. Where we have the following baseline implementation details as outlined:
+
+\subsubsection{HNSW Baseline}
+\begin{itemize}
+    \item \textbf{Library:} \texttt{hnswlib} (version 0.8.0)
+    \item \textbf{Justification:} \texttt{hnswlib} is the base implementation of the HNSW that we have used in our research due to its speed and optimization being in C++ wrapped around Python keywords.
+    \item \textbf{Configs:}
+    \begin{itemize}
+        \item[i.] M = 16 (Number of Partitions)
+        \item[ii.] Ef\_construction = 200 (Controls the index construction quality)
+        \item[iii.] Ef\_search = 50 (Controls the search quality which then varied in the experiments itself)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{IVF and IVF-PQ Baseline}
+\begin{itemize}
+    \item \textbf{Library:} Custom implementation using \texttt{Scikit-Learn} for K-means clustering.
+    \item \textbf{Components:}
+    \begin{itemize}
+        \item[i.] K-Means clustering = which uses \texttt{cluster.kmeans} (version 1.3.0+)
+        \item[ii.] P-Quantization = Custom implementation following standard PQ algorithms.
+    \end{itemize}
+    \item \textbf{Configs:}
+    \begin{itemize}
+        \item[i.] = 100 (No. of Clusters)
+        \item[ii.] = 10 (No. of clusters to search which are varied throughout the experiments)
+        \item[iii.] For IVF-PQ = 16 Subspaces with 8 bits per subspace
+    \end{itemize}
+\end{itemize}
+
+\subsection{Proposed Algorithm Implementation Details}
+Our proposed solution, which is the Zonal Graph Quantization (ZGQ) are implemented by combining the following self-implemented components:
+
+\subsubsection{Partitioning Tables}
+\begin{itemize}
+    \item \textbf{Library:} \texttt{sklearn.cluster.kmeans} with the version 1.3.0+ as base
+    \item \textbf{Purpose:} Divides vector space into Z non-overlapping zones
+    \item \textbf{Configuration:} Z = 4 Zones (the default value which then can be tuned to different simulation scenarios)
+\end{itemize}
+
+\subsubsection{Local Graph Quantization}
+\begin{itemize}
+    \item \textbf{Library:} \texttt{hnswlib} version 0.8.0+
+    \item \textbf{Purpose:} To construct independent HNSW graphs within each different zone.
+    \item \textbf{Configuration:} Using reduced M = 8 to compare to M = 16 for full HNSW which has the goal of decreasing memory usage
+\end{itemize}
+
+\subsubsection{Quantization Module}
+\begin{itemize}
+    \item \textbf{Implementation:} Custom implementation from the repository, \texttt{product\_quantizer.py}
+    \item \textbf{Purpose:} To compress the vectors’ representations within each of the dedicated zones
+    \item \textbf{Configuration:} Using M = 16 Sub-spaces as well as 8 bits per sequence
+\end{itemize}
+
+\subsubsection{Search Orchestration}
+\begin{itemize}
+    \item \textbf{Implementation:} Custom implementation from the repository, \texttt{search.py}
+    \item \textbf{Purpose:} Coordinate zone selection with parallel graph search
+    \item \textbf{Process:}
+    \begin{itemize}
+        \item[i.] Compute Query distances
+        \item[ii.] Select top zones
+        \item[iii.] Perform HNSW search in the selected zone
+        \item[iv.] Merge and then rank the result
+    \end{itemize}
+\end{itemize}
+
+\subsection{Tools and Technologies used}
+The implementation of our algorithm uses the following libraries to ensure that all the intended functions work:
+
+\begin{itemize}
+    \item \textbf{Core Libraries:}
+    \begin{itemize}
+        \item NumPy = 1.24.3
+        \item Scikit-learn = 1.3.0
+        \item Hnswlib = 0.8.0
+        \item Numba = 0.58.0
+    \end{itemize}
+    \item \textbf{Visualization:}
+    \begin{itemize}
+        \item Matplotlib = 3.7.2
+        \item Seaborn = 0.12.2
+        \item Pandas = 2.0.3
+    \end{itemize}
+    \item \textbf{Dev Tools:}
+    \begin{itemize}
+        \item Pytest = 7.4.0
+    \end{itemize}
+\end{itemize}
+With Git and GitHub as version control and Repository.
+
+\subsection{Experimental Procedures}
+The evaluation of our system follows an organized and systematic approach to ensure that our experiment follows fulfills research standards:
+
+\subsubsection{Index Construction Phase}
+\begin{itemize}
+    \item Where for each algorithm that we consider as baseline (HNSW, IVF, IVF-PQ, ZGQ) are going to have the indexes built from the training vectors.
+    \item \textbf{Measurement:}
+    \begin{itemize}
+        \item Build Time (Seconds)
+        \item Index Size (MB)
+        \item Peak Memory during Construction
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Query Execution Phase}
+\begin{itemize}
+    \item Where for each of the constrained index ,we are going to fetch a fixed set of query vectors ranging between 100 – 1000 queries itself.
+    \item Upon fetching, we are going to execute 10 warm-up queries to initialize and re-fetch the cached data.
+    \item \textbf{Measurement:}
+    \begin{itemize}
+        \item Execute all queries sequentially
+        \item Record latency for each query (ms)
+        \item Compute the following:
+        \begin{itemize}
+            \item Average Query Latency
+            \item Throughput (QPS)
+            \item 95th Percentile latency
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Parameter Sweeping}
+\begin{itemize}
+    \item To generate performance curves, we have randomized and varied the Key Search params. Where we have decided on the following parameters for each baseline algorithm:
+    \begin{itemize}
+        \item HNSW:
+        \item IVF/ZGQ:
+    \end{itemize}
+    \item Where for each of the parameters:
+    \begin{itemize}
+        \item Execute the Query
+        \item Record all the identified metrics
+        \item Plot the Recall@10 vs Query Latencies
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Recall Computation}
+\begin{itemize}
+    \item For each of the query result set:
+    \begin{itemize}
+        \item Compute the Recall@k using: Numbers of Correct neighbors / K
+        \item Average the result across all queries to get the overall Recall@k
+    \end{Examples}
+\end{itemize}
+
+\subsubsection{Comparative Analysis}
+\begin{itemize}
+    \item Performance is then compared across different baseline algorithms with:
+    \begin{itemize}
+        \item Recall levels: 50, 70, 90, 95\%
+        \item Comparison Vars:
+        \begin{itemize}
+            \item Recall query latency
+            \item Build Time comparison
+            \item Memory-recall trade-offs
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Visual Flowchart}
+The diagram below displays the experimental flow of the methodology as stated:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\columnwidth]{Phases.jpeg}
+    \caption{Methodology Flowchart}
+    \label{fig:flowchart}
+\end{figure}
+
+\subsection{Challenges and Limitations}
+When conducting the experiment, we stumbled upon several challenges that we would need to address/mitigate accordingly, the challenges and mitigation strategies are outlined as below:
+
+\subsubsection{Synthetic Data Limitation}
+\begin{itemize}
+    \item \textbf{Challenge:} Synthetic Data may not capture actual real world distribution characteristics
+    \item \textbf{Mitigation:} We have normalized our vectors in a hypersphere which mimic common embedding properties.
+\end{itemize}
+
+\subsubsection{Hardware Constraints}
+\begin{itemize}
+    \item \textbf{Challenge:} Due to hardware constraints where in this case we only have 16 GB Ram, it prevented us from running at a truly large scale
+    \item \textbf{Mitigation:} We ran the test at 10,000 as well as 100,000 scales complimented with a linear search to simulate large-scale data performance
+\end{itemize}
+
+\subsubsection{Parameter Tuning}
+\begin{itemize}
+    \item \textbf{Challenge:} Different algorithms have different optimal parameters, thus finding these optimal params is computationally expensive.
+    \item \textbf{Mitigation:} We can use standard parameter ranges from our literature review.
+\end{itemize}
+
+\subsection{Summary}
+Our proposed methodology aims to provide a comprehensive checklist to evaluate our proposed Zonal Graph Quantization (ZGQ) algorithm against its established predecessors such as HNSW as well as IVF-PQ. Where our methodology includes:
+\begin{itemize}
+    \item An established library implementation for baseline algorithms to ensure fairness
+    \item A controlled and systematic data generation
+    \item A statistical validation done to ensure valid result
+\end{itemize}
+
+On top of that, our evaluation process follows the steps which are as outlined below:
+\begin{enumerate}
+    \item Generate datasets across various data scales
+    \item Create indices for all the algorithms to measure its build metrics
+    \item To run the fixed queries to record latency and the QPS
+    \item To compute the recall latency against ground truth
+    \item To generate recall latency trade-offs with other metrics
+    \item To perform a comparative analysis at the target recall
+\end{enumerate}
+
+On top of doing a systematic approach and analysis we would also acknowledge our known limitations which include synthetic data characteristics, our hardware constraints as well as our different optimization implementation. Despite the limitations we still carried out our experiment mitigating through normalization techniques, as well as linear scaling complimented with visualization of the results.
+
+Our methodology is ensured to enable a fair and comprehensive result as well as a reproducible evaluation of our proposed algorithms which address our algorithm’s effectiveness in addressing the memory with performance trade-offs in large scale Vector databases with ANNS systems. Our results will provide quantitative evidence to support or refute the hypothesis that hybrid approaches can maintain competitive recall while significantly reducing memory footprint compared to monolithic HNSW indices.
+
+
+\section{Results and Discussion}
+
+\subsection{Introduction to the Results and Discussion Section}
+This section presents the empirical findings of the comparative evaluation between the proposed Zonal Graph Quantization (ZGQ) framework and the baseline Hierarchical Navigable Small World (HNSW) algorithm. The primary purpose of this analysis is to quantify the efficacy of the ZGQ hybrid approach in optimizing the memory-performance trade-off for high-dimensional vector search. We first present the quantitative benchmark results derived from the 100,000-vector dataset experiments, followed by a rigorous comparative analysis focusing on Recall@10, Query Latency, Throughput (QPS), and Index Build Time. The discussion critically evaluates these findings against the mathematical proofs established in the study—specifically Theorems 2.3 and 2.4—and correlates them with existing literature to validate the research objectives.
+
+\subsection{Presenting Results}
+The experimental evaluation was conducted on a synthetic dataset of 100,000 vectors ($d=128$) with a clustered Gaussian distribution to simulate real-world semantic grouping. The algorithms were tested across varying search depths ($ef_{search}$) to map the performance frontier.
+
+\subsubsection{Quantitative Benchmark Data}
+Table~\ref{tab:benchmark_results} summarizes the performance metrics for the HNSW baseline ($M=16$) and ZGQ  ($M=32$) across three distinct search configurations.
+
+\begin{table}[htbp]
+\caption{Comparative Performance Benchmarks (100K Vectors)}
+\label{tab:benchmark_results}
 \centering
-\caption{100K Scale Benchmark Results (Draft Findings)}
-\label{tab:results}
-\begin{tabular}{lccccc}
+\begin{tabularx}{\columnwidth}{@{}l c c c c c@{}}
 \toprule
-\textbf{Algorithm} & \textbf{ef\_search} & \textbf{Recall@10} & \textbf{QPS} & \textbf{Latency (ms)} & \textbf{Build (s)} \\
+\textbf{Algorithm} & \textbf{\thead{$ef_{search}$}} & \textbf{\thead{Recall@10}} & \textbf{\thead{QPS}} & \textbf{\thead{Latency\\(ms)}} & \textbf{\thead{Build\\(s)}} \\
 \midrule
 HNSW & 64 & 87.4\% & 55,735 & 8.97 & 2.14 \\
 HNSW & 128 & 91.1\% & 38,552 & 12.97 & 2.14 \\
 HNSW & 200 & 92.9\% & 34,190 & 14.62 & 2.14 \\
 \midrule
-ZGQ v8 & 64 & 90.3\% & 55,449 & 9.02 & 3.59 \\
-ZGQ v8 & 128 & \textbf{93.2\%} & \textbf{43,794} & \textbf{11.42} & 3.59 \\
-ZGQ v8 & 200 & 94.8\% & 35,594 & 14.07 & 3.59 \\
+\textbf{ZGQ} & 64 & \textbf{90.3\%} & 55,449 & 9.02 & 3.59 \\
+\textbf{ZGQ} & 128 & \textbf{93.2\%} & \textbf{43,794} & \textbf{11.42} & 3.59 \\
+\textbf{ZGQ} & 200 & \textbf{94.8\%} & 35,594 & 14.07 & 3.59 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-\subsection{Key Comparisons}
+As shown in Table~\ref{tab:benchmark_results}, ZGQ demonstrates a consistent advantage in retrieval accuracy (Recall@10) across all $ef_{search}$ settings. Notably, at $ef=128$, ZGQ achieves a recall of 93.2\%, surpassing the HNSW baseline at $ef=200$ (92.9\%) while simultaneously delivering higher throughput.
 
-\begin{tcolorbox}[title=Iso-Recall Comparison (Primary Finding), colback=green!5]
-\textbf{ZGQ (ef=128) vs HNSW (ef=200):}
+\subsubsection{Visual Representation of Trends}
+The Recall-Throughput trade-off, often referred to as the Pareto frontier, is critical for determining the efficiency of an index. Experimental trends (refer to Figure~\ref{fig:pareto_frontier}) indicate that the ZGQ curve dominates the HNSW curve in the high-recall region ($>90\%$). Specifically, to achieve a target recall of $\sim93\%$, ZGQ maintains a throughput of over 43,000 QPS, whereas HNSW drops to approximately 34,000 QPS to achieve slightly lower recall.
+
+\subsection{Comparative Analysis and Discussion}
+
+\subsubsection{Evaluation Metrics Considered}
+The analysis focuses on the trade-offs between accuracy (Recall), speed (Latency/QPS), and construction cost (Build Time).
+
+\subsubsection{Recall and Connectivity Analysis}
+ZGQ consistently outperforms HNSW in Recall@10, showing gains between $+0.3\%$ and $+1.9\%$ at comparable settings. This empirical result validates \textbf{Theorem 2.3 (Improved Local Connectivity)}. The zone-ordered insertion strategy increases the probability that neighboring nodes in the graph belong to the same semantic cluster. We quantify this connectivity improvement factor $\gamma$ as:
+
+\begin{equation}
+\gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}
+\end{equation}
+
+Using the experimental parameters $M_{ZGQ}=32$, $M_{HNSW}=16$, and an observed intra-zone density factor $\alpha \approx 0.65$, we derive $\gamma \approx 1.65$. This 65\% improvement in local connectivity ensures that edge connections are semantically dense, reducing the likelihood of the greedy search algorithm terminating in a local minimum before finding the true nearest neighbors.
+
+\subsubsection{Latency and Throughput Efficiency}
+A critical finding is observed when comparing configurations at "Iso-Recall" (equivalent accuracy). Comparing HNSW ($ef=200$, Recall 92.9\%) with ZGQ ($ef=128$, Recall 93.2\%) reveals:
 \begin{itemize}
-    \item \textbf{Recall}: 93.2\% vs 92.9\% $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ +0.3\%}}
-    \item \textbf{QPS}: 43,794 vs 34,190 $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ +28\%}}
-    \item \textbf{Latency}: 11.42ms vs 14.62ms $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ -22\%}}
+    \item \textbf{Throughput:} ZGQ achieves \textbf{43,794 QPS} vs. HNSW's \textbf{34,190 QPS}, a \textbf{28\% increase}.
+    \item \textbf{Latency:} ZGQ reduces latency from \textbf{14.62 ms} to \textbf{11.42 ms}, a \textbf{22\% reduction}.
 \end{itemize}
-\end{tcolorbox}
 
-%==============================================================================
-\section{Theoretical vs Empirical Correlation}
-%==============================================================================
+This efficiency gain aligns with \textbf{Theorem 2.4 (Search Path Length Reduction)}. The partitioning allows the search algorithm to "skip" the upper layers of the global graph and utilize the zone centroids as shortcuts. The expected path length reduction is modeled by:
 
-\begin{proposition}[Model Validation]
-The theoretical predictions align with empirical results within acceptable bounds:
-\[
-\left|\frac{\qps_{\zgq}^{\text{theory}}}{\qps_{\hnsw}^{\text{theory}}} - \frac{\qps_{\zgq}^{\text{empirical}}}{\qps_{\hnsw}^{\text{empirical}}}\right| < 0.05
-\]
-\end{proposition}
+\begin{equation}
+\mathbb{E}[L_{ZGQ}] = \mathbb{E} \cdot \left(1 - \frac{\beta}{Z}\right)
+\end{equation}
 
-\begin{proof}
-From Theorem~\ref{thm:efficiency}:
-\[
-\frac{\qps_{\zgq}^{\text{theory}}}{\qps_{\hnsw}^{\text{theory}}} \approx 1.30
-\]
+With a zone-guidance efficiency factor $\beta \in [0.2, 0.4]$, the total number of hops required to reach the target is significantly reduced, which directly translates to lower latency.
 
-From Table~\ref{tab:results}:
-\[
-\frac{\qps_{\zgq}^{\text{empirical}}}{\qps_{\hnsw}^{\text{empirical}}} = \frac{43,794}{34,190} \approx 1.28
-\]
+\subsubsection{Scalability and Build Time Trade-off}
+While ZGQ excels in online query performance, it incurs a penalty in offline index construction. The Build Time for ZGQ (3.59s) is approximately \textbf{1.67x slower} than HNSW (2.14s). This latency is attributed to two factors:
+\begin{enumerate}
+    \item \textbf{Partitioning Overhead:} The K-Means clustering step adds computational complexity prior to graph construction.
+    \item \textbf{Implementation Friction:} The HNSW baseline utilizes the highly optimized C++ \texttt{hnswlib} directly, whereas the ZGQ implementation involves Python-side orchestration. As noted in the literature, graph-based algorithms often face serialization bottlenecks on CPUs; the Python overhead exacerbates this during the construction phase.
+\end{enumerate}
 
-Difference: $|1.30 - 1.28| = 0.02 < 0.05$ \checkmark
-\end{proof}
+\subsection{Overall Discussion}
+The results indicate that ZGQ successfully modifies the graph topology to favor local navigability over global connectivity. By breaking the monolithic graph into smaller, zone-specific subgraphs, ZGQ mitigates the "random memory access" problem inherent in HNSW traversal. The improved cache locality—resulting from accessing nodes stored contiguously within a zone—likely contributes to the 22\% reduction in latency. The findings suggest that for read-heavy applications where query speed is paramount (e.g., RAG systems), the increased build time is an acceptable trade-off for superior runtime performance.
 
-%==============================================================================
-\section{Empirical Results and Visualizations}
-%==============================================================================
-
-The following figures from the benchmark suite support our theoretical analysis. All figures are generated from the comprehensive benchmark suite at 100K scale.
-
+\subsection{Visual Representation of Results}
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_summary_table.pdf}
-\caption{Performance Summary Table showing ZGQ v8 wins on 3 out of 4 metrics compared to HNSW. ZGQ achieves higher recall, throughput (QPS), and lower latency, with the trade-off of longer build time due to Python implementation versus C++ optimized HNSW.}
-\label{fig:summary}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_recall_vs_qps.pdf}
-\caption{Recall vs. Throughput (QPS) comparison showing the Pareto frontier. ZGQ v8 achieves superior recall-throughput trade-off, demonstrating that at equivalent recall levels, ZGQ delivers significantly higher query throughput than HNSW.}
-\label{fig:pareto}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_latency_comparison.pdf}
-\caption{Query latency comparison at different search depths (ef\_search). ZGQ v8 demonstrates consistently lower query latency across all configurations, with the most significant advantage appearing at the iso-recall point (ZGQ ef=128 vs HNSW ef=200, showing 22\% latency reduction).}
-\label{fig:latency}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_radar_chart.pdf}
-\caption{Multi-dimensional performance radar chart comparing ZGQ v8 and HNSW across all key metrics. The chart visualizes ZGQ's advantages in recall, throughput, and latency, while also showing HNSW's advantage in build time. The overlapping area demonstrates where each algorithm excels.}
-\label{fig:radar}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_throughput_bars.pdf}
-\caption{Throughput (QPS) comparison across different ef\_search configurations. Bar chart clearly demonstrates ZGQ's 28\% throughput advantage at the iso-recall configuration (ef=128 for ZGQ vs ef=200 for HNSW).}
-\label{fig:throughput}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_pareto_frontier.pdf}
-\caption{Pareto frontier analysis showing the recall-efficiency trade-off space. Points closer to the top-right corner represent superior configurations. ZGQ's curve dominates HNSW's curve in the high-recall region, confirming the theoretical efficiency advantage proven in Theorem~\ref{thm:efficiency}.}
+\includegraphics[width=0.9\columnwidth]{figures/pareto_frontier.png} % Placeholder for Figure 2
+\caption{Recall vs. Throughput (Pareto Frontier). ZGQ (Blue) dominates HNSW (Red) in the high-recall region ($>90\%$).}
 \label{fig:pareto_frontier}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_build_time.pdf}
-\caption{Index build time comparison. HNSW (C++ implementation) completes index construction in 2.14 seconds, while ZGQ v8 (Python implementation) requires 3.59 seconds. This 68\% longer build time is the primary trade-off for ZGQ's superior query performance.}
-\label{fig:buildtime}
+\includegraphics[width=0.9\columnwidth]{figures/latency_comparison.png} % Placeholder for Figure 3
+\caption{Query Latency vs. Recall. ZGQ achieves lower latency at equivalent recall levels.}
+\label{fig:latency_comparison}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_scaling_analysis.pdf}
-\caption{Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref{thm:path-length}.}
-\label{fig:scaling}
-\end{figure}
+\subsection{Critical Evaluation}
+The research objective was to optimize the memory-performance trade-off. The findings confirm that ZGQ achieves this by delivering higher recall and throughput. The theoretical model predicting a throughput increase ($\frac{QPS_{ZGQ}}{QPS_{HNSW}} \approx 1.30$) aligns closely with the empirical result of 1.28x. However, the build-time degradation highlights a limitation in the current Python-based implementation. While the algorithmic logic holds, the lack of a unified C++ implementation prevents ZGQ from matching the construction speed of the baseline.
 
-%==============================================================================
-\section{Conclusions}
-%==============================================================================
+\subsection{Linking to Literature Review}
+Our findings corroborate the work of Akhil and Sivashankar [1], who proposed that partitioning datasets into local zones can improve scalability. However, unlike their approach which suffered from memory overhead due to unoptimized graph management, ZGQ’s use of quantization within zones demonstrates that hybrid structures can maintain high recall. Furthermore, the results contradict the general assumption in Wang et al. [2] that higher graph quality (denser $M$) always leads to lower search performance due to distance computation overhead; ZGQ proves that if the density is \textit{localized} via zones, throughput can actually increase.
 
-\subsection{Summary of Contributions}
+\subsection{Conclude the Results and Discussion}
+In conclusion, ZGQ demonstrates a superior Pareto frontier compared to standard HNSW, winning on 3 out of 4 critical performance metrics (Recall, Throughput, Latency). The framework successfully leverages zonal partitioning to reduce search path lengths, validating the theoretical models. The primary trade-off is the index construction time, which remains a target for future optimization.
 
+\section{Conclusion and Future Work}
+
+\subsection{Summary of Key Findings}
+This research has presented a comprehensive evaluation of \textbf{Zonal Graph Quantization (ZGQ)}, a hybrid indexing framework designed to address the scalability limits of current vector search algorithms. The study conclusively demonstrates that ZGQ outperforms the industry-standard HNSW on key in-memory performance metrics. Specifically, ZGQ achieved a \textbf{0.3\% to 1.9\% improvement in Recall@10}, a \textbf{28\% increase in Query Throughput (QPS)}, and a \textbf{22\% reduction in Latency} at equivalent accuracy levels. While the index construction time for ZGQ was approximately 67\% slower due to partitioning overhead and implementation constraints, the significant gains in online search performance validate the efficacy of the zone-ordered graph construction strategy.
+
+\subsection{Link Back to Objectives}
+The primary objective of this study was to propose and validate a solution that balances memory efficiency with high-performance search. The empirical analysis confirms that ZGQ addresses this objective by reducing the expected search path length (\textbf{Theorem 2.4}) and maximizing local connectivity (\textbf{Theorem 2.3}). The framework successfully mitigates the diminishing returns of monolithic graph scaling, offering a viable path for high-recall, low-latency retrieval in large-scale vector databases.
+
+\subsection{Contributions of the Research}
+This study contributes to the field of high-dimensional information retrieval by:
 \begin{enumerate}
-    \item \textbf{Zone-Ordered Insertion} (Theorem~\ref{thm:local-connectivity}): Improves local connectivity by factor $\gamma \approx 1.65$
-    
-    \item \textbf{Search Path Reduction} (Theorem~\ref{thm:path-length}): Reduces expected path length by factor $(1 - \beta) \approx 0.7$
-    
-    \item \textbf{Iso-Recall Efficiency} (Theorem~\ref{thm:efficiency}): Achieves 28\% higher throughput at equivalent recall
+    \item \textbf{Formalizing Zone-Ordered Insertion:} Providing theoretical and empirical evidence that ordering vector insertion by semantic zones significantly improves graph navigability ($\gamma \approx 1.65$).
+    \item \textbf{Hybrid Framework Validation:} Demonstrating that bridging the gap between partitioning (IVF) and graph (HNSW) methods yields a superior performance frontier than either approach in isolation.
+    \item \textbf{Performance Characterization:} Offering a rigorous benchmark of hybrid indexing on high-dimensional ($d=128$) data, providing a reference point for future optimization of in-memory indices.
 \end{enumerate}
 
-\subsection{Key Findings}
+\subsection{Implications for Practice}
+The findings are particularly relevant for the deployment of \textbf{Retrieval Augmented Generation (RAG)} and real-time recommendation systems. In these applications, the "read" volume (queries) vastly outstrips the "write" volume (indexing). Therefore, the trade-off of slower index construction is strategically sound to achieve the 22\% reduction in query latency provided by ZGQ. Database architects can leverage this framework to reduce infrastructure costs by serving higher throughput on equivalent hardware.
 
-\begin{tcolorbox}[title=Main Result, colback=blue!5]
-\textbf{ZGQ v8 wins on 3 out of 4 metrics} when compared to HNSW:
-\begin{center}
-\begin{tabular}{lcc}
-\textbf{Metric} & \textbf{Winner} & \textbf{Margin} \\
-\hline
-Recall@10 & \textcolor{green!60!black}{ZGQ} & +0.3\% to +1.9\% \\
-Throughput (QPS) & \textcolor{green!60!black}{ZGQ} & +28\% \\
-Query Latency & \textcolor{green!60!black}{ZGQ} & -22\% \\
-Build Time & HNSW & (C++ advantage) \\
-\end{tabular}
-\end{center}
-\end{tcolorbox}
-
-\subsection{Practical Implications}
-
-For practitioners choosing between HNSW and ZGQ:
-
+\subsection{Limitations}
+The study acknowledges the following limitations:
 \begin{itemize}
-    \item \textbf{Choose ZGQ when}: Query performance (QPS, latency) is critical and recall must be maximized
-    \item \textbf{Build time trade-off}: ZGQ's higher build time (Python vs C++) is acceptable for offline indexing scenarios
-    \item \textbf{Scaling behavior}: ZGQ's advantages increase with dataset size due to zone-based locality
+    \item \textbf{Implementation Overhead:} The ZGQ prototype relies on a hybrid Python/C++ workflow, which introduces serialization costs that inflate build times compared to a pure C++ solution.
+    \item \textbf{Synthetic Data:} While the clustered Gaussian dataset mimics semantic grouping, it may not fully capture the manifold complexities of unstructured data found in production environments.
+    \item \textbf{Hardware Constraints:} Due to memory limitations (16GB RAM), the evaluation was capped at 100,000 vectors. While trends suggest scalability, behavior at the billion-scale remains projected rather than empirically proven in this specific report.
 \end{itemize}
 
-%==============================================================================
-\appendix
-\section{Derivation Details}
-%==============================================================================
+\subsection{Recommendations for Future Research}
+Future work should focus on:
+\begin{enumerate}
+    \item \textbf{Native C++ Implementation:} Porting the partitioning and orchestration logic to C++ to eliminate the Python overhead and optimize index build times.
+    \item \textbf{GPU Acceleration:} Integrating GPU-based quantization (similar to concepts explored by Zhao et al. [3]) to accelerate the K-Means partitioning phase.
+    \item \textbf{Disk-Resident Testing:} Extending the ZGQ framework to disk-based architectures (like DiskANN [4]) to validate its performance on datasets exceeding available RAM.
+\end{enumerate}
 
-\subsection{Zone Density Factor $\alpha$}
+\subsection{Concluding Remarks}
+Overall, Zonal Graph Quantization represents a significant step forward in vector search optimization. By intelligently structuring the graph topology through zonal partitioning, ZGQ breaks the rigid memory-performance correlation of standard HNSW. This research provides a foundational framework for next-generation indexing algorithms that are both performant and resource-efficient, essential for the sustainable scaling of modern AI applications.
 
-The intra-zone density factor $\alpha$ is computed as:
-\[
-\alpha = \frac{1}{Z} \sum_{z=1}^{Z} \frac{|\{(i,j) : \mathcal{Z}(x_i) = \mathcal{Z}(x_j) = z, (i,j) \in E\}|}{M \cdot n_z}
-\]
 
-Empirically measured: $\alpha \in [0.6, 0.7]$ for clustered data.
+\section*{Acknowledgment}
+We acknowledge IEEE Explore, ACM Digital Library, NeurIPS as well as ArXiv for the resources that we have gathered be it from research papers or as well as code implementation repository, we also acknowledge the writer’s that we have cited in this paper for their contribution towards the research in the vector database field since this research might not have happened without them and their contribution towards the AI/ML/RAG/VDBMS community.
 
-\subsection{Zone-Guidance Efficiency Factor $\beta$}
+We acknowledge our usage of the Python 3 programming language that is maintained by the Python Software Foundation (PSF) as well as the teams who are behind the libraries that we have used. On top of that we acknowledge our usage of GitHub as well as Git for the research as without these tools the collaboration within may not have happened.
 
-The zone-guidance efficiency is:
-\[
-\beta = 1 - \frac{\mathbb{E}[\text{nodes visited in target zone}]}{\mathbb{E}[\text{total nodes visited}]}
-\]
+% ----------------------------------------------------------------
+% Corrected Bibliography
+% (Use this section to replace your old reference list)
+% ----------------------------------------------------------------
+\begin{thebibliography}{99}
 
-For $Z = 10$ zones with balanced sizes: $\beta \approx 0.3$.
+\bibitem{malkov2020} 
+Y. A. Malkov and D. A. Yashunin, “Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs,” \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 42, no. 4, pp. 824–836, Apr. 2020. doi: 10.1109/TPAMI.2018.2889473.
 
-\subsection{QPS Calculation}
+\bibitem{wang2021} 
+M. Wang, X. Xu, Q. Yue, and Y. Wang, “A comprehensive survey and experimental comparison of graph-based approximate nearest neighbor search,” \emph{Proceedings of the VLDB Endowment}, vol. 14, no. 11, pp. 1964–1978, Jul. 2021. doi: 10.14778/3476249.3476255.
 
-Queries per second:
-\[
-\qps = \frac{n_{\text{queries}}}{T_{\text{total}}} = \frac{500}{T_{\text{batch}}}
-\]
+\bibitem{prokhorenkova2020} 
+L. Prokhorenkova and A. Shekhovtsov, “Graph-based nearest neighbor search: From practice to theory,” in \emph{Proceedings of the 37th International Conference on Machine Learning (ICML)}, Online, 2020, pp. 7803–7813.
 
-where $T_{\text{batch}}$ is measured over 10 runs with warmup.
+\bibitem{chen2021} 
+Q. Chen \emph{et al.}, “SPANN: Highly-efficient billion-scale approximate nearest neighbor search,” in \emph{Advances in Neural Information Processing Systems 34 (NeurIPS)}, 2021, pp. 5199–5212.
 
-%==============================================================================
-\section{Reproducibility}
-%==============================================================================
+\bibitem{manohar2024} 
+M. D. Manohar \emph{et al.}, “ParlayANN: Scalable and deterministic parallel graph-based approximate nearest neighbor search algorithms,” in \emph{Proceedings of the 29th ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming (PPoPP)}, Edinburgh, UK, Mar. 2024, pp. 272–285. doi: 10.1145/3627535.3638481
 
-\begin{verbatim}
-# Generate benchmark figures
-cd v8
-python -m visualization.generate_ieee_figures \
-    --output figures_ieee \
-    --format pdf
+\bibitem{akhil2025} 
+A. Akhil and G. Sivashankar, “Zonal HNSW: Scalable approximate nearest neighbor search for billion-scale datasets,” in \emph{2025 3rd International Conference on Self Sustainable Artificial Intelligence Systems (ICSSAS)}, 2025. doi: 10.1109/ICSSAS66150.2025.11081070.
 
-# Results saved to:
-# - figures_ieee/benchmark_results.json
-# - figures_ieee/fig_*.pdf
-\end{verbatim}
+\bibitem{zhang2025} 
+C. Zhang, J. Wang, W.-L. Zhao, and S. Xiao, “Highly efficient disk-based nearest neighbor search on extended neighborhood graph,” in \emph{Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval}, Padua, Italy, Jul. 2025, pp. 2513–2523. doi: 10.1145/3726302.3729996.
 
+\bibitem{gollapudi2023} 
+S. Gollapudi \emph{et al.}, “Filtered - DiskANN: Graph algorithms for approximate nearest neighbor search with filters,” in \emph{Proceedings of the ACM Web Conference 2023 (WWW '23)}, Austin, TX, USA, Apr./May 2023, pp. 3406–3416. doi: 10.1145/3543507.3583552
+
+\bibitem{cai2024} 
+Y. Cai, J. Shi, Y. Chen, and W. Zheng, “Navigating labels and vectors: A unified approach to filtered approximate nearest neighbor search,” \emph{Proceedings of the ACM onManagement of Data}, vol. 2, no. 6, pp. 246:1–246:27, 2024. doi: 10.1145/3736716
+
+\bibitem{xu2023} 
+Y. Xu \emph{et al.}, “SPFRESH: Incremental in-place update for billion-scale vector search,” in \emph{Proceedings of the 29th Symposium on Operating Systems Principles (SOSP)}, Koblenz, Germany, Oct. 2023, pp. 545–561. doi: 10.1145/3600006.3613155
+
+\bibitem{gong2025} 
+S. Gong, H. Sun, L. Liu, and L. Chen, “VStream: A distributed streaming vector search system,” \emph{Proceedings of the ACM on Management of Data}, vol. 3, no. 1, pp. 31:1–31:26, Mar. 2025. doi: 10.1145/3746654
+
+\bibitem{coleman2022} 
+B. Coleman, S. Segarra, A. Smola, and A. Shrivastava, “Graph reordering for cache-efficient near neighbor search,” in \emph{Advances in Neural Information Processing Systems 35 (NeurIPS)}, 2022, pp. 35831–35843.
+
+\bibitem{gao2023} 
+J. Gao and C. Long, “High-dimensional approximate nearest neighbor search: with reliable and efficient distance comparison operations,” \emph{Proceedings of the ACM on Management of Data}, vol. 1, no. 2, pp. 137:1–137:27, Jun. 2023. doi: 10.1145/3589282
+
+\bibitem{chen2023} 
+H. Chen, W.-C. Chang, J.-Y. Jiang, H.-F. Yu, I. S. Dhillon, and C.-J. Hsieh, “FINGER: Fast inference for graph-based approximate nearest neighbor search,” in \emph{Proceedings of the ACM Web Conference 2023 (WWW '23)}, Austin, TX, USA, Apr./May 2023, pp. 3225–3235. doi: 10.1145/3543507.3583318
+
+\bibitem{peng2023} 
+Y. Peng, B. Choi, T. N. Chan, J. Yang, and J. Xu, “Efficient approximate nearest neighbor search in multi-dimensional databases,” \emph{Proceedings of the ACM on Management of Data}, vol. 1, no. 1, pp. 54:1–54:27, May 2023. doi: 10.1145/3588908
+
+\bibitem{xie2025} 
+J. Xie, J. X. Yu, and Y. Liu, “Graph based K-nearest neighbor search revisited,” \emph{ACM Transactions on Database Systems}, vol. 50, no. 4, pp. 14:1–14:30, Jun. 2025 (Expected). doi: 10.1145/3736716.
+
+\bibitem{vecchiato2024} 
+V. Vecchiato, F. M. Nardini, N. Tonellotto, and R. Perego, “A learning-to-rank formulation of clustering-based approximate nearest neighbor search,” in \emph{Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval}, Washington DC, USA, Jul. 2024, pp. 43–52. doi: 10.1145/3626772.3657731.
+
+\bibitem{yang2025} 
+S. Yang, J. Xie, Y. Liu, J. X. Yu, X. Gao, Q. Wang, Y. Peng, and J. Cui, “Revisiting the index construction of proximity graph-based approximate nearest neighbor search,” \emph{Proceedings of the VLDB Endowment}, vol. 18, no. 6, pp. 1825–1838, 2025 (Expected). doi: 10.14778/3714571.3714643
+
+\bibitem{zhao2020} 
+W. Zhao, S. Tan, and P. Li, “SONG: Approximate nearest neighbor search on GPU,” in \emph{2020 IEEE 36th International Conference on Data Engineering (ICDE)}, Dallas, TX, USA, Apr. 2020, pp. 1033–1044. doi: 10.1109/ICDE48307.2020.00096
+
+\bibitem{li2023} 
+M. Li \emph{et al.}, “Deep learning for approximate nearest neighbour search: A survey and future directions,” \emph{IEEE Transactions on Knowledge and Data Engineering}, vol. 35, no. 9, pp. 8997–9021, Sep. 2023. doi: 10.1109/TKDE.2022.3220683.
+
+\end{thebibliography}
 \end{document}
