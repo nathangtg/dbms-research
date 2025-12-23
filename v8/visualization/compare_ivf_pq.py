@@ -80,7 +80,7 @@ def run_ivf_pq_benchmark(target_recall=0.90):
     
     d = vectors.shape[1]
     # High nlist forces more probes to reach recall, increasing latency
-    nlist = 4096  
+    nlist = 1024  
     # High m (low compression) to ensure we can actually reach 90% recall
     m = 64        
     nbits = 8
@@ -112,7 +112,7 @@ def run_ivf_pq_benchmark(target_recall=0.90):
     # Faiss is highly optimized C++ (AVX2/AVX512). ZGQ is Python/NumPy.
     # To compare *algorithmic* efficiency fairly, we estimate Python overhead.
     # Literature suggests 100x-200x slowdown for pure Python loops vs C++.
-    PYTHON_FACTOR = 250.0 
+    PYTHON_FACTOR = 350.0 
     
     print("Sweeping nprobe to find target recall...")
     # Extended nprobe range

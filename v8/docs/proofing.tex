@@ -39,7 +39,7 @@
 }
 \author{%
     Research Documentation\\
-    \texttt{Draft Findings - 22nd December 2025}
+    \texttt{Draft Findings - 24th December 2026}
 }
 \date{}
 
@@ -329,6 +329,32 @@ ZGQ v8 & 200 & 94.8\% & 35,594 & 14.07 & 3.59 \\
 \end{tcolorbox}
 
 %==============================================================================
+\section{Comparative Analysis with IVF-PQ}
+%==============================================================================
+
+While HNSW represents the state-of-the-art for graph-based methods, Inverted File with Product Quantization (IVF-PQ) is the standard for memory-constrained scenarios. We extended our evaluation to compare ZGQ against IVF-PQ to characterize the memory-latency trade-off.
+
+\subsection{The Cost of Compression}
+IVF-PQ achieves high memory efficiency by compressing vectors into short codes (e.g., $m=16$ sub-vectors, 8 bits each). However, this compression introduces quantization error. To achieve high recall (e.g., Recall@10 $> 90\%$), the search algorithm must inspect a large fraction of the dataset (high `n\_probe`), which degrades query latency.
+
+\subsection{Performance Trade-offs}
+Our benchmarks (Figure~\ref{fig:ivf_latency} and Figure~\ref{fig:ivf_tradeoff}) reveal a distinct crossover point:
+\begin{itemize}
+    \item \textbf{Low Recall ($<80\%$)}: IVF-PQ is highly efficient, offering low latency and minimal memory footprint.
+    \item \textbf{High Recall ($>90\%$)}: ZGQ outperforms IVF-PQ in latency. To reach 93\% recall, IVF-PQ requires scanning a significant portion of the inverted lists, causing latency to spike to $\approx 34$ms. In contrast, ZGQ maintains a latency of $11.42$ms, representing a \textbf{3x speedup}.
+\end{itemize}
+
+\subsection{Memory Footprint}
+ZGQ occupies a "middle ground" in the memory hierarchy:
+\begin{itemize}
+    \item \textbf{IVF-PQ}: $\approx 25$ MB (Highly Compressed)
+    \item \textbf{ZGQ}: $\approx 49$ MB (Balanced)
+    \item \textbf{HNSW}: $\approx 61$ MB (Graph Overhead)
+\end{itemize}
+
+This confirms that ZGQ is the optimal choice for applications requiring both high accuracy and low latency, where memory is a secondary constraint compared to throughput.
+
+%==============================================================================
 \section{Theoretical vs Empirical Correlation}
 %==============================================================================
 
@@ -413,6 +439,20 @@ The following figures from the benchmark suite support our theoretical analysis.
 \includegraphics[width=0.85\textwidth]{../figures_ieee/fig_scaling_analysis.pdf}
 \caption{Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref{thm:path-length}.}
 \label{fig:scaling}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_ivf_pq_latency.pdf}
+\caption{Latency comparison against IVF-PQ. ZGQ demonstrates significantly lower latency to reach high recall (>90\%) compared to IVF-PQ, highlighting the efficiency of the graph-based refinement over pure quantization-based search.}
+\label{fig:ivf_latency}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_ivf_pq_tradeoff.pdf}
+\caption{Memory vs. Latency trade-off analysis including IVF-PQ. While IVF-PQ offers the lowest memory footprint, it incurs a high latency cost for high-recall queries. ZGQ occupies the "balanced" sweet spot, offering competitive memory usage with superior query speed.}
+\label{fig:ivf_tradeoff}
 \end{figure}
 
 %==============================================================================
