@@ -93,55 +93,68 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {III-K}2}Hardware Constraints}{9}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {III-K}3}Parameter Tuning}{9}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-L}}Summary}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Results and Discussion}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Introduction to the Results and Discussion Section}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}ZGQ Algorithm Analysis and Mathematical Proofing}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}1}Theoretical Framework}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1a}Zone-Ordered Graph Connectivity}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1b}Search Path Reduction}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1c}Space Complexity Analysis}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1d}Query Time Optimization}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1e}Optimal Zone Count}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1f}Comparative Complexity: ZGQ vs. IVF-PQ}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}ZGQ Algorithm Implementation \& Analysis}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}2a}Adaptive Zone Selection Strategy}{11}{}\protected@file@percent }
-\newlabel{lst:zone_select}{{1}{11}{}{lstlisting.1}{}}
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}Adaptive Zone Selection Logic}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}2b}Vectorized Batch Re-ranking}{11}{}\protected@file@percent }
-\newlabel{lst:rerank}{{2}{11}{}{lstlisting.2}{}}
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}Fast Batch Re-ranking}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}2c}Hierarchical Zone Management}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}Recall-Efficiency Trade-off Analysis}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Presenting Results}{11}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparative Performance Benchmarks (100K Vectors)}}{12}{}\protected@file@percent }
-\newlabel{tab:benchmark_results}{{III}{12}{}{table.3}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}1}Quantitative Benchmark Data}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Visual Representation of Trends}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparative Analysis and Discussion}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}1}Evaluation Metrics Considered}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}2}Recall and Connectivity Analysis}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}3}Latency and Throughput Efficiency}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}4}Scalability and Build Time Trade-off}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}5}Comparison with IVF-PQ}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Overall Discussion}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Visual Representation of Results}{13}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Recall vs. Throughput (Pareto Frontier). The ZGQ curve (Blue) consistently lies above and to the right of the HNSW curve (Red) in the high-recall region ($>90\%$), indicating superior efficiency. For any given recall target, ZGQ delivers higher QPS.}}{13}{}\protected@file@percent }
-\newlabel{fig:pareto_frontier}{{2}{13}{}{figure.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Critical Evaluation}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-H}}Linking to Literature Review}{13}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Latency to Reach 90\% Recall. ZGQ is significantly faster than IVF-PQ, achieving the target recall with 13.3x lower latency. This highlights the advantage of the hybrid graph-quantization approach over pure partitioning methods.}}{13}{}\protected@file@percent }
-\newlabel{fig:latency_ivf}{{3}{13}{}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Memory vs. Latency Trade-off. ZGQ achieves a balanced performance profile, offering lower latency than HNSW with a comparable memory footprint.}}{13}{}\protected@file@percent }
-\newlabel{fig:trade_off}{{4}{13}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-I}}Conclude the Results and Discussion}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Summary of Key Findings}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Link Back to Objectives}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Contributions of the Research}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Implications for Practice}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Limitations}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Recommendations for Future Research}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IV}System Implementation}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Architecture Overview}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Component Implementation}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}1}Adaptive Hierarchical Zones}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}Residual Product Quantization}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}Zone-Guided Graph Construction}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Search Execution Flow}{10}{}\protected@file@percent }
+\newlabel{alg:zgq_search}{{1}{10}{}{algorithm.1}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces ZGQ Search Algorithm}}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Empirical Benchmark Results}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Quantitative Benchmark Results (100k Vectors)}}{11}{}\protected@file@percent }
+\newlabel{tab:benchmark_results}{{III}{11}{}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Visualization and Benchmarking Pipeline}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Results and Discussion}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Introduction to the Results and Discussion Section}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}ZGQ Algorithm Analysis and Mathematical Proofing}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-B}1}Theoretical Framework}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1a}Zone-Ordered Graph Connectivity}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1b}Search Path Reduction}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1c}Space Complexity Analysis}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1d}Query Time Optimization}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1e}Optimal Zone Count}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}1f}Comparative Complexity: ZGQ vs. IVF-PQ}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-B}2}ZGQ Algorithm Implementation \& Analysis}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}2a}Adaptive Zone Selection Strategy}{12}{}\protected@file@percent }
+\newlabel{lst:zone_select}{{1}{12}{}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}Adaptive Zone Selection Logic}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}2b}Vectorized Batch Re-ranking}{12}{}\protected@file@percent }
+\newlabel{lst:rerank}{{2}{13}{}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}Fast Batch Re-ranking}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}2c}Hierarchical Zone Management}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-B}3}Recall-Efficiency Trade-off Analysis}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Presenting Results}{13}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Comparative Performance Benchmarks (100K Vectors)}}{13}{}\protected@file@percent }
+\newlabel{tab:benchmark_results}{{IV}{13}{}{table.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-C}1}Quantitative Benchmark Data}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-C}2}Visual Representation of Trends}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Comparative Analysis and Discussion}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-D}1}Evaluation Metrics Considered}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-D}2}Recall and Connectivity Analysis}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-D}3}Latency and Throughput Efficiency}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-D}4}Scalability and Build Time Trade-off}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-D}5}Comparison with IVF-PQ}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Overall Discussion}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Visual Representation of Results}{14}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Recall vs. Throughput (Pareto Frontier). The ZGQ curve (Blue) consistently lies above and to the right of the HNSW curve (Red) in the high-recall region ($>90\%$), indicating superior efficiency. For any given recall target, ZGQ delivers higher QPS.}}{14}{}\protected@file@percent }
+\newlabel{fig:pareto_frontier}{{2}{14}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-G}}Critical Evaluation}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-H}}Linking to Literature Review}{14}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Latency to Reach 90\% Recall. ZGQ is significantly faster than IVF-PQ, achieving the target recall with 13.3x lower latency. This highlights the advantage of the hybrid graph-quantization approach over pure partitioning methods.}}{15}{}\protected@file@percent }
+\newlabel{fig:latency_ivf}{{3}{15}{}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Memory vs. Latency Trade-off. ZGQ achieves a balanced performance profile, offering lower latency than HNSW with a comparable memory footprint.}}{15}{}\protected@file@percent }
+\newlabel{fig:trade_off}{{4}{15}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-I}}Conclude the Results and Discussion}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion and Future Work}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Summary of Key Findings}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Link Back to Objectives}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Contributions of the Research}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}Implications for Practice}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-E}}Limitations}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-F}}Recommendations for Future Research}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{16}{}\protected@file@percent }
 \bibcite{malkov2020}{1}
 \bibcite{wang2021}{2}
 \bibcite{prokhorenkova2020}{3}
@@ -159,8 +172,8 @@
 \bibcite{peng2023}{15}
 \bibcite{xie2025}{16}
 \bibcite{vecchiato2024}{17}
-\@writefile{toc}{\contentsline {section}{References}{15}{}\protected@file@percent }
 \bibcite{yang2025}{18}
 \bibcite{zhao2020}{19}
 \bibcite{li2023}{20}
-\gdef \@abspage@last{16}
+\@writefile{toc}{\contentsline {section}{References}{17}{}\protected@file@percent }
+\gdef \@abspage@last{17}

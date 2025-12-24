@@ -3,6 +3,7 @@
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
@@ -591,6 +592,134 @@ On top of that, our evaluation process follows the steps which are as outlined b
 On top of doing a systematic approach and analysis we would also acknowledge our known limitations which include synthetic data characteristics, our hardware constraints as well as our different optimization implementation. Despite the limitations we still carried out our experiment mitigating through normalization techniques, as well as linear scaling complimented with visualization of the results.
 
 Our methodology is ensured to enable a fair and comprehensive result as well as a reproducible evaluation of our proposed algorithms which address our algorithm’s effectiveness in addressing the memory with performance trade-offs in large scale Vector databases with ANNS systems. Our results will provide quantitative evidence to support or refute the hypothesis that hybrid approaches can maintain competitive recall while significantly reducing memory footprint compared to monolithic HNSW indices.
+
+\section{System Implementation}
+
+This section details the software architecture and implementation of the Zonal Graph Quantization (ZGQ) framework. The system is implemented as a modular Python library (\texttt{zgq}) with performance-critical components optimized via NumPy vectorization and C++ bindings through \texttt{hnswlib}. The source code is organized into core modules handling partitioning, quantization, graph construction, and search orchestration.
+
+\subsection{Architecture Overview}
+The entry point of the system is the \texttt{ZGQIndex} class (defined in \texttt{zgq/index.py}), which orchestrates the interaction between three primary components:
+\begin{enumerate}
+    \item \textbf{Adaptive Hierarchical Zones (AHZ):} Manages the partitioning of the vector space.
+    \item \textbf{Residual Product Quantizer (RPQ):} Handles vector compression and distance approximation.
+    \item \textbf{Zone-Guided Graph (ZGG):} Maintains the navigational graph structure.
+\end{enumerate}
+
+\subsection{Component Implementation}
+
+\subsubsection{Adaptive Hierarchical Zones}
+Implemented in \texttt{core/zones.py}, the \texttt{AdaptiveHierarchicalZones} class replaces static partitioning with a dynamic hierarchy. Unlike standard IVF which uses a flat list of clusters, our implementation constructs a multi-level tree.
+\begin{itemize}
+    \item \textbf{Initialization:} The system automatically determines the optimal number of zones ($Z$) based on dataset size $N$, following the heuristic $Z \approx \sqrt{N}$.
+    \item \textbf{Clustering:} We utilize \texttt{MiniBatchKMeans} from scikit-learn for memory-efficient centroid initialization.
+    \item \textbf{Hierarchy:} For datasets exceeding 100,000 vectors, a two-level hierarchy (Coarse and Fine zones) is instantiated to ensure $\mathcal{O}(\log Z)$ zone selection complexity.
+\end{itemize}
+
+\subsubsection{Residual Product Quantization}
+The \texttt{ResidualProductQuantizer} in \texttt{core/quantization.py} implements a specialized compression scheme. Instead of quantizing raw vectors, the module computes residuals relative to the assigned zone centroid: $r_i = x_i - C_{\mathcal{Z}(x_i)}$.
+\begin{itemize}
+    \item \textbf{Subspace Decomposition:} The 128-dimensional residual vectors are split into $m=16$ subspaces.
+    \item \textbf{Codebook Learning:} Independent codebooks are trained for each subspace using K-Means, with 256 centroids per subspace (8-bit encoding).
+    \item \textbf{Optimization:} Distance computations are accelerated using precomputed lookup tables (ADC), reducing the complexity of distance estimation from $\mathcal{O}(D)$ to $\mathcal{O}(m)$.
+\end{itemize}
+
+\subsubsection{Zone-Guided Graph Construction}
+The \texttt{ZoneGuidedGraph} class (\texttt{core/graph.py}) wraps the \texttt{hnswlib} index with zone-aware logic.
+\begin{itemize}
+    \item \textbf{Zone Entry Points:} During construction, the system maintains a registry of entry points for each zone. This allows the search algorithm to inject the query directly into the most relevant local subgraph, bypassing the global entry node traversal typical of standard HNSW.
+    \item \textbf{Connectivity:} The graph is built with a reduced connectivity parameter ($M=8$ vs $M=16$ for baseline) to save memory, relying on the zone structure to maintain recall.
+\end{itemize}
+
+\subsection{Search Execution Flow}
+The search process, implemented in \texttt{zgq/search.py}, executes a multi-stage pipeline:
+\begin{enumerate}
+    \item \textbf{Zone Selection:} The query $q$ is compared against zone centroids to identify the top $n_{probe}$ relevant zones.
+    \item \textbf{Graph Traversal:} A localized beam search is initiated within the selected zones using the pre-computed entry points. The search is constrained to visit only nodes belonging to the active zones.
+    \item \textbf{Candidate Filtering:} Approximate distances are computed using the RPQ codes to filter the candidate set.
+    \item \textbf{Exact Re-ranking:} The top candidates are re-ranked using exact L2 distance to ensure high precision in the final result set.
+\end{enumerate}
+
+The complete search logic is formalized in Algorithm \ref{alg:zgq_search}.
+
+\begin{algorithm}[H]
+\caption{ZGQ Search Algorithm\label{alg:zgq_search}}
+\begin{algorithmic}[1]
+\REQUIRE Query $q$, Number of neighbors $k$, Number of probes $n_{probe}$
+\ENSURE Top-$k$ nearest neighbors $\mathcal{N}_k$
+
+\STATE \textbf{Step 1: Zone Selection}
+\STATE $\mathcal{Z}_{candidates} \leftarrow \text{SelectZones}(q, n_{probe})$
+\IF{AdaptiveExpansion is enabled}
+    \STATE $\mathcal{Z}_{candidates} \leftarrow \mathcal{Z}_{candidates} \cup \text{GetNeighbors}(\mathcal{Z}_{candidates}[0])$
+\ENDIF
+
+\STATE \textbf{Step 2: Graph Traversal}
+\STATE $E \leftarrow \emptyset$ \COMMENT{Entry points}
+\FOR{$z \in \mathcal{Z}_{candidates}$}
+    \STATE $E \leftarrow E \cup \text{GetEntryPoints}(z)$
+\ENDFOR
+\STATE $\mathcal{C} \leftarrow \text{BeamSearch}(q, E, \text{ef}_{search}, \text{mask}=\mathcal{Z}_{candidates})$
+
+\STATE \textbf{Step 3: Candidate Filtering (RPQ)}
+\STATE $\mathcal{C}_{filtered} \leftarrow \emptyset$
+\FOR{$c \in \mathcal{C}$}
+    \STATE $d_{approx} \leftarrow \text{RPQDistance}(q, c)$
+    \IF{$d_{approx} < \text{threshold}$}
+        \STATE $\mathcal{C}_{filtered}.\text{add}(c)$
+    \ENDIF
+\ENDFOR
+
+\STATE \textbf{Step 4: Exact Re-ranking}
+\STATE $\mathcal{N}_k \leftarrow \text{TopK}(\mathcal{C}_{filtered}, k, \text{metric}=L2)$
+\RETURN $\mathcal{N}_k$
+\end{algorithmic}
+\end{algorithm}
+
+To ensure clarity, the variables utilized in Algorithm \ref{alg:zgq_search} are defined as follows:
+\begin{itemize}
+    \item $q$: The input query vector ($d$-dimensional).
+    \item $k$: The target number of nearest neighbors to retrieve.
+    \item $n_{probe}$: The number of closest zones to inspect during the initial selection phase.
+    \item $\mathcal{Z}_{candidates}$: The set of identified zone IDs to be searched.
+    \item $E$: The set of graph entry points corresponding to the selected zones.
+    \item $\text{ef}_{search}$: The size of the dynamic candidate list during beam search (controls the trade-off between speed and accuracy).
+    \item $\mathcal{C}$: The raw set of candidate vectors retrieved from the graph traversal.
+    \item $\mathcal{C}_{filtered}$: The refined set of candidates after applying the approximate distance threshold.
+    \item $d_{approx}$: The estimated distance between the query and a candidate using Residual Product Quantization (RPQ).
+\end{itemize}
+
+\subsection{Empirical Benchmark Results}
+To substantiate the theoretical advantages of ZGQ, we present the raw performance data from our comparative benchmarks on the 100,000-vector dataset. Table \ref{tab:benchmark_results} details the Recall@10, Query Latency, and Throughput (QPS) for both HNSW and ZGQ across varying search depths ($ef_{search}$).
+
+\begin{table}[htbp]
+\caption{Quantitative Benchmark Results (100k Vectors)}
+\label{tab:benchmark_results}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Algorithm} & \textbf{Config ($ef$)} & \textbf{Recall@10 (\%)} & \textbf{Latency (ms)} & \textbf{QPS} \\
+\midrule
+HNSW & 64 & 87.40 & 8.97 & 55,735 \\
+ZGQ & 64 & \textbf{90.34} & 9.02 & 55,449 \\
+\midrule
+HNSW & 128 & 91.06 & 12.97 & 38,552 \\
+ZGQ & 128 & \textbf{93.18} & \textbf{11.42} & \textbf{43,794} \\
+\midrule
+HNSW & 200 & 92.90 & 14.62 & 34,190 \\
+ZGQ & 200 & \textbf{94.82} & \textbf{14.05} & \textbf{35,594} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The data reveals a consistent performance advantage for ZGQ, particularly in the high-recall regime. At $ef=128$, ZGQ not only achieves a higher recall (93.18\% vs 91.06\%) but does so with significantly lower latency (11.42 ms vs 12.97 ms), resulting in a 13.6\% improvement in throughput. This empirical evidence directly supports Theorem 4 regarding query complexity reduction.
+
+\subsection{Visualization and Benchmarking Pipeline}
+To ensure reproducibility and rigorous comparison, we developed a dedicated visualization suite in \texttt{visualization/generate\_ieee\_figures.py}.
+\begin{itemize}
+    \item \textbf{Live Benchmarking:} The script integrates directly with the \texttt{BenchmarkRunner} class, executing real-time performance tests on the current hardware rather than relying on static logs.
+    \item \textbf{IEEE Compliance:} All generated figures are programmatically styled to meet IEEE publication standards (300 DPI, specific font sizes, and colorblind-friendly palettes).
+    \item \textbf{Metric Calculation:} The pipeline automatically computes derived metrics such as QPS (Queries Per Second) and the Pareto frontier for Recall-Latency trade-offs.
+\end{itemize}
 
 \section{Results and Discussion}
 
