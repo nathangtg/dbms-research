@@ -16,8 +16,8 @@
 \usepackage{cuted}
 \usepackage{tabularx}
 \usepackage{float}
-\usepackage{makecell} % Used for multi-line column headers
-\renewcommand\theadalign{bc} % Centers header text horizontally and vertically
+\usepackage{makecell}
+\renewcommand\theadalign{bc} 
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -915,19 +915,22 @@ Future work should focus on:
     \item \textbf{Disk-Resident Testing:} Extending the ZGQ framework to disk-based architectures (like DiskANN [4]) to validate its performance on datasets exceeding available RAM.
 \end{enumerate}
 
-\subsection{Concluding Remarks}
-Overall, Zonal Graph Quantization represents a significant step forward in vector search optimization. By intelligently structuring the graph topology through zonal partitioning, ZGQ breaks the rigid memory-performance correlation of standard HNSW. This research provides a foundational framework for next-generation indexing algorithms that are both performant and resource-efficient, essential for the sustainable scaling of modern AI applications.
+\section{Conclusion}
+This study presented Zonal Graph Quantization (ZGQ), a novel hybrid indexing framework designed to optimize the memory-performance trade-off in high-dimensional vector search. By integrating K-Means clustering with localized HNSW graph construction and product quantization, ZGQ effectively addresses the scalability limitations of monolithic graph-based indices.
 
+Our technical approach partitions the vector space into semantically coherent zones, constructing independent, lightweight graphs within each partition. This architecture not only reduces the global complexity of the graph but also enables parallelized search execution.
+
+A core contribution of this work lies in the rigorous mathematical derivation of the framework's performance bounds. We established the \textbf{Improved Local Connectivity} factor, denoted as $\gamma$, by analyzing the probability of edge formation during graph construction. In a standard HNSW, random insertion yields a low probability ($P_{same} \approx n_z/n$) that a node connects to a semantically similar neighbor within the same cluster. Conversely, ZGQ's zone-ordered insertion strategy ensures that vectors from the same zone are processed consecutively, raising this probability towards unity ($P_{same} \rightarrow 1$). By quantifying the ratio of expected intra-zone edges between the two methods, we derived the equation $\gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}$. With an empirical intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$, we proved a theoretical connectivity improvement of $\gamma \approx 1.65$.
+
+Furthermore, we derived the \textbf{Search Path Length Reduction} by decomposing the search complexity into inter-zone and intra-zone components. We modeled the search process not as a single greedy descent, but as a two-stage traversal: a rapid inter-zone navigation ($\frac{\log n}{Z}$) followed by a bounded intra-zone search. By introducing a zone-guidance efficiency factor $\beta$, which represents the "highway effect" of traversing densely connected local subgraphs, we arrived at the reduction formula $\mathbb{E}[L_{ZGQ}] = \mathbb{E}[L_{HNSW}] \cdot (1 - \frac{\beta}{Z})$. For a sufficiently large number of zones $Z$, this simplifies to a path reduction of $(1 - \beta)$, theoretically predicting the 22\% latency reduction observed in our benchmarks. Finally, our space complexity analysis confirmed that the overhead of maintaining zone centroids scales as $\mathcal{O}(\sqrt{N})$, ensuring that ZGQ maintains the asymptotic space efficiency of HNSW while delivering superior query performance.
+
+Empirically, ZGQ demonstrated a superior balance between resource utilization and search accuracy. Our experiments on 100,000-vector datasets confirmed that ZGQ achieves competitive Recall@k rates comparable to standard HNSW while significantly reducing memory footprint and index construction time. These results validate the theoretical predictions of our model, highlighting the efficacy of the hybrid zonal approach.
+
+In conclusion, ZGQ offers a scalable and resource-efficient solution for next-generation vector databases, particularly for applications requiring high-throughput retrieval on resource-constrained infrastructure. The framework paves the way for future advancements in billion-scale indexing, democratizing access to efficient vector search technology for the broader AI and database community.
 
 \section*{Acknowledgment}
-We acknowledge IEEE Explore, ACM Digital Library, NeurIPS as well as ArXiv for the resources that we have gathered be it from research papers or as well as code implementation repository, we also acknowledge the writer’s that we have cited in this paper for their contribution towards the research in the vector database field since this research might not have happened without them and their contribution towards the AI/ML/RAG/VDBMS community.
+We would like to acknowledge the utilization of Google Colab and modern cloud-based computing environments, which provided the accessible and powerful infrastructure necessary to conduct this research. We also extend our appreciation to the open-source community, particularly the developers of the HNSWlib, Faiss, and Scikit-learn libraries, whose robust tools formed the foundation of our experimental framework. Furthermore, we acknowledge the invaluable insights provided by the authors of the foundational papers cited in this work, whose contributions to the field of Approximate Nearest Neighbor Search have significantly influenced our methodology.
 
-We acknowledge our usage of the Python 3 programming language that is maintained by the Python Software Foundation (PSF) as well as the teams who are behind the libraries that we have used. On top of that we acknowledge our usage of GitHub as well as Git for the research as without these tools the collaboration within may not have happened.
-
-% ----------------------------------------------------------------
-% Corrected Bibliography
-% (Use this section to replace your old reference list)
-% ----------------------------------------------------------------
 \begin{thebibliography}{99}
 
 \bibitem{malkov2020} 

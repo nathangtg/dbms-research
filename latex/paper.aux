@@ -102,7 +102,8 @@
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1c}Space Complexity Analysis}{10}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1d}Query Time Optimization}{10}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1e}Optimal Zone Count}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}ZGQ Algorithm Implementation \& Analysis}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}1f}Comparative Complexity: ZGQ vs. IVF-PQ}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}2}ZGQ Algorithm Implementation \& Analysis}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}2a}Adaptive Zone Selection Strategy}{11}{}\protected@file@percent }
 \newlabel{lst:zone_select}{{1}{11}{}{lstlisting.1}{}}
 \@writefile{lol}{\contentsline {lstlisting}{\numberline {1}Adaptive Zone Selection Logic}{11}{}\protected@file@percent }
@@ -112,30 +113,35 @@
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-B}2c}Hierarchical Zone Management}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-B}3}Recall-Efficiency Trade-off Analysis}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Presenting Results}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}1}Quantitative Benchmark Data}{11}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparative Performance Benchmarks (100K Vectors)}}{11}{}\protected@file@percent }
-\newlabel{tab:benchmark_results}{{III}{11}{}{table.3}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Visual Representation of Trends}{11}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Comparative Performance Benchmarks (100K Vectors)}}{12}{}\protected@file@percent }
+\newlabel{tab:benchmark_results}{{III}{12}{}{table.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}1}Quantitative Benchmark Data}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Visual Representation of Trends}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparative Analysis and Discussion}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}1}Evaluation Metrics Considered}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}2}Recall and Connectivity Analysis}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}3}Latency and Throughput Efficiency}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}4}Scalability and Build Time Trade-off}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-D}5}Comparison with IVF-PQ}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Overall Discussion}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Visual Representation of Results}{12}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Recall vs. Throughput (Pareto Frontier). The ZGQ curve (Blue) consistently lies above and to the right of the HNSW curve (Red) in the high-recall region ($>90\%$), indicating superior efficiency. For any given recall target, ZGQ delivers higher QPS.}}{12}{}\protected@file@percent }
-\newlabel{fig:pareto_frontier}{{2}{12}{}{figure.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Critical Evaluation}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Visual Representation of Results}{13}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Recall vs. Throughput (Pareto Frontier). The ZGQ curve (Blue) consistently lies above and to the right of the HNSW curve (Red) in the high-recall region ($>90\%$), indicating superior efficiency. For any given recall target, ZGQ delivers higher QPS.}}{13}{}\protected@file@percent }
+\newlabel{fig:pareto_frontier}{{2}{13}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Critical Evaluation}{13}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-H}}Linking to Literature Review}{13}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Latency to Reach 90\% Recall. ZGQ is significantly faster than IVF-PQ, achieving the target recall with 13.3x lower latency. This highlights the advantage of the hybrid graph-quantization approach over pure partitioning methods.}}{13}{}\protected@file@percent }
 \newlabel{fig:latency_ivf}{{3}{13}{}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-I}}Conclude the Results and Discussion}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Summary of Key Findings}{13}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Memory vs. Latency Trade-off. ZGQ achieves a balanced performance profile, offering lower latency than HNSW with a comparable memory footprint.}}{13}{}\protected@file@percent }
 \newlabel{fig:trade_off}{{4}{13}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Link Back to Objectives}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Contributions of the Research}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-I}}Conclude the Results and Discussion}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Summary of Key Findings}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Link Back to Objectives}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Contributions of the Research}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Implications for Practice}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Limitations}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Recommendations for Future Research}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{14}{}\protected@file@percent }
 \bibcite{malkov2020}{1}
 \bibcite{wang2021}{2}
 \bibcite{prokhorenkova2020}{3}
@@ -150,15 +156,11 @@
 \bibcite{coleman2022}{12}
 \bibcite{gao2023}{13}
 \bibcite{chen2023}{14}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Implications for Practice}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Limitations}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Recommendations for Future Research}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-G}}Concluding Remarks}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{14}{}\protected@file@percent }
 \bibcite{peng2023}{15}
 \bibcite{xie2025}{16}
 \bibcite{vecchiato2024}{17}
 \bibcite{yang2025}{18}
 \bibcite{zhao2020}{19}
 \bibcite{li2023}{20}
+\@writefile{toc}{\contentsline {section}{References}{15}{}\protected@file@percent }
 \gdef \@abspage@last{15}
