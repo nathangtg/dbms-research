@@ -920,16 +920,49 @@ This study presented Zonal Graph Quantization (ZGQ), a novel hybrid indexing fra
 
 Our technical approach partitions the vector space into semantically coherent zones, constructing independent, lightweight graphs within each partition. This architecture not only reduces the global complexity of the graph but also enables parallelized search execution.
 
-A core contribution of this work lies in the rigorous mathematical derivation of the framework's performance bounds. We established the \textbf{Improved Local Connectivity} factor, denoted as $\gamma$, by analyzing the probability of edge formation during graph construction. In a standard HNSW, random insertion yields a low probability ($P_{same} \approx n_z/n$) that a node connects to a semantically similar neighbor within the same cluster. Conversely, ZGQ's zone-ordered insertion strategy ensures that vectors from the same zone are processed consecutively, raising this probability towards unity ($P_{same} \rightarrow 1$). By quantifying the ratio of expected intra-zone edges between the two methods, we derived the equation $\gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}$. With an empirical intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$, we proved a theoretical connectivity improvement of $\gamma \approx 1.65$.
+A core contribution of this work lies in the rigorous mathematical derivation of the framework's performance bounds. We break down the derivation of our key performance metrics as follows:
 
-Furthermore, we derived the \textbf{Search Path Length Reduction} by decomposing the search complexity into inter-zone and intra-zone components. We modeled the search process not as a single greedy descent, but as a two-stage traversal: a rapid inter-zone navigation ($\frac{\log n}{Z}$) followed by a bounded intra-zone search. By introducing a zone-guidance efficiency factor $\beta$, which represents the "highway effect" of traversing densely connected local subgraphs, we arrived at the reduction formula $\mathbb{E}[L_{ZGQ}] = \mathbb{E}[L_{HNSW}] \cdot (1 - \frac{\beta}{Z})$. For a sufficiently large number of zones $Z$, this simplifies to a path reduction of $(1 - \beta)$, theoretically predicting the 22\% latency reduction observed in our benchmarks. Finally, our space complexity analysis confirmed that the overhead of maintaining zone centroids scales as $\mathcal{O}(\sqrt{N})$, ensuring that ZGQ maintains the asymptotic space efficiency of HNSW while delivering superior query performance.
+\subsection*{Improved Local Connectivity ($\gamma$)}
+We established the connectivity improvement factor $\gamma$ by analyzing the probability of edge formation during graph construction:
+\begin{itemize}
+    \item In standard HNSW, random insertion yields a low probability that a node connects to a neighbor within the same semantic cluster:
+    \begin{equation}
+    P_{same}^{random} \approx \frac{n_z}{n}
+    \end{equation}
+    \item In contrast, ZGQ's zone-ordered insertion ensures vectors from the same zone are processed consecutively, raising this probability towards unity:
+    \begin{equation}
+    P_{same}^{ordered} \rightarrow 1
+    \end{equation}
+    \item By quantifying the ratio of expected intra-zone edges, we derived the improvement factor:
+    \begin{equation}
+    \gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}
+    \end{equation}
+    \item With an empirical intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$ (vs $M_{HNSW}=16$), we proved a theoretical connectivity improvement of:
+    \begin{equation}
+    \gamma \approx 1.65
+    \end{equation}
+\end{itemize}
+
+\subsection*{Search Path Length Reduction}
+We derived the reduction in search path length by decomposing the search complexity into two distinct phases:
+\begin{itemize}
+    \item The search process is modeled as a rapid inter-zone navigation followed by a bounded intra-zone search.
+    \item We introduced a zone-guidance efficiency factor $\beta$, representing the "highway effect" of traversing densely connected local subgraphs.
+    \item This leads to the reduction formula:
+    \begin{equation}
+    \mathbb{E}[L_{ZGQ}] = \mathbb{E}[L_{HNSW}] \cdot \left(1 - \frac{\beta}{Z}\right)
+    \end{equation}
+    \item For a sufficiently large number of zones $Z$, this simplifies to a path reduction of $(1 - \beta)$, theoretically predicting the 22\% latency reduction observed in our benchmarks.
+\end{itemize}
+
+Finally, our space complexity analysis confirmed that the overhead of maintaining zone centroids scales as $\mathcal{O}(\sqrt{N})$, ensuring that ZGQ maintains the asymptotic space efficiency of HNSW while delivering superior query performance.
 
 Empirically, ZGQ demonstrated a superior balance between resource utilization and search accuracy. Our experiments on 100,000-vector datasets confirmed that ZGQ achieves competitive Recall@k rates comparable to standard HNSW while significantly reducing memory footprint and index construction time. These results validate the theoretical predictions of our model, highlighting the efficacy of the hybrid zonal approach.
 
 In conclusion, ZGQ offers a scalable and resource-efficient solution for next-generation vector databases, particularly for applications requiring high-throughput retrieval on resource-constrained infrastructure. The framework paves the way for future advancements in billion-scale indexing, democratizing access to efficient vector search technology for the broader AI and database community.
 
 \section*{Acknowledgment}
-We would like to acknowledge the utilization of Google Colab and modern cloud-based computing environments, which provided the accessible and powerful infrastructure necessary to conduct this research. We also extend our appreciation to the open-source community, particularly the developers of the HNSWlib, Faiss, and Scikit-learn libraries, whose robust tools formed the foundation of our experimental framework. Furthermore, we acknowledge the invaluable insights provided by the authors of the foundational papers cited in this work, whose contributions to the field of Approximate Nearest Neighbor Search have significantly influenced our methodology.
+We would like to acknowledge the utilization of Google Colab and modern cloud-based computing environments, which provided the accessible and powerful infrastructure necessary to conduct this research. We extend our sincere gratitude to Mathematics and Computing students from world-renowned institutions, including the University of Melbourne, as well as engineers from Google DeepMind, for their valuable inputs and feedback regarding our research methodology. We also extend our appreciation to the open-source community, particularly the developers of the HNSWlib, Faiss, and Scikit-learn libraries, whose robust tools formed the foundation of our experimental framework. Furthermore, we acknowledge the invaluable insights provided by the authors of the foundational papers cited in this work, whose contributions to the field of Approximate Nearest Neighbor Search have significantly influenced our methodology.
 
 \begin{thebibliography}{99}
 
