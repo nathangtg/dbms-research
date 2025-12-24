@@ -85,19 +85,6 @@ Our empirical benchmarks on 100k vector datasets (128 dimensions) demonstrate ZG
 
 *ZGQ achieves a 13.6% improvement in throughput while delivering higher accuracy.*
 
-## Citation
-
-If you use ZGQ in your research, please cite our work:
-
-```bibtex
-@article{zgq2025,
-  title={Zonal Graph Quantization: Optimizing Memory-Performance Trade-off in Vector Search},
-  author={Ginting, Nathan Aldyth Prananta and Hong, Jordan Chay Ming and Yiyong, Jaeden Ting},
-  journal={arXiv preprint},
-  year={2025}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](v8/LICENSE) file for details.
