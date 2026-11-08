@@ -73,7 +73,7 @@ def extract_level0_links(hnsw, dim: int) -> Tuple[np.ndarray, int]:
     )
     labels = block[:, label_offset : label_offset + 8].copy().view(np.int64).reshape(-1)
 
-    # Mask out slots beyond the per-node link count, then map internal -> label
+    # Mask slots beyond each node's link count, then map internal ids to labels
     col = np.arange(maxM0)[None, :]
     links_internal = np.where(col < counts[:, None], links_internal, -1)
     mapped = np.where(links_internal >= 0, labels[np.clip(links_internal, 0, None)], -1)
@@ -140,7 +140,6 @@ def _beam_search(
             d += A[j, c]
             if use_zones:
                 d += B[zone_of[v], j, c]
-        # insert sorted
         if cnt < ef or d < bd[cnt - 1]:
             p = cnt if cnt < ef else ef - 1
             while p > 0 and bd[p - 1] > d:
