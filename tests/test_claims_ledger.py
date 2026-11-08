@@ -1,4 +1,3 @@
-"""Check the 'verified' matched-comparison rows of docs/CLAIMS.md against the canonical summary."""
 import json
 import re
 from pathlib import Path

@@ -1,22 +1,3 @@
-"""
-Insertion-order strategies for the zone-partitioned HNSW build.
-
-Pure functions: given vectors and zone information they return a permutation
-of ``range(n)`` (int64) giving the order in which ids are added to hnswlib.
-
-Strategies
-----------
-zone        zones in id order, within a zone ascending squared distance to the
-            zone centroid (the library default, bit-identical to the legacy loop)
-random      ``RandomState(seed).permutation(n)``
-lid_desc    descending local intrinsic dimension (stable)
-lid_asc     ascending local intrinsic dimension (stable)
-skeleton    a seeded random sample of ``skeleton_fraction * n`` ids first, in
-            random order, then the remaining ids in zone order
-roundrobin  one vector per zone in cyclic order, within-zone order by ascending
-            distance to the centroid
-"""
-
 from typing import Optional
 
 import numpy as np

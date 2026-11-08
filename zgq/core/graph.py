@@ -94,7 +94,6 @@ class ZoneGuidedGraph:
         self.hnsw.set_ef(self.config.ef_search)
 
     def _compute_zone_entry_points(self, vectors: np.ndarray) -> None:
-        """Entry points of a zone are its vectors closest to the zone centroid."""
         n_entry = self.config.n_entry_points_per_zone
 
         for zone_id in range(self.n_zones):

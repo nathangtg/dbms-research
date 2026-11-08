@@ -1,5 +1,3 @@
-"""The analytic size model must agree with real saved/serialized index sizes."""
-
 import os
 
 import faiss

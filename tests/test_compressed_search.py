@@ -1,5 +1,3 @@
-"""Compressed ZGQ mode: graph links, per-candidate-zone ADC, drop_full_vectors."""
-
 import numpy as np
 import pytest
 from zgq import ZGQConfig, ZGQIndex
@@ -62,7 +60,6 @@ def test_extracted_links_are_valid(index):
 
 
 def test_adc_equals_distance_to_decoded_vector(index, data):
-    """Per-candidate-zone ADC must equal ||q - (c_z + decode(code))||^2 exactly."""
     x, q, _ = data
     cmp = index._cmp
     ids, adc = cz.beam_search_batch(
@@ -85,8 +82,6 @@ def test_adc_equals_distance_to_decoded_vector(index, data):
 
 
 def test_nearest_zone_table_is_wrong_for_other_zones(index, data):
-    """Measures the ZGQIndex.search shortlist issue: a table built from the nearest
-    zone centroid mis-scores candidates stored against another zone's centroid."""
     x, q, _ = data
     pq, zones = index.pq, index.zones
     recon = pq.decode(index.pq_codes) + zones.fine_centroids[zones.assignments]

@@ -1,25 +1,3 @@
-"""
-Measurement-first diagnostics for the ZGQ vs HNSW-M16 recall gap
-================================================================
-
-Runs before any index change so each later improvement is justified by data.
-Uses the same data generator, seed, ground truth and index parameters as
-``benchmarks.run_benchmarks`` (dim 128, k=10, M=16, ef_construction=200,
-1000 queries, single thread).
-
-Checks (each writes ``<out-dir>/d<N>_<name>_<scale>.json``):
-    d0  path audit: batch_search(fast_mode=True) never uses zones; raw graph
-        recall at rerank_factor 1 vs 3 vs plain hnswlib at the same ef
-    d1  insertion-order ablation: zone-ordered vs random-order graph build
-    d2  zone path ZGQIndex.search recall and latency vs n_probe
-    d3  oracle zone: fraction of true neighbors outside the probed zones
-    d4  zone-count sweep (rebuilds the index per n_zones)
-
-Usage:
-    python -m benchmarks.diagnostics --scale 10k --checks d0 d1 d2 d3 \
-        --out-dir results/<date>-improvements/diagnostics
-"""
-
 import argparse
 import json
 import time
@@ -59,10 +37,6 @@ def fraction_outside_zones(
 
 
 def oracle_zone_coverage(gt: np.ndarray, assignments: np.ndarray) -> float:
-    """Mean fraction of the true top-k that lies in the zone of the true nearest neighbor.
-
-    This is the recall of exact search restricted to the oracle zone.
-    """
     cov = []
     for row in gt:
         z = assignments[row[0]]
@@ -144,7 +118,6 @@ def _point(ids, elapsed, gt, n_q) -> Dict:
 
 
 def _hnsw_points(idx_search, queries, vectors, gt, ef, rerank_factor):
-    """Search a raw graph; rerank_factor>1 fetches k*rf candidates then exact-reranks."""
     n_q = len(queries)
 
     def run():
@@ -331,7 +304,7 @@ def _write(out_dir: Path, name: str, scale: str, payload: Dict, meta: Dict) -> N
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    p = argparse.ArgumentParser()
     p.add_argument("--scale", choices=["tiny", "10k", "100k", "1m"], required=True)
     p.add_argument(
         "--checks",

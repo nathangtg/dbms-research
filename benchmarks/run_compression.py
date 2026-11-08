@@ -1,28 +1,3 @@
-"""
-Compression-first comparison at equal memory
-============================================
-
-Compares the compressed ZGQ variants (graph + PQ/RPQ codes, optional exact
-rerank) against FAISS HNSW+PQ, HNSW+SQ8, IVF-PQ and IVF-PQR, with plain hnswlib
-HNSW-M16 as the full-vector memory reference.
-
-Memory is the analytic size from ``zgq.memory_model`` (RSS is unreliable on
-macOS). Every index also records a cross-check: the real serialized size
-(``faiss.serialize_index`` length, hnswlib saved file size, or the actual
-nbytes of the ZGQ compressed arrays).
-
-Output (schema ``zgq-compression/1``, deliberately separate from the
-``zgq-bench/1`` summary.json so the canonical results still validate):
-    <out-dir>/compression_summary.json
-    <out-dir>/raw/<scale>_<label>.json
-    <out-dir>/equal_memory_<scale>.md      (via ``--tables-only``)
-
-Usage:
-    python -m benchmarks.run_compression --scale 100k --out-dir results/<date>-improvements/compression
-    python -m benchmarks.run_compression --out-dir results/<date>-improvements/compression --tables-only
-    python -m benchmarks.run_compression --scale 100k --adc-check --out-dir ...
-"""
-
 import argparse
 import datetime
 import gc
@@ -310,7 +285,6 @@ def build_faiss_ivfpq(vectors, pq_m, refine_m, seed, threads):
 
 
 def build_plan(args) -> List[Dict]:
-    """Ordered build plan: label of the first variant -> builder closure."""
     th = args.build_threads
     seed = args.seed
     plan = []
@@ -531,7 +505,6 @@ def equal_memory_table(sc: Dict, scale: str) -> str:
 
 
 def adc_check(args) -> Dict:
-    """Measure the ZGQIndex.search PQ-shortlist issue (briefing hypothesis)."""
     scale = args.scale[0]
     n = SCALES[scale]
     vectors, queries = generate_test_data(n, args.n_queries, DIMENSION, args.seed)

@@ -103,7 +103,6 @@ class ResidualProductQuantizer:
         zone_centroids: Optional[np.ndarray] = None,
         zone_assignments: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """PQ codes of shape (N, m), dtype uint8."""
         if not self.is_trained:
             raise RuntimeError("PQ must be trained before encoding")
 
@@ -179,9 +178,6 @@ class ResidualProductQuantizer:
             return _asymmetric_distance_numba(codes, distance_table)
 
     def decode(self, codes: np.ndarray) -> np.ndarray:
-        """Approximate residuals (N, d) when trained with residuals; add zone centroids to
-        recover vectors.
-        """
         if not self.is_trained:
             raise RuntimeError("PQ must be trained before decoding")
 

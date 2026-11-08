@@ -1,11 +1,3 @@
-"""
-Generate comparison.md and figures from a build-order study_summary.json.
-
-Every number comes from the summary file; nothing is typed by hand.
-
-    python -m benchmarks.build_order_report results/<date>-novelty/study_summary.json
-"""
-
 import argparse
 import json
 from pathlib import Path
@@ -309,7 +301,7 @@ def make_figures(summary: Dict, out_dir: Path) -> List[Path]:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser()
     ap.add_argument("summary")
     ap.add_argument("--out-dir", default=None, help="default: directory of the summary")
     args = ap.parse_args(argv)

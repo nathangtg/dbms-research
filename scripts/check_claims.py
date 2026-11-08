@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""Fail if a retired benchmark number reappears in the docs or LaTeX sources.
-
-The retired numbers came from unreproducible runs and are listed, with their
-status, in docs/CLAIMS.md (which is exempt from this check).
-
-    python scripts/check_claims.py [--root PATH]
-"""
 
 import argparse
 import re
@@ -71,7 +64,7 @@ def find_violations(root: Path):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--root", type=Path, default=default_root())
     args = ap.parse_args(argv)
     bad = find_violations(args.root)

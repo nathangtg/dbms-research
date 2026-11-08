@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Render Markdown and LaTeX result tables from a results summary.json only.
-
-    python -m visualization.make_tables
-    python -m visualization.make_tables --results results/2026-11-08/summary.json --output tables
-"""
 
 import argparse
 import json
@@ -42,7 +37,6 @@ def _cell(p) -> str:
 
 
 def result_rows(summary: Dict, efs=EFS) -> List[List[str]]:
-    """Rows: scale, index, comparison, build s, then recall/latency per ef; IVF-PQ at best recall."""
     rows = []
     for s in [k for k in SCALE_ORDER if k in summary["scales"]]:
         sc = summary["scales"][s]
@@ -92,7 +86,7 @@ def write_tables(results: Path = DEFAULT_RESULTS, output: Path = DEFAULT_OUTPUT)
 
 
 def main(argv=None) -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--results", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args(argv)

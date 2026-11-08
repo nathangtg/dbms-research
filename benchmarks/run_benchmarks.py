@@ -1,28 +1,3 @@
-"""
-ZGQ v8 reproducible benchmark harness
-=====================================
-
-Compares ZGQ (several M values), hnswlib HNSW (M=16) and FAISS IVF-PQ on
-seeded synthetic clustered-Gaussian data.
-
-Protocol (recorded in summary.json under ``protocol``):
-    * every random source is seeded (data, queries, index builds)
-    * HNSW M=16 vs ZGQ M=16 is the matched comparison; ZGQ M=24 and M=32 are
-      labeled variants with a larger graph, not a like-for-like comparison
-    * one warm-up pass over all queries before timing each search setting
-    * each setting is timed ``--repeats`` times (default 5) over the whole
-      query batch; median and IQR across repeats are reported
-    * build time and index memory (RSS delta around build) are recorded once
-      per index, not per search setting
-    * single thread by default (``--threads 1``) for build and search
-    * ``--improvements`` adds opt-in ZGQ variants (off by default, so the
-      canonical specs and results are unchanged)
-
-Usage:
-    python -m benchmarks.run_benchmarks --scale 10k 100k --out-dir results/2025-01-01
-    python -m benchmarks.run_benchmarks --scale tiny --n-queries 50 --repeats 2 --out-dir /tmp/smoke
-"""
-
 import argparse
 import datetime
 import gc
@@ -76,11 +51,6 @@ def generate_test_data(
     dimension: int = DIMENSION,
     seed: int = 42,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Seeded clustered Gaussian data. Queries: 70% near clusters, 30% random.
-
-    Vectors and queries come from separate streams so changing ``n_queries``
-    never changes the database.
-    """
     rng = np.random.RandomState(seed)
     n_clusters = max(10, n_vectors // 1000)
     centers = rng.randn(n_clusters, dimension).astype(np.float32)
@@ -103,7 +73,6 @@ def generate_test_data(
 
 
 def exact_ground_truth(vectors: np.ndarray, queries: np.ndarray, k: int) -> np.ndarray:
-    """Exact top-k L2 neighbors by chunked brute force (numpy only)."""
     vnorm = np.einsum("ij,ij->i", vectors, vectors)
     out = np.empty((len(queries), k), dtype=np.int64)
     step = max(1, int(2e7 // len(vectors)))  # bound the distance matrix size
@@ -189,11 +158,6 @@ def rss_mb() -> float:
 
 @contextmanager
 def _graph_threads(n_threads: int):
-    """Make the hnswlib index created inside ZGQ use ``n_threads`` threads.
-
-    ZGQ builds its own hnswlib index and does not expose a thread setting.
-    Wrapping Index keeps the build deterministic at 1 thread.
-    """
     import zgq.core.graph as graph_mod
 
     class _Index(hnswlib.Index):
@@ -330,8 +294,6 @@ def measure_point(
 
 
 def run_index(spec, vectors, queries, gt, args, scale, raw_dir, built=None) -> Dict:
-    """Measure one index. ``built`` = (idx, build_t, mem, search, analytic) lets
-    several variants share one graph build (used by the improvement variants)."""
     label, algo, builder, build_params, param_name, params = spec
     raw_dir = Path(raw_dir)
     if built is None:
@@ -408,8 +370,6 @@ def _bytes_entry(model: Dict, source: str) -> Dict:
 # graph build; variants differ only in search settings and zone replicas.
 
 def _zgq_search_fn(idx, v, search_mode, adaptive, nopq, replicas, sweep):
-    """Return a search closure for one variant. ``sweep`` is 'ef', 'nprobe'
-    or 'ratio'. The closure configures the shared index before each call."""
     cfg = idx.config
     info = {}
 
@@ -437,8 +397,6 @@ def _zgq_search_fn(idx, v, search_mode, adaptive, nopq, replicas, sweep):
 
 
 def improvement_groups(n, args):
-    """Groups of (build_fn, [variant, ...]). A variant is
-    (label, params_description, sweep_name, sweep_values, search_kwargs, replicas)."""
     ef = tuple(args.ef)
     nprobe = tuple(args.improve_nprobe)
     ratios = tuple(args.improve_ratio_pct)
@@ -590,12 +548,6 @@ def index_specs(n, args):
 
 
 def _index_worker(scale: str, label: str, argv_dict: Dict) -> Dict:
-    """Build and measure one index in a fresh process.
-
-    A fresh process per index keeps the RSS delta meaningful: in a long-lived
-    process the allocator reuses memory freed by earlier indexes, which makes
-    later builds look free.
-    """
     args = argparse.Namespace(**argv_dict)
     n = SCALES[scale]
     vectors, queries = generate_test_data(n, args.n_queries, DIMENSION, args.seed)

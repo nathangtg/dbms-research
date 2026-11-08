@@ -1,14 +1,3 @@
-"""
-Schema validator for ZGQ benchmark results.
-
-Usage:
-    python -m benchmarks.check_results results/2025-01-01/summary.json
-    python -m benchmarks.check_results results/2025-01-01/summary.json --canonical
-
-``--canonical`` additionally enforces the protocol floor required for numbers
-that may be quoted in the paper (>= 1000 queries, >= 5 repeats).
-"""
-
 import argparse
 import json
 import sys

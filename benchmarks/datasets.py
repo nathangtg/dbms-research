@@ -1,14 +1,3 @@
-"""Dataset loaders for the build-order study.
-
-One interface for ann-benchmarks HDF5 files (SIFT1M, GloVe-100) and the
-synthetic generator used elsewhere in the harness. Downloads are cached outside
-git in ``$ZGQ_DATA_DIR`` or ``~/.cache/zgq-datasets``.
-
-Angular datasets are L2-normalized (train and test) and reported with metric
-``"l2"``: on unit vectors squared L2 distance is ``2 - 2 cos``, so the ranking
-equals the angular ranking and the existing L2 index and ground-truth code work
-unchanged.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -173,11 +162,6 @@ def verify_file_gt(
     n_check: int = 200,
     tol: float = 1e-4,
 ) -> Tuple[bool, float]:
-    """Check file-provided GT against brute force, tie tolerant.
-
-    Compares L2 distances rank by rank (not ids). Returns (ok, worst relative
-    distance gap). Vectors must already be normalized for angular datasets.
-    """
     n = min(n_check, len(queries))
     k = file_gt.shape[1]
     q = queries[:n]

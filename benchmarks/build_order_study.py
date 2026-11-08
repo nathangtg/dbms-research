@@ -1,29 +1,3 @@
-"""
-Build-order study runner and aggregator.
-
-One run = (experiment, dataset, n_base, strategy, seed) executed in its own
-process and written atomically to one JSON file. Runs are resumable: a run whose
-JSON already exists in the output directory is skipped.
-
-Experiments
------------
-e1  recall / latency / build time / graph structure across insertion orders
-e2  multi-thread build (default 8 threads) of the same orders, 3 build repeats
-e3  incremental insertion: build on a random 80%, then insert the other 20%
-    either in random order (``e3_random``) or sorted by zone then distance to
-    the zone centroid (``e3_zone``); recall is against ground truth over all
-    vectors
-
-Usage
------
-    python -m benchmarks.build_order_study --dataset sift-128-euclidean \
-        --n-base 100000 --strategies zone random skeleton --seeds 0 1 2 \
-        --out-dir results/<date>-novelty/raw
-
-    python -m benchmarks.build_order_study --aggregate results/<date>-novelty/raw \
-        --out results/<date>-novelty/study_summary.json
-"""
-
 import argparse
 import itertools
 import json
@@ -117,7 +91,6 @@ def run_path(out_dir, cfg: Dict) -> Path:
 
 
 def build_zones(vectors, seed):
-    """Zones exactly as ZGQIndex.build constructs them (auto zones, hierarchy)."""
     zc = ZoneConfig(
         auto_zones=True, use_hierarchy=True, random_state=seed, verbose=False
     )
@@ -399,7 +372,6 @@ def _point_map(run, field):
 
 
 def _paired(group_runs, base_runs, ef_list) -> Dict:
-    """Paired difference (strategy minus baseline) per ef for recall and latency."""
     rng = np.random.RandomState(0)
     by_seed = {r["config"]["seed"]: r for r in group_runs}
     base_seed = {r["config"]["seed"]: r for r in base_runs}
@@ -447,7 +419,6 @@ def _paired(group_runs, base_runs, ef_list) -> Dict:
 
 
 def aggregate(runs: List[Dict]) -> Dict:
-    """Group runs over seeds and compute medians, IQRs, paired CIs and equal-recall latency."""
     groups: Dict[tuple, List[Dict]] = {}
     for r in runs:
         c = r["config"]
@@ -650,7 +621,7 @@ def build_configs(args) -> List[Dict]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    p = argparse.ArgumentParser()
     p.add_argument(
         "--dataset",
         default="synthetic",

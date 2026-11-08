@@ -74,7 +74,6 @@ class DistanceComputer:
     def _inner_product_distance(
         self, query: np.ndarray, vectors: np.ndarray
     ) -> np.ndarray:
-        """Negative inner product, so smaller is better."""
         query = query.astype(np.float32)
         vectors = vectors.astype(np.float32)
         return (-vectors @ query).astype(np.float32)

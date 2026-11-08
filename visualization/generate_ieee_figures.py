@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Figure generator for ZGQ v8. Reads only a results summary.json.
-
-No benchmarking happens here. Every plotted number comes from the
-``zgq-bench/1`` summary produced by ``benchmarks/run_benchmarks.py``.
-
-Usage:
-    python -m visualization.generate_ieee_figures
-    python -m visualization.generate_ieee_figures --results results/2026-11-08/summary.json \
-        --output figures --format pdf
-"""
 
 import argparse
 import json
@@ -171,7 +161,6 @@ def fig_latency_comparison(summary: Dict, output_dir: Path, fmt: str = "pdf") ->
 def fig_pareto_frontier(
     summary: Dict, output_dir: Path, fmt: str = "pdf", scale: Optional[str] = None
 ) -> Path:
-    """Recall vs latency at one scale (default: 100k), all indexes including IVF-PQ."""
     scale = scale or ("100k" if "100k" in summary["scales"] else _scales(summary)[0])
     sc = summary["scales"][scale]
     fig, ax = plt.subplots(figsize=(IEEE_SINGLE_COL * 1.4, 3.0))
@@ -234,7 +223,6 @@ def fig_scaling_analysis(
 
 
 def fig_ivf_pq_latency(summary: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
-    """Latency at the highest-recall setting of each index, per scale."""
     scales = _scales(summary)
     labels = [i["label"] for i in summary["scales"][scales[0]]["indexes"]]
     fig, ax = plt.subplots(figsize=(IEEE_DOUBLE_COL * 0.8, 3.0))

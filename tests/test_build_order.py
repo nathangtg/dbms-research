@@ -1,5 +1,3 @@
-"""Specs for the build-order strategies in zgq.core.build_order."""
-
 import numpy as np
 import pytest
 
@@ -8,7 +6,6 @@ from zgq import ZGQConfig, ZGQIndex
 
 
 def _legacy_zone_order(vectors, assignments, centroids):
-    """Copy of the loop that used to live in ZoneGuidedGraph._build_hnsw."""
     zone_order = []
     for zone_id in range(len(centroids)):
         zone_vids = np.where(assignments == zone_id)[0]

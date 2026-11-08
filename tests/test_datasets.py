@@ -1,4 +1,3 @@
-"""Dataset loader specs. Offline: uses a tiny HDF5 fixture, no network."""
 import hashlib
 import json
 

@@ -1,5 +1,3 @@
-"""Specs for the hnswlib file parser, graph statistics and instrumented search."""
-
 import json
 
 import hnswlib

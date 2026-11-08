@@ -1,4 +1,3 @@
-"""Default-config results must be bit-identical to the pre-change golden."""
 import json
 import os
 

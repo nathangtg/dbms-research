@@ -1,15 +1,3 @@
-"""Compare opt-in ZGQ variants against the matched HNSW-M16 from one summary.json.
-
-Reads only a committed ``summary.json`` (schema zgq-bench/1) and prints Markdown:
-
-* equal-ef table for variants swept over ``ef`` (recall delta, latency ratio),
-* equal-recall table (latency at a target recall by linear interpolation along
-  each recall/latency curve; "not reached" when the curve tops out below it),
-* build-time ratio and analytic index bytes ratio (RSS is never used here).
-
-Usage: ``python -m benchmarks.compare_improvements results/<dir>/summary.json``
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -147,7 +135,7 @@ def report(summary: Dict) -> str:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("summary")
     args = ap.parse_args(argv)
     with open(args.summary) as f:

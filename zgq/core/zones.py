@@ -39,7 +39,6 @@ class ZoneNode:
 
 
 class AdaptiveHierarchicalZones:
-    """Two-level (coarse, fine) k-means zone partitioning, or a single flat level."""
 
     def __init__(self, config: Optional[ZoneConfig] = None):
         self.config = config or ZoneConfig()
@@ -323,11 +322,6 @@ class AdaptiveHierarchicalZones:
         n_probe: int,
         use_hierarchy: bool = True
     ) -> np.ndarray:
-        """Fine zone ids of the n_probe nearest zones.
-
-        Hierarchical mode ranks only the fine zones under the max(2, n_probe // 4)
-        nearest coarse zones.
-        """
         if not self.is_built:
             raise RuntimeError("Zones must be built before selection")
 
@@ -354,12 +348,6 @@ class AdaptiveHierarchicalZones:
         return candidate_fine[np.argsort(fine_distances)[:n_probe]]
 
     def build_replicas(self, vectors: np.ndarray, n_replicas: int) -> None:
-        """Replicate each vector into its `n_replicas` nearest zones (SPANN style).
-
-        The primary zone stays `assignments[i]`. The remaining `n_replicas - 1`
-        nearest zones by centroid distance are stored in `replica_assignments`
-        and `replica_lists`. Only ids are stored, vectors are not duplicated.
-        """
         if not self.is_built:
             raise RuntimeError("Zones must be built before replication")
         n_zones = len(self.fine_centroids)
@@ -414,7 +402,6 @@ class AdaptiveHierarchicalZones:
         }
 
     def get_zone_candidates(self, zone_ids) -> np.ndarray:
-        """Unique vector ids in the given zones, including replica members."""
         parts = []
         for zone_id in zone_ids:
             zone_id = int(zone_id)

@@ -47,7 +47,6 @@ def extract_level0_links(hnsw, dim: int) -> Tuple[np.ndarray, int]:
 
 
 def effective_codebooks(pq) -> np.ndarray:
-    """Codebooks in the original residual scale: (m, k, sub)."""
     cb = pq.codebooks
     if pq.config.normalize_residuals and pq.mean_residual is not None:
         m, _, sub = cb.shape

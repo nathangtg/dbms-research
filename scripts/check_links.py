@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""Check relative links in Markdown files and \\includegraphics paths in LaTeX.
-
-    python scripts/check_links.py [--root PATH]
-"""
 
 import argparse
 import re
@@ -54,7 +50,7 @@ def check_file(path: Path):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--root", type=Path, default=default_root())
     args = ap.parse_args(argv)
     failures = 0

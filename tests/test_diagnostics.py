@@ -1,5 +1,3 @@
-"""Tests for the pure helpers in benchmarks/diagnostics.py and the insertion_order switch."""
-
 import numpy as np
 import pytest
 

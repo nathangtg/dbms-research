@@ -1,30 +1,3 @@
-"""Structure analysis of a built hnswlib index.
-
-hnswlib 0.8.0 exposes no neighbor lists, so this module parses the file that
-``Index.save_index`` writes (``HierarchicalNSW::saveIndex`` in hnswalg.h).
-
-File layout (little endian, native x86-64 / arm64 sizes):
-
-Header, in this order:
-    offsetLevel0 (size_t), max_elements (size_t), cur_element_count (size_t),
-    size_data_per_element (size_t), label_offset (size_t), offsetData (size_t),
-    maxlevel (int32), enterpoint_node (uint32), maxM (size_t), maxM0 (size_t),
-    M (size_t), mult (double), ef_construction (size_t).
-
-Level 0 block: cur_element_count records of size_data_per_element bytes:
-    [uint32 link header: low 16 bits = neighbor count][maxM0 x uint32 ids]
-    [vector data (offsetData .. label_offset)][label (size_t) at label_offset].
-Ids at every level are internal ids (insertion order, 0..n-1).
-
-Upper levels: for each element i in order, a uint32 byte size
-``linkListSize`` (0 if level 0 only, else size_links_per_element * level_i,
-with size_links_per_element = 4 + 4 * maxM) followed by that many bytes. Level
-l (1-based) of the element occupies bytes [(l-1)*s, l*s) of the list, each in
-the same [count header][maxM x uint32] format.
-
-Internal ids are used everywhere; ``labels[internal_id]`` maps to the user label.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,7 +28,6 @@ _HEADER_DTYPE = np.dtype(_HEADER_FMT)
 
 @dataclass
 class HNSWGraph:
-    """Parsed hnswlib graph in internal ids."""
 
     level0: np.ndarray  # (n, maxM0) int32, padded with -1
     counts: np.ndarray  # (n,) int32 level-0 out-degree
@@ -216,12 +188,6 @@ def cross_zone_fraction(
 
 
 def edge_length_ratios(edge_dists: np.ndarray, kth_dist: np.ndarray) -> np.ndarray:
-    """Edge length divided by the source node's exact k-th NN distance.
-
-    ``edge_dists`` is (s, m) with NaN padding, ``kth_dist`` is (s,). A ratio of
-    1 means the edge is as long as the k-th nearest neighbor; the result is the
-    flat array of non-NaN ratios.
-    """
     ratio = edge_dists / kth_dist[:, None]
     return ratio[~np.isnan(ratio)]
 
@@ -238,11 +204,6 @@ def gini(x: np.ndarray) -> float:
 def exact_knn_sample(
     vectors: np.ndarray, sample: np.ndarray, k: int, chunk: int = 20000
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Exact k nearest neighbors (self excluded) of ``vectors[sample]``.
-
-    Returns (ids (s, k), L2 distances (s, k)) sorted ascending. Brute force in
-    chunks, so memory is O(s * chunk).
-    """
     q = np.ascontiguousarray(vectors[sample], dtype=np.float32)
     qn = np.einsum("ij,ij->i", q, q)
     s = q.shape[0]
@@ -277,7 +238,6 @@ def analyze_graph(
     n_sample: int = 2000,
     knn_k: int = 10,
 ) -> dict:
-    """JSON-serializable structure statistics of ``g`` (level 0 unless noted)."""
     n = g.n
     zones = np.asarray(zone_of_internal_id)
     rng = np.random.RandomState(seed)
@@ -535,12 +495,6 @@ def search_hops(
     ef: int,
     k: int,
 ) -> dict:
-    """Reimplementation of hnswlib search that counts work per query.
-
-    ``vectors`` are indexed by internal id (``None`` uses ``graph.vectors``).
-    Returns result ``ids`` (labels), per-query ``hops_level0`` (expanded
-    nodes), ``hops_upper``, ``dist_comps`` and ``summary`` aggregates.
-    """
     vecs = np.ascontiguousarray(
         graph.vectors if vectors is None else vectors, dtype=np.float32
     )

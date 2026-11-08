@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-ZGQ Package Setup
-
-Installation script for the Zone-Guided Quantization (ZGQ) package.
-"""
 
 from setuptools import setup, find_packages
 from pathlib import Path

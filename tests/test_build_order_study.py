@@ -1,5 +1,3 @@
-"""Specs for the build-order study runner and aggregator (tiny synthetic scale)."""
-
 import json
 
 import numpy as np
