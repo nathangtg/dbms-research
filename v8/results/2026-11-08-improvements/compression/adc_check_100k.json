@@ -1,0 +1,60 @@
+{
+  "scale": "100k",
+  "n_queries": 200,
+  "k": 10,
+  "rows": [
+    {
+      "n_probe": 1,
+      "mean_candidates": 10.0,
+      "recall_pct": {
+        "no_pq_shortlist": 66.5,
+        "nearest_zone_table": 66.5,
+        "per_candidate_zone_adc": 66.5
+      },
+      "mean_relative_adc_error": {
+        "nearest_zone_table": 0.07191773348487913,
+        "per_candidate_zone_adc": 0.05876313419081271
+      }
+    },
+    {
+      "n_probe": 4,
+      "mean_candidates": 40.0,
+      "recall_pct": {
+        "no_pq_shortlist": 84.0,
+        "nearest_zone_table": 60.1,
+        "per_candidate_zone_adc": 60.75
+      },
+      "mean_relative_adc_error": {
+        "nearest_zone_table": 0.0760999539680779,
+        "per_candidate_zone_adc": 0.06323263545986264
+      }
+    },
+    {
+      "n_probe": 16,
+      "mean_candidates": 160.0,
+      "recall_pct": {
+        "no_pq_shortlist": 93.3,
+        "nearest_zone_table": 45.6,
+        "per_candidate_zone_adc": 48.8
+      },
+      "mean_relative_adc_error": {
+        "nearest_zone_table": 0.08303999829106033,
+        "per_candidate_zone_adc": 0.074803412463516
+      }
+    },
+    {
+      "n_probe": 64,
+      "mean_candidates": 640.0,
+      "recall_pct": {
+        "no_pq_shortlist": 99.85,
+        "nearest_zone_table": 43.4,
+        "per_candidate_zone_adc": 48.1
+      },
+      "mean_relative_adc_error": {
+        "nearest_zone_table": 0.10158250867389143,
+        "per_candidate_zone_adc": 0.09669120434671641
+      }
+    }
+  ],
+  "note": "graph.search candidates of ZGQIndex.search; shortlist 2k by score, exact rerank"
+}
