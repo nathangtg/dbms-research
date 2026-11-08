@@ -14,7 +14,6 @@ class DistanceComputer:
         vectors: np.ndarray,
         precomputed_norms: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """precomputed_norms are the squared norms ||vectors||^2, shape (N,)."""
         if self.metric == "l2":
             return self._euclidean_squared(query, vectors, precomputed_norms)
         if self.metric == "cosine":
@@ -29,7 +28,6 @@ class DistanceComputer:
         vectors: np.ndarray,
         precomputed_norms: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """Uses ||a - b||^2 = ||a||^2 + ||b||^2 - 2<a,b>, clipped at 0 against rounding."""
         query = query.astype(np.float32)
         vectors = vectors.astype(np.float32)
 
@@ -47,6 +45,7 @@ class DistanceComputer:
 
         return distances.astype(np.float32)
 
+    # Manually implementing this to avoid rounding errors and for easier debugging
     def _cosine_distance(
         self,
         query: np.ndarray,
@@ -96,14 +95,11 @@ class DistanceComputer:
 
     @staticmethod
     def precompute_norms(vectors: np.ndarray) -> np.ndarray:
-        """Squared L2 norms."""
         vectors = vectors.astype(np.float32)
         return np.sum(vectors * vectors, axis=1).astype(np.float32)
 
 
 class SIMDDistance:
-    """Numba-compiled distance kernels."""
-
     @staticmethod
     @njit(
         float32[:](float32[:], float32[:, :]), fastmath=True, parallel=True, cache=True
@@ -137,7 +133,6 @@ class SIMDDistance:
     def euclidean_squared_early_term(
         a: np.ndarray, b: np.ndarray, bound: float
     ) -> float:
-        """Squared distance, or bound + 1 once the partial sum exceeds bound (every 8 dims)."""
         d = a.shape[0]
         dist = 0.0
 
@@ -168,8 +163,6 @@ class SIMDDistance:
 
 
 class EarlyTerminationComputer:
-    """Distance computation with bound-based early termination."""
-
     def __init__(self, dimension: int):
         self.dimension = dimension
         self._check_interval = max(8, dimension // 16)
@@ -177,7 +170,6 @@ class EarlyTerminationComputer:
     def compute_with_bound(
         self, query: np.ndarray, vectors: np.ndarray, indices: np.ndarray, bound: float
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Indices and distances of the candidates within bound."""
         query = query.astype(np.float32)
         vectors = vectors.astype(np.float32)
 
@@ -200,7 +192,6 @@ class EarlyTerminationComputer:
 def select_top_k_distances(
     distances: np.ndarray, k: int
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Indices and values of the k smallest distances, ascending (argpartition, O(N))."""
     n = len(distances)
     k = min(k, n)
 
@@ -215,7 +206,6 @@ def select_top_k_distances(
 
 
 def _warmup_jit():
-    """Compile the kernels at import so the first search does not pay for it."""
     dummy_q = np.zeros(128, dtype=np.float32)
     dummy_v = np.zeros((10, 128), dtype=np.float32)
     dummy_out = np.zeros(10, dtype=np.float32)

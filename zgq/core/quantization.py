@@ -3,21 +3,18 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 import numpy as np
-from numba import njit, prange, float32, uint8
+from numba import float32, njit, prange, uint8
 from sklearn.cluster import MiniBatchKMeans
 
-# Numba's default 'workqueue' threading layer aborts the process if a parallel
-# kernel is launched from several Python threads at once, so serialise launches.
 _PARALLEL_KERNEL_LOCK = threading.Lock()
 
 
 @dataclass
 class RPQConfig:
-    m: int = 16                    # Number of subspaces
-    n_bits: int = 8                # Bits per code (k = 2^n_bits centroids)
+    m: int = 16
 
-    n_train_samples: int = 100000  # Max samples for training
-    n_iter: int = 25               # K-means iterations
+    n_train_samples: int = 100000
+    n_iter: int = 25
 
     use_residuals: bool = True
     normalize_residuals: bool = False
@@ -26,14 +23,9 @@ class RPQConfig:
 
 
 class ResidualProductQuantizer:
-    """Product quantizer over (vector - zone centroid) residuals.
-
-    codebooks has shape (m, k, d/m).
-    """
-
     def __init__(self, config: Optional[RPQConfig] = None):
         self.config = config or RPQConfig()
-        self.k: int = 2 ** self.config.n_bits
+        self.k: int = 2**self.config.n_bits
 
         self.codebooks: Optional[np.ndarray] = None
         self.subvector_dim: int = 0
@@ -47,8 +39,8 @@ class ResidualProductQuantizer:
         self,
         vectors: np.ndarray,
         zone_centroids: Optional[np.ndarray] = None,
-        zone_assignments: Optional[np.ndarray] = None
-    ) -> 'ResidualProductQuantizer':
+        zone_assignments: Optional[np.ndarray] = None,
+    ) -> "ResidualProductQuantizer":
         vectors = vectors.astype(np.float32)
         n_vectors, self.dimension = vectors.shape
 
@@ -65,7 +57,9 @@ class ResidualProductQuantizer:
             rng = np.random.RandomState(self.config.random_state)
             indices = rng.choice(n_vectors, self.config.n_train_samples, replace=False)
             train_vectors = vectors[indices]
-            train_assignments = None if zone_assignments is None else zone_assignments[indices]
+            train_assignments = (
+                None if zone_assignments is None else zone_assignments[indices]
+            )
 
         train_data = train_vectors
         use_zone_residuals = (
@@ -82,8 +76,7 @@ class ResidualProductQuantizer:
             train_data = (train_data - self.mean_residual) / self.std_residual
 
         self.codebooks = np.zeros(
-            (self.config.m, self.k, self.subvector_dim),
-            dtype=np.float32
+            (self.config.m, self.k, self.subvector_dim), dtype=np.float32
         )
 
         for j in range(self.config.m):
@@ -96,7 +89,7 @@ class ResidualProductQuantizer:
                 batch_size=min(1024, len(train_data)),
                 n_init=1,
                 max_iter=self.config.n_iter,
-                verbose=0
+                verbose=0,
             )
             kmeans.fit(train_data[:, start_idx:end_idx])
             self.codebooks[j] = kmeans.cluster_centers_.astype(np.float32)
@@ -108,7 +101,7 @@ class ResidualProductQuantizer:
         self,
         vectors: np.ndarray,
         zone_centroids: Optional[np.ndarray] = None,
-        zone_assignments: Optional[np.ndarray] = None
+        zone_assignments: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """PQ codes of shape (N, m), dtype uint8."""
         if not self.is_trained:
@@ -141,25 +134,19 @@ class ResidualProductQuantizer:
             # Row chunks keep the (chunk, k, d/m) broadcast small at large N;
             # the codes are the same as the unchunked computation.
             for lo in range(0, n_vectors, 50000):
-                sub = subvectors[lo:lo + 50000]
+                sub = subvectors[lo : lo + 50000]
                 distances = np.sum(
-                    (sub[:, np.newaxis, :] - centroids[np.newaxis, :, :]) ** 2,
-                    axis=2
+                    (sub[:, np.newaxis, :] - centroids[np.newaxis, :, :]) ** 2, axis=2
                 )
-                codes[lo:lo + 50000, j] = np.argmin(distances, axis=1).astype(np.uint8)
+                codes[lo : lo + 50000, j] = np.argmin(distances, axis=1).astype(
+                    np.uint8
+                )
 
         return codes
 
     def compute_distance_table(
-        self,
-        query: np.ndarray,
-        zone_centroid: Optional[np.ndarray] = None
+        self, query: np.ndarray, zone_centroid: Optional[np.ndarray] = None
     ) -> np.ndarray:
-        """Table of shape (m, k) of squared distances from query subvectors to codewords.
-
-        Uses the query residual when zone_centroid is given, so the table is only
-        valid for candidates in that zone.
-        """
         if not self.is_trained:
             raise RuntimeError("PQ must be trained before computing distances")
 
@@ -179,14 +166,14 @@ class ResidualProductQuantizer:
             end_idx = start_idx + self.subvector_dim
 
             query_subvector = query_data[start_idx:end_idx]
-            distance_table[j] = np.sum((query_subvector - self.codebooks[j]) ** 2, axis=1)
+            distance_table[j] = np.sum(
+                (query_subvector - self.codebooks[j]) ** 2, axis=1
+            )
 
         return distance_table
 
     def asymmetric_distance(
-        self,
-        codes: np.ndarray,
-        distance_table: np.ndarray
+        self, codes: np.ndarray, distance_table: np.ndarray
     ) -> np.ndarray:
         with _PARALLEL_KERNEL_LOCK:
             return _asymmetric_distance_numba(codes, distance_table)
@@ -219,51 +206,50 @@ class ResidualProductQuantizer:
         compression_ratio = original_bytes / (codebook_bytes + codes_bytes)
 
         return {
-            'codebook_bytes': codebook_bytes,
-            'codes_bytes': codes_bytes,
-            'total_bytes': codebook_bytes + codes_bytes,
-            'total_mb': (codebook_bytes + codes_bytes) / (1024 ** 2),
-            'compression_ratio': compression_ratio
+            "codebook_bytes": codebook_bytes,
+            "codes_bytes": codes_bytes,
+            "total_bytes": codebook_bytes + codes_bytes,
+            "total_mb": (codebook_bytes + codes_bytes) / (1024**2),
+            "compression_ratio": compression_ratio,
         }
 
     def save_state(self) -> Dict:
         return {
-            'config': {
-                'm': self.config.m,
-                'n_bits': self.config.n_bits,
-                'use_residuals': self.config.use_residuals,
-                'normalize_residuals': self.config.normalize_residuals,
-                'random_state': self.config.random_state
+            "config": {
+                "m": self.config.m,
+                "n_bits": self.config.n_bits,
+                "use_residuals": self.config.use_residuals,
+                "normalize_residuals": self.config.normalize_residuals,
+                "random_state": self.config.random_state,
             },
-            'dimension': self.dimension,
-            'subvector_dim': self.subvector_dim,
-            'k': self.k,
-            'codebooks': self.codebooks,
-            'mean_residual': self.mean_residual,
-            'std_residual': self.std_residual,
-            'is_trained': self.is_trained
+            "dimension": self.dimension,
+            "subvector_dim": self.subvector_dim,
+            "k": self.k,
+            "codebooks": self.codebooks,
+            "mean_residual": self.mean_residual,
+            "std_residual": self.std_residual,
+            "is_trained": self.is_trained,
         }
 
     @classmethod
-    def load_state(cls, state: Dict) -> 'ResidualProductQuantizer':
-        config = RPQConfig(**state['config'])
+    def load_state(cls, state: Dict) -> "ResidualProductQuantizer":
+        config = RPQConfig(**state["config"])
         pq = cls(config)
 
-        pq.dimension = state['dimension']
-        pq.subvector_dim = state['subvector_dim']
-        pq.k = state['k']
-        pq.codebooks = state['codebooks']
-        pq.mean_residual = state['mean_residual']
-        pq.std_residual = state['std_residual']
-        pq.is_trained = state['is_trained']
+        pq.dimension = state["dimension"]
+        pq.subvector_dim = state["subvector_dim"]
+        pq.k = state["k"]
+        pq.codebooks = state["codebooks"]
+        pq.mean_residual = state["mean_residual"]
+        pq.std_residual = state["std_residual"]
+        pq.is_trained = state["is_trained"]
 
         return pq
 
 
 @njit(float32[:](uint8[:, :], float32[:, :]), fastmath=True, parallel=True, cache=True)
 def _asymmetric_distance_numba(
-    codes: np.ndarray,
-    distance_table: np.ndarray
+    codes: np.ndarray, distance_table: np.ndarray
 ) -> np.ndarray:
     n = codes.shape[0]
     m = codes.shape[1]
@@ -279,8 +265,9 @@ def _asymmetric_distance_numba(
     return distances
 
 
-def suggest_pq_params(dimension: int, target_compression: float = 16.0) -> Tuple[int, int]:
-    """Return (m, n_bits) with m dividing dimension. target_compression is unused."""
+def suggest_pq_params(
+    dimension: int, target_compression: float = 16.0
+) -> Tuple[int, int]:
     valid_m = [m for m in [8, 16, 32, 64] if dimension % m == 0]
 
     if not valid_m:

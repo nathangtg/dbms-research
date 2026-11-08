@@ -11,31 +11,27 @@ from zgq.core.build_order import STRATEGIES, insertion_order
 
 @dataclass
 class GraphConfig:
-    # HNSW parameters
+    # HNSW params
     M: int = 16
     ef_construction: int = 200
     ef_search: int = 64
 
     use_zone_guidance: bool = True
-    zone_priority_factor: float = 1.5   # distance divisor for candidates in selected zones
+    zone_priority_factor: float = 1.5
     max_zone_expansion: int = 3
 
     use_entry_points: bool = True
     n_entry_points_per_zone: int = 3
 
-    space: str = 'l2'  # 'l2', 'ip', or 'cosine'
+    space: str = "l2"  # 'l2', 'ip', or 'cosine'
 
     random_seed: int = 42
 
-    # One of zgq.core.build_order.STRATEGIES
-    insertion_order: str = 'zone'
-    # Fraction inserted first in random order when insertion_order='skeleton'
+    insertion_order: str = "zone"
     skeleton_fraction: float = 0.05
 
 
 class ZoneGuidedGraph:
-    """hnswlib index with zone metadata; vectors are inserted in a configurable order."""
-
     def __init__(self, config: Optional[GraphConfig] = None):
         self.config = config or GraphConfig()
 
@@ -54,8 +50,8 @@ class ZoneGuidedGraph:
         self,
         vectors: np.ndarray,
         zone_assignments: np.ndarray,
-        zone_centroids: np.ndarray
-    ) -> 'ZoneGuidedGraph':
+        zone_centroids: np.ndarray,
+    ) -> "ZoneGuidedGraph":
         vectors = np.ascontiguousarray(vectors.astype(np.float32))
         self.n_vectors, self.dimension = vectors.shape
         self.zone_assignments = zone_assignments.copy()
@@ -77,22 +73,22 @@ class ZoneGuidedGraph:
         return self
 
     def _build_hnsw(self, vectors: np.ndarray) -> None:
-        self.hnsw = hnswlib.Index(
-            space=self.config.space,
-            dim=self.dimension
-        )
+        self.hnsw = hnswlib.Index(space=self.config.space, dim=self.dimension)
 
         self.hnsw.init_index(
             max_elements=self.n_vectors,
             ef_construction=self.config.ef_construction,
             M=self.config.M,
-            random_seed=self.config.random_seed
+            random_seed=self.config.random_seed,
         )
 
         order = insertion_order(
-            self.config.insertion_order, vectors, self.zone_assignments,
-            self.zone_centroids, self.config.random_seed,
-            skeleton_fraction=self.config.skeleton_fraction
+            self.config.insertion_order,
+            vectors,
+            self.zone_assignments,
+            self.zone_centroids,
+            self.config.random_seed,
+            skeleton_fraction=self.config.skeleton_fraction,
         )
         self.hnsw.add_items(vectors[order], order)
         self.hnsw.set_ef(self.config.ef_search)
@@ -109,7 +105,7 @@ class ZoneGuidedGraph:
 
             centroid = self.zone_centroids[zone_id]
             distances = np.sum((vectors[zone_vids] - centroid) ** 2, axis=1)
-            closest = np.argsort(distances)[:min(n_entry, len(zone_vids))]
+            closest = np.argsort(distances)[: min(n_entry, len(zone_vids))]
             self.zone_entry_points[zone_id] = zone_vids[closest].tolist()
 
     def search(
@@ -117,7 +113,7 @@ class ZoneGuidedGraph:
         query: np.ndarray,
         k: int,
         selected_zones: Optional[np.ndarray] = None,
-        ef_search: Optional[int] = None
+        ef_search: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         if not self.is_built:
             raise RuntimeError("Graph must be built before searching")
@@ -130,21 +126,15 @@ class ZoneGuidedGraph:
         return self._search_standard(query, k)
 
     def _search_standard(
-        self,
-        query: np.ndarray,
-        k: int
+        self, query: np.ndarray, k: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         query = query.reshape(1, -1).astype(np.float32)
         ids, distances = self.hnsw.knn_query(query, k=min(k, self.n_vectors))
         return ids[0], distances[0]
 
     def _search_zone_guided(
-        self,
-        query: np.ndarray,
-        k: int,
-        selected_zones: np.ndarray
+        self, query: np.ndarray, k: int, selected_zones: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Over-fetch 3k candidates, then re-rank toward selected zones when few are selected."""
         query = query.reshape(1, -1).astype(np.float32)
 
         ids, distances = self.hnsw.knn_query(query, k=min(k * 3, self.n_vectors))
@@ -158,22 +148,16 @@ class ZoneGuidedGraph:
         return ids[:k], distances[:k]
 
     def _rerank_with_zone_priority(
-        self,
-        ids: np.ndarray,
-        distances: np.ndarray,
-        selected_zones: np.ndarray,
-        k: int
+        self, ids: np.ndarray, distances: np.ndarray, selected_zones: np.ndarray, k: int
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Sort by distance divided by zone_priority_factor for ids in selected zones.
-
-        Returned distances are the original, unadjusted ones.
-        """
         zone_set = set(selected_zones.tolist())
 
         scores = []
         for vid, dist in zip(ids, distances):
             in_selected_zone = self.zone_assignments[vid] in zone_set
-            adjusted_dist = dist / self.config.zone_priority_factor if in_selected_zone else dist
+            adjusted_dist = (
+                dist / self.config.zone_priority_factor if in_selected_zone else dist
+            )
             scores.append((adjusted_dist, dist, vid))
 
         scores.sort(key=lambda score: score[0])
@@ -183,10 +167,7 @@ class ZoneGuidedGraph:
         return result_ids, result_dists
 
     def search_batch(
-        self,
-        queries: np.ndarray,
-        k: int,
-        ef_search: Optional[int] = None
+        self, queries: np.ndarray, k: int, ef_search: Optional[int] = None
     ) -> Tuple[np.ndarray, np.ndarray]:
         if not self.is_built:
             raise RuntimeError("Graph must be built before searching")
@@ -204,60 +185,64 @@ class ZoneGuidedGraph:
 
     def get_stats(self) -> Dict:
         return {
-            'n_vectors': self.n_vectors,
-            'dimension': self.dimension,
-            'n_zones': self.n_zones,
-            'M': self.config.M,
-            'ef_construction': self.config.ef_construction,
-            'ef_search': self.config.ef_search,
-            'use_zone_guidance': self.config.use_zone_guidance
+            "n_vectors": self.n_vectors,
+            "dimension": self.dimension,
+            "n_zones": self.n_zones,
+            "M": self.config.M,
+            "ef_construction": self.config.ef_construction,
+            "ef_search": self.config.ef_search,
+            "use_zone_guidance": self.config.use_zone_guidance,
         }
 
     def save_state(self) -> Dict:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
             tmp_path = f.name
 
         try:
             self.hnsw.save_index(tmp_path)
-            with open(tmp_path, 'rb') as f:
+            with open(tmp_path, "rb") as f:
                 hnsw_bytes = f.read()
         finally:
             os.unlink(tmp_path)
 
         return {
-            'config': {
-                'M': self.config.M,
-                'ef_construction': self.config.ef_construction,
-                'ef_search': self.config.ef_search,
-                'use_zone_guidance': self.config.use_zone_guidance,
-                'zone_priority_factor': self.config.zone_priority_factor,
-                'space': self.config.space,
-                'insertion_order': self.config.insertion_order,
-                'skeleton_fraction': self.config.skeleton_fraction
+            "config": {
+                "M": self.config.M,
+                "ef_construction": self.config.ef_construction,
+                "ef_search": self.config.ef_search,
+                "use_zone_guidance": self.config.use_zone_guidance,
+                "zone_priority_factor": self.config.zone_priority_factor,
+                "space": self.config.space,
+                "insertion_order": self.config.insertion_order,
+                "skeleton_fraction": self.config.skeleton_fraction,
             },
-            'n_vectors': self.n_vectors,
-            'dimension': self.dimension,
-            'n_zones': self.n_zones,
-            'zone_assignments': self.zone_assignments,
-            'zone_centroids': self.zone_centroids,
-            'zone_entry_points': {int(k): list(v) for k, v in self.zone_entry_points.items()},
-            'hnsw_bytes': hnsw_bytes
+            "n_vectors": self.n_vectors,
+            "dimension": self.dimension,
+            "n_zones": self.n_zones,
+            "zone_assignments": self.zone_assignments,
+            "zone_centroids": self.zone_centroids,
+            "zone_entry_points": {
+                int(k): list(v) for k, v in self.zone_entry_points.items()
+            },
+            "hnsw_bytes": hnsw_bytes,
         }
 
     @classmethod
-    def load_state(cls, state: Dict) -> 'ZoneGuidedGraph':
-        config = GraphConfig(**state['config'])
+    def load_state(cls, state: Dict) -> "ZoneGuidedGraph":
+        config = GraphConfig(**state["config"])
         graph = cls(config)
 
-        graph.n_vectors = state['n_vectors']
-        graph.dimension = state['dimension']
-        graph.n_zones = state['n_zones']
-        graph.zone_assignments = state['zone_assignments']
-        graph.zone_centroids = state['zone_centroids']
-        graph.zone_entry_points = {int(k): list(v) for k, v in state['zone_entry_points'].items()}
+        graph.n_vectors = state["n_vectors"]
+        graph.dimension = state["dimension"]
+        graph.n_zones = state["n_zones"]
+        graph.zone_assignments = state["zone_assignments"]
+        graph.zone_centroids = state["zone_centroids"]
+        graph.zone_entry_points = {
+            int(k): list(v) for k, v in state["zone_entry_points"].items()
+        }
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
-            f.write(state['hnsw_bytes'])
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
+            f.write(state["hnsw_bytes"])
             tmp_path = f.name
 
         try:
