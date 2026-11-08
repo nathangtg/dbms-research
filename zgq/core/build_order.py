@@ -95,7 +95,7 @@ def _zone_order(vectors, zone_assignments, zone_centroids) -> np.ndarray:
     if zone_centroids is None or len(zone_centroids) == 0:
         return np.arange(len(vectors), dtype=np.int64)
     lists = _zone_sorted_lists(vectors, zone_assignments, zone_centroids)
-    return np.array(np.concatenate(lists).tolist(), dtype=np.int64)
+    return np.concatenate(lists).astype(np.int64)
 
 
 def insertion_order(name: str, vectors: np.ndarray,
@@ -124,7 +124,7 @@ def insertion_order(name: str, vectors: np.ndarray,
         return np.concatenate([perm[:k], zone[~sampled[zone]]]).astype(np.int64)
     if name == 'roundrobin':
         lists = _zone_sorted_lists(vectors, zone_assignments, zone_centroids)
-        out = []
+        out: list = []
         for i in range(max(len(a) for a in lists)):
             out.extend(a[i] for a in lists if i < len(a))
         return np.array(out, dtype=np.int64)

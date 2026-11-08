@@ -32,7 +32,7 @@ by a test that checks that all neighbor ids are valid.
 import os
 import struct
 import tempfile
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from numba import njit
@@ -69,9 +69,9 @@ def extract_level0_links(hnsw, dim: int) -> Tuple[np.ndarray, int]:
     block = block.reshape(cur_count, size_per_el)
     counts = block[:, :2].copy().view(np.uint16).reshape(-1).astype(np.int64)
     links_internal = (
-        block[:, 4 : 4 + 4 * maxM0].copy().view(np.int32).reshape(cur_count, maxM0)
+        block[:, 4:4 + 4 * maxM0].copy().view(np.int32).reshape(cur_count, maxM0)
     )
-    labels = block[:, label_offset : label_offset + 8].copy().view(np.int64).reshape(-1)
+    labels = block[:, label_offset:label_offset + 8].copy().view(np.int64).reshape(-1)
 
     # Mask slots beyond each node's link count, then map internal ids to labels
     col = np.arange(maxM0)[None, :]

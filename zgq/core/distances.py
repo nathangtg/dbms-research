@@ -9,7 +9,6 @@ class DistanceComputer:
 
     def __init__(self, metric: str = 'l2'):
         self.metric = metric
-        self._norm_cache: Optional[np.ndarray] = None
 
     def compute(
         self,
@@ -38,10 +37,11 @@ class DistanceComputer:
 
         query_norm = np.dot(query, query)
 
-        if precomputed_norms is not None:
-            vector_norms = precomputed_norms
-        else:
-            vector_norms = np.sum(vectors * vectors, axis=1)
+        vector_norms = (
+            precomputed_norms
+            if precomputed_norms is not None
+            else np.sum(vectors * vectors, axis=1)
+        )
 
         inner_products = vectors @ query
         distances = query_norm + vector_norms - 2 * inner_products
@@ -62,10 +62,9 @@ class DistanceComputer:
         if query_norm > 0:
             query = query / query_norm
 
-        if precomputed_norms is not None:
-            vector_norms = np.sqrt(precomputed_norms)
-        else:
-            vector_norms = np.sqrt(np.sum(vectors * vectors, axis=1))
+        if precomputed_norms is None:
+            precomputed_norms = np.sum(vectors * vectors, axis=1)
+        vector_norms = np.sqrt(precomputed_norms)
 
         inner_products = vectors @ query
 
@@ -114,7 +113,7 @@ class SIMDDistance:
     """Numba-compiled distance kernels."""
 
     @staticmethod
-    @njit(float32[:](float32[:], float32[:,:]), fastmath=True, parallel=True, cache=True)
+    @njit(float32[:](float32[:], float32[:, :]), fastmath=True, parallel=True, cache=True)
     def euclidean_squared_batch(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
         n = vectors.shape[0]
         d = vectors.shape[1]
@@ -146,7 +145,7 @@ class SIMDDistance:
         b: np.ndarray,
         bound: float
     ) -> float:
-        """Squared distance, or bound + 1 if the partial sum exceeds bound (checked every 8 dims)."""
+        """Squared distance, or bound + 1 once the partial sum exceeds bound (every 8 dims)."""
         d = a.shape[0]
         dist = 0.0
 
@@ -160,7 +159,7 @@ class SIMDDistance:
         return dist
 
     @staticmethod
-    @njit(float32[:](float32[:,:], float32[:]), fastmath=True, parallel=True, cache=True)
+    @njit(float32[:](float32[:, :], float32[:]), fastmath=True, parallel=True, cache=True)
     def compute_norms_batch(vectors: np.ndarray, out: np.ndarray) -> np.ndarray:
         n = vectors.shape[0]
         d = vectors.shape[1]
@@ -196,24 +195,14 @@ class EarlyTerminationComputer:
         valid_distances = []
 
         for idx in indices:
-            dist = self._compute_with_bound_single(query, vectors[idx], bound)
+            dist = float(SIMDDistance.euclidean_squared_early_term(
+                query, vectors[idx], np.float32(bound)
+            ))
             if dist <= bound:
                 valid_indices.append(idx)
                 valid_distances.append(dist)
 
         return np.array(valid_indices), np.array(valid_distances)
-
-    def _compute_with_bound_single(
-        self,
-        a: np.ndarray,
-        b: np.ndarray,
-        bound: float
-    ) -> float:
-        return float(SIMDDistance.euclidean_squared_early_term(
-            a.astype(np.float32),
-            b.astype(np.float32),
-            np.float32(bound)
-        ))
 
 
 def select_top_k_distances(
@@ -236,17 +225,14 @@ def select_top_k_distances(
 
 def _warmup_jit():
     """Compile the kernels at import so the first search does not pay for it."""
-    try:
-        dummy_q = np.zeros(128, dtype=np.float32)
-        dummy_v = np.zeros((10, 128), dtype=np.float32)
-        dummy_out = np.zeros(10, dtype=np.float32)
+    dummy_q = np.zeros(128, dtype=np.float32)
+    dummy_v = np.zeros((10, 128), dtype=np.float32)
+    dummy_out = np.zeros(10, dtype=np.float32)
 
-        SIMDDistance.euclidean_squared_batch(dummy_q, dummy_v)
-        SIMDDistance.euclidean_squared_single(dummy_q, dummy_q)
-        SIMDDistance.euclidean_squared_early_term(dummy_q, dummy_q, 1.0)
-        SIMDDistance.compute_norms_batch(dummy_v, dummy_out)
-    except Exception:
-        pass
+    SIMDDistance.euclidean_squared_batch(dummy_q, dummy_v)
+    SIMDDistance.euclidean_squared_single(dummy_q, dummy_q)
+    SIMDDistance.euclidean_squared_early_term(dummy_q, dummy_q, 1.0)
+    SIMDDistance.compute_norms_batch(dummy_v, dummy_out)
 
 
 _warmup_jit()

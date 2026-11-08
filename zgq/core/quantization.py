@@ -68,9 +68,12 @@ class ResidualProductQuantizer:
             train_assignments = None if zone_assignments is None else zone_assignments[indices]
 
         train_data = train_vectors
-        if (self.config.use_residuals and
-            zone_centroids is not None and
-            train_assignments is not None):
+        use_zone_residuals = (
+            self.config.use_residuals
+            and zone_centroids is not None
+            and train_assignments is not None
+        )
+        if use_zone_residuals:
             train_data = train_vectors - zone_centroids[train_assignments]
 
         if self.config.normalize_residuals:
@@ -114,9 +117,12 @@ class ResidualProductQuantizer:
         vectors = vectors.astype(np.float32)
 
         data = vectors
-        if (self.config.use_residuals and
-            zone_centroids is not None and
-            zone_assignments is not None):
+        use_zone_residuals = (
+            self.config.use_residuals
+            and zone_centroids is not None
+            and zone_assignments is not None
+        )
+        if use_zone_residuals:
             data = vectors - zone_centroids[zone_assignments]
 
         if self.config.normalize_residuals and self.mean_residual is not None:
@@ -254,7 +260,7 @@ class ResidualProductQuantizer:
         return pq
 
 
-@njit(float32[:](uint8[:,:], float32[:,:]), fastmath=True, parallel=True, cache=True)
+@njit(float32[:](uint8[:, :], float32[:, :]), fastmath=True, parallel=True, cache=True)
 def _asymmetric_distance_numba(
     codes: np.ndarray,
     distance_table: np.ndarray
