@@ -40,12 +40,12 @@ RETIRED = {
 EXEMPT = {"CLAIMS.md"}
 # The archived v1 preprint is kept verbatim; its retired numbers are logged in
 # docs/CLAIMS.md. Only this exact path (relative to the scan root) is exempt.
-EXEMPT_PATHS = {"v8/docs/preprint/v1.md"}
+EXEMPT_PATHS = {"docs/preprint/v1.md"}
 SKIP_DIRS = {".git", ".agents", "results", "References", "node_modules", ".venv"}
 
 
 def default_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return Path(__file__).resolve().parent.parent
 
 
 def scan_files(root: Path):

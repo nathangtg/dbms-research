@@ -19,7 +19,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Clone the repository:
    ```bash
    git clone https://github.com/nathangtg/dbms-research.git
-   cd dbms-research/v8
+   cd dbms-research
    ```
 
 2. Create a virtual environment:
@@ -201,7 +201,7 @@ make tables    # tables/ (Markdown and LaTeX)
 ### Building the paper
 
 ```bash
-make paper   # latexmk -pdf (pdflatex fallback); output in ../latex/build/paper.pdf
+make paper   # latexmk -pdf (pdflatex fallback); output in latex/build/paper.pdf
 ```
 
 Build files are written to `latex/build/`, which is git-ignored, so the tracked `latex/paper.pdf` is

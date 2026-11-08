@@ -16,7 +16,7 @@ SKIP_DIRS = {".git", ".agents", "results", "References", ".venv", "zgq.egg-info"
 
 
 def default_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return Path(__file__).resolve().parent.parent
 
 
 def iter_files(root: Path):

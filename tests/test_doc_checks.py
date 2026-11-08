@@ -31,7 +31,7 @@ def test_claims_check_exempts_ledger_and_passes_clean(tmp_path):
 
 
 def test_repo_docs_have_no_retired_claims():
-    assert check_claims.find_violations(ROOT.parent) == []
+    assert check_claims.find_violations(ROOT) == []
 
 
 def test_links_check_detects_broken(tmp_path):
@@ -44,15 +44,15 @@ def test_links_check_detects_broken(tmp_path):
 
 
 def test_repo_links_resolve():
-    assert check_links.main(["--root", str(ROOT.parent)]) == 0
+    assert check_links.main(["--root", str(ROOT)]) == 0
 
 
 def test_claims_check_exempts_only_archived_v1_preprint(tmp_path):
-    preprint = tmp_path / "v8" / "docs" / "preprint"
+    preprint = tmp_path / "docs" / "preprint"
     preprint.mkdir(parents=True)
     (preprint / "v1.md").write_text("reaches 94.8% recall\n")
     (preprint / "v2.md").write_text("reaches 94.8% recall\n")
-    (tmp_path / "v8" / "docs" / "other.md").write_text("reaches 94.8% recall\n")
+    (tmp_path / "docs" / "other.md").write_text("reaches 94.8% recall\n")
     (tmp_path / "v1.md").write_text("reaches 94.8% recall\n")
     flagged = {str(p.as_posix()) for p, _, _ in check_claims.find_violations(tmp_path)}
-    assert flagged == {"v8/docs/preprint/v2.md", "v8/docs/other.md", "v1.md"}
+    assert flagged == {"docs/preprint/v2.md", "docs/other.md", "v1.md"}
