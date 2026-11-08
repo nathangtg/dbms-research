@@ -234,13 +234,16 @@ class ResidualProductQuantizer:
             subvectors = data[:, start_idx:end_idx]
             centroids = self.codebooks[j]
             
-            # Find nearest centroid for each subvector
-            # Vectorized: (N, 1, d/m) - (1, k, d/m) -> (N, k, d/m) -> sum -> (N, k)
-            distances = np.sum(
-                (subvectors[:, np.newaxis, :] - centroids[np.newaxis, :, :]) ** 2,
-                axis=2
-            )
-            codes[:, j] = np.argmin(distances, axis=1).astype(np.uint8)
+            # Find nearest centroid for each subvector, in row chunks so the
+            # (chunk, k, d/m) broadcast stays small at large N (same codes as
+            # the unchunked computation).
+            for lo in range(0, n_vectors, 50000):
+                sub = subvectors[lo:lo + 50000]
+                distances = np.sum(
+                    (sub[:, np.newaxis, :] - centroids[np.newaxis, :, :]) ** 2,
+                    axis=2
+                )
+                codes[lo:lo + 50000, j] = np.argmin(distances, axis=1).astype(np.uint8)
         
         return codes
     
