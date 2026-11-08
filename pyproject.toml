@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zgq"
+version = "8.0.0"
+description = "Zone-Guided Quantization for Fast Approximate Nearest Neighbor Search"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Nathan Aldyth Prananta Ginting", email = "nathan.n@imail.sunway.edu.my" },
+]
+keywords = [
+    "nearest-neighbor-search",
+    "approximate-nearest-neighbors",
+    "ann",
+    "vector-search",
+    "similarity-search",
+    "hnsw",
+    "quantization",
+    "machine-learning",
+    "embeddings",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Database :: Database Engines/Servers",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
+    "hnswlib>=0.7.0",
+    "numba>=0.55.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/nathangtg/dbms-research"
+Documentation = "https://github.com/nathangtg/dbms-research/tree/master/docs"
+Source = "https://github.com/nathangtg/dbms-research"
+
+[project.scripts]
+zgq-benchmark = "benchmarks.run_benchmarks:main"
+
+[project.optional-dependencies]
+benchmark = [
+    "matplotlib>=3.5.0",
+    "faiss-cpu>=1.7.0",
+    "psutil>=5.9.0",
+    "h5py>=3.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+    "psutil>=5.9.0",
+    "h5py>=3.8.0",
+    "matplotlib>=3.5.0",
+    "faiss-cpu>=1.7.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.setuptools.packages.find]
+include = ["zgq*"]
