@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in `ZGQConfig` options, defaults unchanged: `insertion_order`, `zone_replicas`, `adaptive_probe` (`min_probe`, `max_probe`, `probe_ratio`), `search_mode` ('graph', 'zone_scan', 'global_entry'); `ZGQIndex.batch_zone_search`. Persisted by save/load. No recall results claimed yet.
+
 ### Changed
 
 - Removed v1 to v7 from the working tree (kept at git tag `pre-v8-cleanup`).

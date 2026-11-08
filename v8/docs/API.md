@@ -183,6 +183,27 @@ config = ZGQConfig(
 | `metric` | str | 'l2' | 'l2', 'cosine', or 'ip' |
 | `verbose` | bool | False | Print progress |
 
+#### Opt-in recall options
+
+All are off by default and leave default results unchanged. They affect the zone
+path (`search`, `batch_zone_search`), except `insertion_order`, which changes the
+graph that `batch_search(fast_mode=True)` also uses. No recall benefit is claimed
+here; see `docs/BENCHMARKS.md` for measured results.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `insertion_order` | str | 'zone' | HNSW insertion order: 'zone' (zone by zone) or 'random' (seeded permutation) |
+| `zone_replicas` | int | 1 | Zones each vector belongs to for zone scans (2 = SPANN-style boundary replication). Extra cost is `n_vectors * (zone_replicas - 1)` int32 ids, reported by `get_stats()['replica_overhead']` |
+| `adaptive_probe` | bool | False | Pick the probe count per query: zones whose centroid distance is at most `probe_ratio` times the nearest one, clamped to `[min_probe, max_probe]` (`n_probe` is ignored) |
+| `min_probe`, `max_probe` | int | 1, 32 | Adaptive probe bounds |
+| `probe_ratio` | float | 1.3 | Adaptive distance ratio threshold (>= 1) |
+| `search_mode` | str | 'graph' | 'graph': global graph search with zone re-ranking. 'zone_scan': exact candidates are all members (and replicas) of the probed zones. 'global_entry': graph candidates plus the entry points of the probed zones. hnswlib cannot take custom entry points, so this seeds the candidate set only and does not change hops |
+
+`batch_zone_search(queries, k, n_probe, ef_search, use_pq_rerank, n_jobs)` is the
+batch form of `search`. It sets `index.last_batch_stats` (`mean_probes`, `probes`).
+Note `use_pq_rerank=True` (default) applies the PQ shortlist, which lowered recall
+as `n_probe` grew in `results/2026-11-08-improvements/diagnostics`.
+
 ---
 
 ## Core Components
