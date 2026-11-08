@@ -14,19 +14,23 @@ This repository documents the development of **ZGQ (Zonal Graph Quantization)**,
 
 ## Repository Structure
 
-The project has evolved through several iterations, with **v8** being the current stable release.
+The current implementation lives in `v8/`.
 
 ```
 dbms-research/
-├── v8/          # CURRENT STABLE VERSION (ZGQ Implementation)
-│   ├── zgq/     # Core package source code
-│   ├── benchmarks/ # Benchmarking suite
-│   └── docs/    # Detailed documentation
-├── v7/          # Previous iteration (Benchmarking focus)
-├── v6/          # Initial complete system
-├── latex/       # Research paper LaTeX source
-└── draft_papers/# Mathematical proofs and drafts
+├── v8/           # ZGQ implementation (package, tests, benchmarks, docs)
+│   ├── zgq/
+│   ├── tests/
+│   ├── benchmarks/
+│   └── docs/
+├── latex/        # Research paper LaTeX source
+├── draft_papers/ # Mathematical proofs and drafts
+└── References/   # Cited papers
 ```
+
+## History
+
+Earlier iterations (v1 to v7) were removed from the working tree. They remain available in git history at the tag `pre-v8-cleanup`.
 
 ## What is ZGQ?
 
@@ -46,7 +50,7 @@ To run the latest version of ZGQ (v8):
 1.  **Install Dependencies:**
     ```bash
     cd v8
-    pip install -r requirements.txt
+    pip install -e '.[dev]'
     ```
 
 2.  **Run a Quick Test:**
