@@ -35,6 +35,7 @@ RETIRED = {
     "20% memory reduction": r"20\s*\\?%\s*(memory|reduction in memory)",
     "610 MB at 1M": r"~?\s*610\s*MB",
     "alpha 0.74": r"(alpha|\\alpha)[^.\n]{0,20}0\.74",
+    "empirical alpha": r"empirical[^.\n]{0,20}\\alpha",
 }
 EXEMPT = {"CLAIMS.md"}
 SKIP_DIRS = {".git", ".agents", "results", "References", "node_modules", ".venv"}

@@ -752,7 +752,7 @@ In ZGQ, vectors from the same zone are inserted consecutively. At insertion time
 \begin{equation}
 P_{same}^{ordered} = \frac{|z \cap \{x_1, \ldots, x_{t-1}\}|}{t-1} \geq \frac{n_z - (n - t + 1)}{t - 1}
 \end{equation}
-For vectors inserted in the middle of their zone, this probability approaches 1, significantly increasing intra-zone connectivity. The improved local connectivity factor is derived from the ratio of expected intra-zone edges in ZGQ versus HNSW. Given $M_{ZGQ} = 32$ and $M_{HNSW} = 16$, and empirical $\alpha \approx 0.65$, we achieve $\gamma \approx 1.65$. This dense intra-zone connectivity allows ZGQ to maintain higher recall with fewer global hops.
+For vectors inserted in the middle of their zone, this probability approaches 1, significantly increasing intra-zone connectivity. The improved local connectivity factor is derived from the ratio of expected intra-zone edges in ZGQ versus HNSW. Given $M_{ZGQ} = 32$ and $M_{HNSW} = 16$, and assumed $\alpha \approx 0.65$, we achieve $\gamma \approx 1.65$. This dense intra-zone connectivity allows ZGQ to maintain higher recall with fewer global hops.
 
 \paragraph{Search Path Reduction}
 The partitioning strategy reduces the effective graph diameter during search.

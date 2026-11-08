@@ -8,7 +8,7 @@ Statuses: **verified** (traced to the committed results), **corrected** (replace
 analytic; needs the authors' attention).
 
 `make claims-check` fails if any retired number below reappears in a Markdown or LaTeX file
-(this file is exempt). Retired patterns are defined in `scripts/check_claims.py`.
+(this file is exempt). Retired patterns are defined in `scripts/check_claims.py`. The guard matches fixed patterns only, so it cannot catch reworded or new untraceable figures; review new numbers by hand.
 
 ## Claims retained, with sources
 
