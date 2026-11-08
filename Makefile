@@ -1,16 +1,22 @@
-.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full study-smoke study-check study-report figures tables claims-check links-check clean build docs example verify all help paper
+.PHONY: sync lock install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full study-smoke study-check study-report figures tables claims-check links-check clean build docs example verify all help paper
 
-# Default Python interpreter
-PYTHON ?= python3
+# All Python commands run through uv (environment from pyproject.toml and uv.lock)
+PYTHON ?= uv run python
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Install package in production mode
-	$(PYTHON) -m pip install .
+sync:  ## Create or update .venv from uv.lock (includes dev group)
+	uv sync
 
-dev:  ## Install package in development mode with dev dependencies
-	$(PYTHON) -m pip install -e ".[dev]"
+lock:  ## Refresh uv.lock from pyproject.toml
+	uv lock
+
+install:  ## Install runtime dependencies only (no dev group)
+	uv sync --no-dev
+
+dev:  ## Install package with dev dependencies
+	uv sync
 
 test:  ## Run all tests
 	$(PYTHON) -m pytest tests/ -v
@@ -103,8 +109,8 @@ clean:  ## Clean build artifacts
 	find . -type f -name "*.nbc" -delete
 	find . -type f -name "*.nbi" -delete
 
-build:  ## Build package for distribution
-	$(PYTHON) -m build
+build:  ## Build sdist and wheel into dist/
+	uv build
 
 docs:  ## Generate documentation
 	@echo "Documentation is in docs/ directory"
