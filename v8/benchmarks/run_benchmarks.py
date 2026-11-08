@@ -70,11 +70,6 @@ IMPROVE_GLOBAL_PROBE = 8
 IMPROVE_MAX_PROBE = 64
 
 
-# ----------------------------------------------------------------------------
-# Data
-# ----------------------------------------------------------------------------
-
-
 def generate_test_data(
     n_vectors: int,
     n_queries: int,
@@ -119,11 +114,6 @@ def exact_ground_truth(vectors: np.ndarray, queries: np.ndarray, k: int) -> np.n
         order = np.argsort(np.take_along_axis(d2, part, axis=1), axis=1)
         out[s : s + step] = np.take_along_axis(part, order, axis=1)
     return out
-
-
-# ----------------------------------------------------------------------------
-# Environment
-# ----------------------------------------------------------------------------
 
 
 def _cpu_name() -> str:
@@ -195,11 +185,6 @@ def rss_mb() -> float:
         return float("nan")
     gc.collect()
     return psutil.Process().memory_info().rss / 2**20
-
-
-# ----------------------------------------------------------------------------
-# Index adapters: each returns (index_obj, build_time_s, rss_delta_mb, search_fn)
-# ----------------------------------------------------------------------------
 
 
 @contextmanager
@@ -296,11 +281,6 @@ def build_ivfpq(vectors, seed, threads):
         return idx.search(queries, k)[1]
 
     return idx, t, mem, search
-
-
-# ----------------------------------------------------------------------------
-# Measurement
-# ----------------------------------------------------------------------------
 
 
 def stats(values: List[float]) -> Dict:
@@ -424,11 +404,8 @@ def _bytes_entry(model: Dict, source: str) -> Dict:
     }
 
 
-# ----------------------------------------------------------------------------
 # Opt-in recall-improvement variants (--improvements). Each group shares one
 # graph build; variants differ only in search settings and zone replicas.
-# ----------------------------------------------------------------------------
-
 
 def _zgq_search_fn(idx, v, search_mode, adaptive, nopq, replicas, sweep):
     """Return a search closure for one variant. ``sweep`` is 'ef', 'nprobe'
@@ -492,7 +469,6 @@ def improvement_groups(n, args):
 
 
 def _improvement_worker(scale: str, group_key: str, argv_dict: Dict) -> List[Dict]:
-    """Build one ZGQ graph in a fresh process and measure all its variants."""
     args = argparse.Namespace(**argv_dict)
     n = SCALES[scale]
     vectors, queries = generate_test_data(n, args.n_queries, DIMENSION, args.seed)
@@ -632,7 +608,6 @@ def _index_worker(scale: str, label: str, argv_dict: Dict) -> Dict:
 
 def run(args) -> Dict:
     out_dir = Path(args.out_dir)
-    raw_dir = out_dir / "raw"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     summary = {

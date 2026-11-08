@@ -79,7 +79,6 @@ class HNSWGraph:
         return int(self.level0.shape[0])
 
     def level_neighbors(self, node: int, level: int) -> np.ndarray:
-        """Neighbor internal ids of ``node`` at ``level`` (0 = base layer)."""
         if level == 0:
             return self.level0[node, : self.counts[node]]
         if level > self.levels[node]:
@@ -89,7 +88,6 @@ class HNSWGraph:
 
 
 def read_hnsw_index(path: str) -> HNSWGraph:
-    """Parse a file written by ``hnswlib.Index.save_index``."""
     raw = np.fromfile(path, dtype=np.uint8)
     hdr = raw[: _HEADER_DTYPE.itemsize].view(_HEADER_DTYPE)[0]
     n = int(hdr["cur_count"])
@@ -169,11 +167,6 @@ def read_hnsw_index(path: str) -> HNSWGraph:
     )
 
 
-# ----------------------------------------------------------------------------
-# Elementary statistics (pure functions, tested on fixtures)
-# ----------------------------------------------------------------------------
-
-
 @njit(cache=True)
 def _bfs(neighbors, counts, start):
     n = neighbors.shape[0]
@@ -196,7 +189,6 @@ def _bfs(neighbors, counts, start):
 
 
 def reachable_count(neighbors: np.ndarray, counts: np.ndarray, start: int) -> int:
-    """Number of nodes reachable from ``start`` following directed edges."""
     return int(
         _bfs(
             np.ascontiguousarray(neighbors, dtype=np.int32),
@@ -209,7 +201,6 @@ def reachable_count(neighbors: np.ndarray, counts: np.ndarray, start: int) -> in
 def _edge_arrays(
     neighbors: np.ndarray, counts: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Flat (src, dst) arrays of valid edges."""
     mask = np.arange(neighbors.shape[1])[None, :] < counts[:, None]
     src = np.repeat(np.arange(neighbors.shape[0], dtype=np.int32), counts)
     return src, neighbors[mask]
@@ -218,7 +209,6 @@ def _edge_arrays(
 def cross_zone_fraction(
     neighbors: np.ndarray, counts: np.ndarray, zones: np.ndarray
 ) -> float:
-    """Fraction of directed edges whose endpoints lie in different zones."""
     src, dst = _edge_arrays(neighbors, counts)
     if src.size == 0:
         return 0.0
@@ -293,7 +283,6 @@ def analyze_graph(
     rng = np.random.RandomState(seed)
     out: dict = {"n": n, "M": g.M, "max_level": g.max_level}
 
-    # Reachability and components.
     out["reachable_fraction_from_entry"] = (
         reachable_count(g.level0, g.counts, g.entry_point) / n
     )
@@ -304,7 +293,6 @@ def analyze_graph(
     )
     del adj
 
-    # Degrees.
     deg = g.counts
     out["out_degree"] = {
         "mean": float(deg.mean()),
@@ -316,7 +304,6 @@ def analyze_graph(
     out["in_degree_max"] = int(indeg.max())
     out["in_degree_gini"] = gini(indeg)
 
-    # Zones.
     out["cross_zone_edge_fraction"] = cross_zone_fraction(g.level0, g.counts, zones)
 
     # Sampled edge geometry against exact 10-NN.
@@ -344,7 +331,6 @@ def analyze_graph(
         **_pct(ratios),
     }
 
-    # Upper layers.
     max_lv = int(g.levels.max())
     out["nodes_per_level"] = [int(np.sum(g.levels >= lv)) for lv in range(max_lv + 1)]
     upper = np.nonzero(g.levels >= 1)[0]
@@ -356,11 +342,6 @@ def analyze_graph(
     out["entry_point_zone"] = int(zones[g.entry_point])
     out["entry_point_insertion_rank"] = int(g.entry_point)
     return out
-
-
-# ----------------------------------------------------------------------------
-# Instrumented search
-# ----------------------------------------------------------------------------
 
 
 @njit(cache=True, inline="always")

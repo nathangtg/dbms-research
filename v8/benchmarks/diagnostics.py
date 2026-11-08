@@ -48,15 +48,9 @@ SEED = 42
 N_PROBES = (1, 2, 4, 8, 16, 32, 64)
 
 
-# ----------------------------------------------------------------------------
-# Pure helpers (unit tested)
-# ----------------------------------------------------------------------------
-
-
 def fraction_outside_zones(
     gt: np.ndarray, assignments: np.ndarray, probed: Sequence[np.ndarray]
 ) -> float:
-    """Mean over queries of the fraction of true neighbors whose zone is not probed."""
     outside = []
     for row, zones in zip(gt, probed):
         in_probed = np.isin(assignments[row], zones)
@@ -79,7 +73,6 @@ def oracle_zone_coverage(gt: np.ndarray, assignments: np.ndarray) -> float:
 def nearest_centroid_zones(
     queries: np.ndarray, centroids: np.ndarray, n_probe: int
 ) -> np.ndarray:
-    """Flat nearest-centroid zone ids, shape (n_queries, n_probe)."""
     d2 = (
         np.einsum("ij,ij->i", queries, queries)[:, None]
         - 2.0 * queries @ centroids.T
@@ -89,11 +82,6 @@ def nearest_centroid_zones(
     part = np.argpartition(d2, n_probe - 1, axis=1)[:, :n_probe]
     order = np.argsort(np.take_along_axis(d2, part, axis=1), axis=1)
     return np.take_along_axis(part, order, axis=1)
-
-
-# ----------------------------------------------------------------------------
-# Shared setup
-# ----------------------------------------------------------------------------
 
 
 def load(scale: str, n_queries: int):
@@ -170,11 +158,6 @@ def _hnsw_points(idx_search, queries, vectors, gt, ef, rerank_factor):
     return _point(ids, t, gt, n_q)
 
 
-# ----------------------------------------------------------------------------
-# D0: path audit
-# ----------------------------------------------------------------------------
-
-
 def d0_path_audit(vectors, queries, gt, idx: ZGQIndex, efs=(16, 64, 256)) -> Dict:
     calls = {"select_zones": 0}
     original = idx.zones.select_zones
@@ -211,7 +194,6 @@ def d0_path_audit(vectors, queries, gt, idx: ZGQIndex, efs=(16, 64, 256)) -> Dic
             row[f"zgq_graph_rf{rf}"] = _hnsw_points(
                 graph_search, queries, vectors, gt, ef, rf
             )
-        # What the benchmark actually calls
         ids, t = _timed(
             lambda: idx.batch_search(queries, K, ef_search=ef, fast_mode=True)[0]
         )
@@ -222,11 +204,6 @@ def d0_path_audit(vectors, queries, gt, idx: ZGQIndex, efs=(16, 64, 256)) -> Dic
         "select_zones_calls_in_zone_mode_5_queries": slow_calls,
         "rows": rows,
     }
-
-
-# ----------------------------------------------------------------------------
-# D1: insertion order ablation
-# ----------------------------------------------------------------------------
 
 
 def d1_insertion_order(
@@ -273,13 +250,7 @@ def d1_insertion_order(
     return {"seeds": list(seeds), "rows": rows}
 
 
-# ----------------------------------------------------------------------------
-# D2 / D3: zone path and oracle zone
-# ----------------------------------------------------------------------------
-
-
 def d2_nprobe(queries, gt, idx: ZGQIndex, n_probes=N_PROBES) -> Dict:
-    """Zone path recall vs n_probe, with the PQ shortlist stage on (default) and off."""
     rows = []
     for npb in n_probes:
         row = {"n_probe": npb}
@@ -327,11 +298,6 @@ def d3_oracle_zone(queries, gt, idx: ZGQIndex, n_probes=N_PROBES) -> Dict:
     }
 
 
-# ----------------------------------------------------------------------------
-# D4: zone count sweep
-# ----------------------------------------------------------------------------
-
-
 def d4_zone_sweep(
     vectors, queries, gt, zone_counts: List, n_probes=(1, 4, 16, 64)
 ) -> Dict:
@@ -354,11 +320,6 @@ def d4_zone_sweep(
         )
         del idx
     return {"runs": out}
-
-
-# ----------------------------------------------------------------------------
-# CLI
-# ----------------------------------------------------------------------------
 
 
 def _write(out_dir: Path, name: str, scale: str, payload: Dict, meta: Dict) -> None:

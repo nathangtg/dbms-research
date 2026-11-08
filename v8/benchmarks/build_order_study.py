@@ -62,11 +62,6 @@ EXPERIMENTS = ("e1", "e2", "e3")
 BASELINE = {"e1": "random", "e2": "random", "e3": "e3_random"}
 
 
-# ----------------------------------------------------------------------------
-# Config
-# ----------------------------------------------------------------------------
-
-
 def make_config(
     experiment="e1",
     dataset="synthetic",
@@ -119,11 +114,6 @@ def run_path(out_dir, cfg: Dict) -> Path:
     n = cfg["n_base"] if cfg["n_base"] is not None else "full"
     name = f"{cfg['dataset']}_n{n}_{strategy_key(cfg)}_s{cfg['seed']}_t{cfg['threads']}.json"
     return Path(out_dir) / cfg["experiment"] / name
-
-
-# ----------------------------------------------------------------------------
-# One run
-# ----------------------------------------------------------------------------
 
 
 def build_zones(vectors, seed):
@@ -189,7 +179,6 @@ def _quick_recall(idx, queries, gt, cfg):
 
 
 def run_one(cfg: Dict) -> Dict:
-    """Execute one run and return the JSON-serializable result."""
     seed, k = cfg["seed"], cfg["k"]
     ds = load_dataset(cfg["dataset"], cfg["n_base"], cfg["n_queries"], k, DATA_SEED)
     vectors, queries, gt = ds.vectors, ds.queries, ds.gt
@@ -307,10 +296,6 @@ def _finalize_extra(run, queries, gt, cfg):
             rec["recall_pct"] = _quick_recall(idx, queries, gt, cfg)
 
 
-# ----------------------------------------------------------------------------
-# Run checking, atomic write, resume
-# ----------------------------------------------------------------------------
-
 _RUN_KEYS = (
     "schema",
     "environment",
@@ -364,7 +349,6 @@ def _atomic_write(path: Path, obj) -> None:
 
 
 def execute(cfg: Dict, out_dir: str) -> Path:
-    """Run ``cfg`` unless its JSON already exists; return the JSON path."""
     path = run_path(out_dir, cfg)
     if path.exists():
         return path
@@ -376,13 +360,7 @@ def execute(cfg: Dict, out_dir: str) -> Path:
     return path
 
 
-# ----------------------------------------------------------------------------
-# Aggregation
-# ----------------------------------------------------------------------------
-
-
 def latency_at_recall(recalls, lats, target) -> Optional[float]:
-    """Linear interpolation of latency at ``target`` recall (None if never reached)."""
     pts = sorted(zip(recalls, lats))
     if pts[-1][0] < target:
         return None
@@ -636,11 +614,6 @@ def load_runs(raw_dir) -> List[Dict]:
         if r.get("kind") == "run":
             runs.append(r)
     return runs
-
-
-# ----------------------------------------------------------------------------
-# CLI
-# ----------------------------------------------------------------------------
 
 
 def build_configs(args) -> List[Dict]:
