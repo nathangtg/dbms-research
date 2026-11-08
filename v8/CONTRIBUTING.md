@@ -32,13 +32,13 @@ Please be respectful and constructive in all interactions. We welcome contributo
 
 3. Install development dependencies:
    ```bash
-   pip install -r requirements.txt
-   pip install -e .
+   pip install -e ".[dev]"
    ```
 
 4. Verify installation:
    ```bash
-   pytest tests/
+   make test
+   make verify
    ```
 
 ## Development Workflow

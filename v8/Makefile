@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format typecheck benchmark clean docs help
+.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-full clean build docs example verify all help
 
 # Default Python interpreter
 PYTHON ?= python3
@@ -9,8 +9,8 @@ help:  ## Show this help message
 install:  ## Install package in production mode
 	$(PYTHON) -m pip install .
 
-dev:  ## Install package in development mode with all dependencies
-	$(PYTHON) -m pip install -e ".[all]"
+dev:  ## Install package in development mode with dev dependencies
+	$(PYTHON) -m pip install -e ".[dev]"
 
 test:  ## Run all tests
 	$(PYTHON) -m pytest tests/ -v
@@ -56,12 +56,6 @@ clean:  ## Clean build artifacts
 build:  ## Build package for distribution
 	$(PYTHON) -m build
 
-publish-test:  ## Publish to TestPyPI
-	$(PYTHON) -m twine upload --repository testpypi dist/*
-
-publish:  ## Publish to PyPI
-	$(PYTHON) -m twine upload dist/*
-
 docs:  ## Generate documentation
 	@echo "Documentation is in docs/ directory"
 	@echo "View API.md and THEORY.md for documentation"
@@ -72,9 +66,9 @@ example:  ## Run quickstart example
 verify:  ## Verify installation and run quick tests
 	$(PYTHON) -c "from zgq import ZGQIndex, ZGQConfig; print('ZGQ v8 imported successfully')"
 	$(PYTHON) -c "import numpy as np; from zgq import ZGQIndex, ZGQConfig; \
-		config = ZGQConfig(dimension=64); \
+		config = ZGQConfig(); \
 		index = ZGQIndex(config); \
-		data = np.random.randn(100, 64).astype(np.float32); \
+		data = np.random.randn(500, 64).astype(np.float32); \
 		index.build(data); \
 		q = np.random.randn(64).astype(np.float32); \
 		idx, dist = index.search(q, k=5); \

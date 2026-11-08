@@ -25,21 +25,22 @@ Zone-Guided Quantization (ZGQ) is a novel Approximate Nearest Neighbor Search (A
 
 ```bash
 cd v8
-pip install -r requirements.txt
+pip install -e ".[dev]"   # or: pip install -e . for runtime only
 ```
 
 ## Quick Start
 
 ```python
-from zgq import ZGQIndex
+from zgq import ZGQConfig, ZGQIndex
 
 # Create and build index
-index = ZGQIndex(
-    n_zones='auto',           # Automatically determine optimal zones
-    hierarchy_levels=2,       # Multi-level zone hierarchy
-    use_simd=True,           # Enable SIMD acceleration
-    use_rpq=True             # Enable Residual PQ
+config = ZGQConfig(
+    n_zones='auto',        # Automatically determine optimal zones
+    use_hierarchy=True,    # Multi-level zone hierarchy
+    use_simd=True,         # Enable SIMD acceleration
+    use_pq=True,           # Enable (residual) product quantization
 )
+index = ZGQIndex(config)
 index.build(vectors)
 
 # Search
@@ -54,7 +55,8 @@ ids, distances = index.batch_search(queries, k=10, n_jobs=4)
 ```
 v8/
 ├── README.md                    # This file
-├── requirements.txt             # Dependencies
+├── requirements.txt             # Points at setup.py (runtime deps)
+├── requirements-dev.txt         # Points at setup.py (dev extras)
 ├── setup.py                     # Package setup
 ├── zgq/                         # Main package
 │   ├── __init__.py
