@@ -187,8 +187,11 @@ config = ZGQConfig(
 
 All are off by default and leave default results unchanged. They affect the zone
 path (`search`, `batch_zone_search`), except `insertion_order`, which changes the
-graph that `batch_search(fast_mode=True)` also uses. No recall benefit is claimed
-here; see `docs/BENCHMARKS.md` for measured results.
+graph that `batch_search(fast_mode=True)` also uses. Measured (synthetic data only, see
+`docs/BENCHMARKS.md`): `insertion_order='random'` closes the recall gap to HNSW-M16 at 100K and 1M
+(within 0.8 pt) at 1.0x to 1.1x latency and about 1.8x HNSW-M16 analytic bytes; `zone_replicas=2`,
+`adaptive_probe` and `search_mode='global_entry'` raise zone-path recall but do not beat HNSW-M16
+on the recall/latency trade-off.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
