@@ -237,12 +237,12 @@ class ResidualProductQuantizer:
             'std_residual': self.std_residual,
             'is_trained': self.is_trained
         }
-    
+
     @classmethod
     def load_state(cls, state: Dict) -> 'ResidualProductQuantizer':
         config = RPQConfig(**state['config'])
         pq = cls(config)
-        
+
         pq.dimension = state['dimension']
         pq.subvector_dim = state['subvector_dim']
         pq.k = state['k']
@@ -250,7 +250,7 @@ class ResidualProductQuantizer:
         pq.mean_residual = state['mean_residual']
         pq.std_residual = state['std_residual']
         pq.is_trained = state['is_trained']
-        
+
         return pq
 
 

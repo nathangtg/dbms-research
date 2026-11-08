@@ -55,21 +55,21 @@ def _batch_rerank_fast(queries, vectors, candidate_ids, k):
 class ZGQConfig:
     n_zones: Union[str, int] = 'auto'
     use_hierarchy: bool = True
-    
+
     M: int = 16
     ef_construction: int = 200
     ef_search: int = 64
-    
+
     use_pq: bool = True
     pq_m: Union[str, int] = 'auto'
     pq_bits: int = 8
     use_residual_pq: bool = True
-    
+
     use_simd: bool = True
     use_zone_guidance: bool = True
-    
+
     metric: str = 'l2'
-    
+
     verbose: bool = False
     random_state: int = 42
 
@@ -114,32 +114,32 @@ class ZGQConfig:
 class ZGQIndex:
     def __init__(self, config: Optional[ZGQConfig] = None):
         self.config = config or ZGQConfig()
-        
+
         self.zones: Optional[AdaptiveHierarchicalZones] = None
         self.graph: Optional[ZoneGuidedGraph] = None
         self.pq: Optional[ResidualProductQuantizer] = None
         self.pq_codes: Optional[np.ndarray] = None
-        
+
         self.vectors: Optional[np.ndarray] = None
         self.vector_norms: Optional[np.ndarray] = None
-        
+
         self.distance_computer = DistanceComputer(metric=self.config.metric)
-        
+
         self.n_vectors: int = 0
         self.dimension: int = 0
         self.is_built: bool = False
-        
+
         self.build_stats: Dict = {}
         self.last_batch_stats: Dict = {}
         self._cmp: Optional[Dict] = None
-    
+
     def build(self, vectors: np.ndarray) -> 'ZGQIndex':
         build_start = time.time()
-        
+
         vectors = np.ascontiguousarray(vectors.astype(np.float32))
         self.vectors = vectors
         self.n_vectors, self.dimension = vectors.shape
-        
+
         if self.config.verbose:
             print(f"\n{'='*60}")
             print("Building ZGQ v8 Index")
@@ -147,26 +147,26 @@ class ZGQIndex:
             print(f"Vectors: {self.n_vectors:,}")
             print(f"Dimension: {self.dimension}")
             print()
-        
+
         self._auto_configure()
-        
+
         step_start = time.time()
         if self.config.verbose:
             print("[1/4] Building Adaptive Hierarchical Zones...")
-        
+
         zone_config = ZoneConfig(
             auto_zones=(self.config.n_zones == 'auto'),
             use_hierarchy=self.config.use_hierarchy,
             random_state=self.config.random_state,
             verbose=self.config.verbose
         )
-        
+
         if self.config.n_zones != 'auto':
             zone_config.n_zones_fine = self.config.n_zones
-        
+
         self.zones = AdaptiveHierarchicalZones(zone_config)
         self.zones.build(vectors)
-        
+
         if self.config.zone_replicas > 1:
             self.zones.build_replicas(vectors, self.config.zone_replicas)
             self.build_stats['replica_overhead'] = self.zones.get_replica_overhead()
@@ -174,11 +174,11 @@ class ZGQIndex:
         self.build_stats['zones_time'] = time.time() - step_start
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['zones_time']:.2f}s")
-        
+
         step_start = time.time()
         if self.config.verbose:
             print("\n[2/4] Building Zone-Guided Graph...")
-        
+
         graph_config = GraphConfig(
             M=self.config.M,
             ef_construction=self.config.ef_construction,
@@ -189,51 +189,51 @@ class ZGQIndex:
             insertion_order=self.config.insertion_order,
             skeleton_fraction=self.config.skeleton_fraction
         )
-        
+
         self.graph = ZoneGuidedGraph(graph_config)
         self.graph.build(
             vectors,
             self.zones.assignments,
             self.zones.fine_centroids
         )
-        
+
         self.build_stats['graph_time'] = time.time() - step_start
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['graph_time']:.2f}s")
-        
+
         step_start = time.time()
         if self.config.use_pq:
             if self.config.verbose:
                 print("\n[3/4] Training Residual Product Quantization...")
-            
+
             if self.config.pq_m == 'auto':
                 pq_m, _ = suggest_pq_params(self.dimension)
             else:
                 pq_m = self.config.pq_m
-            
+
             pq_config = RPQConfig(
                 m=pq_m,
                 n_bits=self.config.pq_bits,
                 use_residuals=self.config.use_residual_pq,
                 random_state=self.config.random_state
             )
-            
+
             self.pq = ResidualProductQuantizer(pq_config)
             self.pq.train(
                 vectors,
                 zone_centroids=self.zones.fine_centroids,
                 zone_assignments=self.zones.assignments
             )
-            
+
             if self.config.verbose:
                 print("  Encoding vectors...")
-            
+
             self.pq_codes = self.pq.encode(
                 vectors,
                 zone_centroids=self.zones.fine_centroids,
                 zone_assignments=self.zones.assignments
             )
-            
+
             self.build_stats['pq_time'] = time.time() - step_start
             if self.config.verbose:
                 mem_info = self.pq.get_memory_usage(self.n_vectors)
@@ -243,17 +243,17 @@ class ZGQIndex:
             self.build_stats['pq_time'] = 0
             if self.config.verbose:
                 print("\n[3/4] Product Quantization: SKIPPED")
-        
+
         step_start = time.time()
         if self.config.verbose:
             print("\n[4/4] Precomputing vector norms...")
-        
+
         self.vector_norms = DistanceComputer.precompute_norms(vectors)
-        
+
         self.build_stats['norms_time'] = time.time() - step_start
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['norms_time']:.2f}s")
-        
+
         if self.config.compressed_search:
             step_start = time.time()
             self._build_compressed()
@@ -261,27 +261,27 @@ class ZGQIndex:
 
         self.is_built = True
         self.build_stats['total_time'] = time.time() - build_start
-        
+
         if self.config.verbose:
             print(f"\n{'='*60}")
             print(f"✓ ZGQ Index Built Successfully")
             print(f"  Total time: {self.build_stats['total_time']:.2f}s")
             print(f"{'='*60}\n")
-        
+
         return self
-    
+
     def _auto_configure(self) -> None:
         if self.n_vectors < 10000:
             self.config.ef_search = min(self.config.ef_search, 32)
         elif self.n_vectors > 1000000:
             self.config.ef_search = max(self.config.ef_search, 100)
-        
+
         if self.dimension > 256 and self.config.M < 24:
             self.config.M = 24
-        
+
         if self.config.verbose and self.config.n_zones == 'auto':
             print("Auto-configuring parameters...")
-    
+
     def search(
         self,
         query: np.ndarray,
@@ -409,12 +409,12 @@ class ZGQIndex:
             raise RuntimeError("Index must be built before searching")
 
         query = np.ascontiguousarray(query.astype(np.float32))
-        
+
         if query.shape[0] != self.dimension:
             raise ValueError(
                 f"Query dimension {query.shape[0]} != index dimension {self.dimension}"
             )
-        
+
         selected_zones = self._choose_zones(query, n_probe)
         n_probed = len(selected_zones)
 
@@ -439,25 +439,25 @@ class ZGQIndex:
                 candidate_ids = np.unique(
                     np.concatenate([np.asarray(candidate_ids, dtype=np.int64), seeds])
                 )
-        
+
         if self.config.use_pq and use_pq_rerank and len(candidate_ids) > k:
             query_zone = selected_zones[0]
             zone_centroid = self.zones.fine_centroids[query_zone]
-            
+
             dist_table = self.pq.compute_distance_table(query, zone_centroid)
             pq_distances = self.pq.asymmetric_distance(
                 self.pq_codes[candidate_ids], dist_table
             )
-            
+
             k_rerank = min(k * 2, len(candidate_ids))
             top_indices = np.argpartition(pq_distances, k_rerank - 1)[:k_rerank]
             candidate_ids = candidate_ids[top_indices]
-        
+
         candidate_vectors = self.vectors[candidate_ids]
         exact_distances = self.distance_computer.compute(
             query, candidate_vectors, self.vector_norms[candidate_ids]
         )
-        
+
         if len(exact_distances) > k:
             top_k = np.argpartition(exact_distances, k - 1)[:k]
             top_k = top_k[np.argsort(exact_distances[top_k])]
@@ -524,15 +524,15 @@ class ZGQIndex:
     ) -> Tuple[np.ndarray, np.ndarray]:
         if not self.is_built:
             raise RuntimeError("Index must be built before searching")
-        
+
         queries = np.ascontiguousarray(queries.astype(np.float32))
         n_queries = len(queries)
-        
+
         if queries.shape[1] != self.dimension:
             raise ValueError(
                 f"Query dimension {queries.shape[1]} != index dimension {self.dimension}"
             )
-        
+
         if self.config.compressed_search:
             return self._compressed_batch_search(queries, k, ef_search)
 
@@ -585,18 +585,18 @@ class ZGQIndex:
                 'metric': self.config.metric
             }
         }
-        
+
         if self.is_built:
             stats['build_stats'] = self.build_stats
             stats['n_zones'] = len(self.zones.fine_centroids) if self.zones else 0
             if self.zones and self.zones.n_replicas > 1:
                 stats['replica_overhead'] = self.zones.get_replica_overhead()
-            
+
             if self.pq:
                 stats['pq_info'] = self.pq.get_memory_usage(self.n_vectors)
-        
+
         return stats
-    
+
     def save(self, filepath: str) -> None:
         if not self.is_built:
             raise RuntimeError("Cannot save index that hasn't been built")
@@ -605,7 +605,7 @@ class ZGQIndex:
                 "Cannot save an index built with drop_full_vectors=True "
                 "(the hnswlib graph was released)"
             )
-        
+
         state = {
             'version': '8.0.0',
             'config': {
@@ -641,40 +641,40 @@ class ZGQIndex:
             'pq_codes': self.pq_codes,
             'build_stats': self.build_stats
         }
-        
+
         with open(filepath, 'wb') as f:
             pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
-        
+
         if self.config.verbose:
             print(f"Index saved to {filepath}")
-    
+
     @classmethod
     def load(cls, filepath: str, verbose: bool = False) -> 'ZGQIndex':
         with open(filepath, 'rb') as f:
             state = pickle.load(f)
-        
+
         config = ZGQConfig(**state['config'], verbose=verbose)
         index = cls(config)
-        
+
         index.vectors = state['data']['vectors']
         index.vector_norms = state['data']['vector_norms']
         index.n_vectors = state['data']['n_vectors']
         index.dimension = state['data']['dimension']
-        
+
         if state['zones']:
             index.zones = AdaptiveHierarchicalZones.load_state(state['zones'])
-        
+
         if state['graph']:
             index.graph = ZoneGuidedGraph.load_state(state['graph'])
-        
+
         if state['pq']:
             index.pq = ResidualProductQuantizer.load_state(state['pq'])
             index.pq_codes = state['pq_codes']
-        
+
         index.build_stats = state.get('build_stats', {})
         index.is_built = True
-        
+
         if verbose:
             print(f"Index loaded from {filepath}")
-        
+
         return index

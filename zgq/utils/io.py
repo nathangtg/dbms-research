@@ -13,7 +13,7 @@ def load_index(filepath: Union[str, Path]):
 
 
 def save_benchmark_results(results: dict, filepath: Union[str, Path]) -> None:
-    
+
     def convert(obj):
         if hasattr(obj, 'tolist'):
             return obj.tolist()
@@ -24,12 +24,12 @@ def save_benchmark_results(results: dict, filepath: Union[str, Path]) -> None:
         if isinstance(obj, list):
             return [convert(v) for v in obj]
         return obj
-    
+
     with open(filepath, 'w') as f:
         json.dump(convert(results), f, indent=2)
 
 
 def load_benchmark_results(filepath: Union[str, Path]) -> dict:
-    
+
     with open(filepath, 'r') as f:
         return json.load(f)

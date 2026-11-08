@@ -243,7 +243,7 @@ class ZoneGuidedGraph:
             'zone_entry_points': {int(k): list(v) for k, v in self.zone_entry_points.items()},
             'hnsw_bytes': hnsw_bytes
         }
-    
+
     @classmethod
     def load_state(cls, state: Dict) -> 'ZoneGuidedGraph':
         config = GraphConfig(**state['config'])

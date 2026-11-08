@@ -5,7 +5,7 @@ from zgq.core.quantization import ResidualProductQuantizer
 
 __all__ = [
     "AdaptiveHierarchicalZones",
-    "ZoneConfig", 
+    "ZoneConfig",
     "ZoneGuidedGraph",
     "DistanceComputer",
     "SIMDDistance",

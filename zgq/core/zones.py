@@ -467,7 +467,7 @@ class AdaptiveHierarchicalZones:
     def load_state(cls, state: Dict) -> 'AdaptiveHierarchicalZones':
         config = ZoneConfig(**state['config'])
         zones = cls(config)
-    
+
         zones.n_vectors = state['n_vectors']
         zones.dimension = state['dimension']
         zones.n_levels = state['n_levels']
