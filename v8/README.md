@@ -50,6 +50,7 @@ Details in [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and `results/2026-11-08-impr
 
 Full tables, figures, limitations and threats to validity: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 Claim-by-claim traceability: [docs/CLAIMS.md](docs/CLAIMS.md).
+Phase-by-phase account of the study: [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md). Change history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
@@ -119,7 +120,7 @@ v8/
 ├── tables/                      # Generated tables (Markdown, LaTeX)
 ├── tests/                       # pytest suite
 ├── examples/quickstart.py
-└── docs/                        # API.md, THEORY.md, BENCHMARKS.md, CLAIMS.md, proofing.tex
+└── docs/                        # API.md, THEORY.md, BENCHMARKS.md, CLAIMS.md, RESEARCH_LOG.md, proofing.tex
 ```
 
 ## Algorithm Overview

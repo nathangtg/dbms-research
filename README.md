@@ -12,7 +12,7 @@ This repository documents the development of **ZGQ (Zonal Graph Quantization)**,
 - ZGQ builds 1.2x to 2.7x slower and uses much more memory than HNSW. HNSW is hnswlib (C++); ZGQ is Python, so timing is not an algorithmic comparison.
 - IVF-PQ recall saturates at 64%, 61% and 56% (10K, 100K, 1M) without refinement.
 
-Full tables, caveats and threats to validity: [v8/docs/BENCHMARKS.md](v8/docs/BENCHMARKS.md). Every number in the docs is traced in [v8/docs/CLAIMS.md](v8/docs/CLAIMS.md).
+Full tables, caveats and threats to validity: [v8/docs/BENCHMARKS.md](v8/docs/BENCHMARKS.md). Every number in the docs is traced in [v8/docs/CLAIMS.md](v8/docs/CLAIMS.md). The study history is in [v8/docs/RESEARCH_LOG.md](v8/docs/RESEARCH_LOG.md) and [v8/CHANGELOG.md](v8/CHANGELOG.md).
 
 ## Repository Structure
 
