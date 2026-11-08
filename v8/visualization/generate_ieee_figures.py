@@ -262,7 +262,6 @@ def fig_ivf_pq_latency(summary: Dict, output_dir: Path, fmt: str = "pdf") -> Pat
 
 
 def fig_ivf_pq_tradeoff(summary: Dict, output_dir: Path, fmt: str = "pdf") -> Path:
-    """Recall vs QPS for HNSW-M16, ZGQ-M16 and IVF-PQ at every scale."""
     scales = _scales(summary)
     fig, ax = plt.subplots(figsize=(IEEE_SINGLE_COL * 1.4, 3.0))
     shades = {"10k": 1.0, "100k": 0.65, "1m": 0.35}

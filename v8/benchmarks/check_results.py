@@ -65,7 +65,6 @@ def validate_summary(
     base_dir: Path = None,
     canonical: bool = False,
 ) -> List[str]:
-    """Return a list of schema violations (empty list means valid)."""
     errors: List[str] = []
     if not isinstance(summary, dict):
         return ["summary must be a JSON object"]

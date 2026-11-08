@@ -65,9 +65,12 @@ Search for k nearest neighbors to a single query.
 **Parameters:**
 - `query` (np.ndarray): Query vector of shape (d,)
 - `k` (int): Number of neighbors to return
-- `n_probe` (int): Number of zones to search
-- `ef_search` (int, optional): Override HNSW beam width
-- `use_pq_rerank` (bool): Use PQ for initial candidate filtering
+- `n_probe` (int): Number of zones to probe, nearest centroids first (ignored when
+  `adaptive_probe=True`; the graph path retrieves up to `k * n_probe` candidates)
+- `ef_search` (int, optional): Override HNSW beam width (stays set on the graph)
+- `use_pq_rerank` (bool): Use PQ for initial candidate filtering. When there are
+  more than `k` candidates, the best `2k` by PQ distance (to the nearest probed zone's
+  centroid) are kept and then reranked exactly
 
 **Returns:**
 - `ids` (np.ndarray): Neighbor IDs of shape (k,)
@@ -91,14 +94,28 @@ index.batch_search(
 ) -> Tuple[np.ndarray, np.ndarray]
 ```
 
-Search for k nearest neighbors for multiple queries.
+Search for k nearest neighbors for multiple queries. The signature above lists
+the common parameters; the full signature also takes `fast_mode=True`,
+`rerank_factor=3`, `use_zone_boost=True` and `turbo_mode=False`.
 
 **Parameters:**
 - `queries` (np.ndarray): Query vectors of shape (n_queries, d)
 - `k` (int): Number of neighbors per query
-- `n_probe` (int): Number of zones to search
+- `n_probe` (int): Number of zones to search. Only used by the standard path
+  (`fast_mode=False`); `fast_mode` and `turbo_mode` ignore it
 - `ef_search` (int, optional): Override HNSW beam width
-- `n_jobs` (int): Number of parallel workers
+- `n_jobs` (int): Number of parallel workers; only used by the standard path
+- `fast_mode` (bool): Query the hnswlib graph directly for `k * rerank_factor`
+  candidates (beam width `max(ef_search, k * rerank_factor)`), then rerank
+  them exactly with squared L2. Ignores `search_mode`, `adaptive_probe` and zone replicas
+- `rerank_factor` (int): Candidate multiplier for the `fast_mode` rerank
+- `turbo_mode` (bool): Skip the rerank and search the graph with beam width
+  `int(ef_search * 1.1)`; takes precedence over `fast_mode`
+- `use_zone_boost` (bool): Accepted for compatibility; has no effect
+
+`compressed_search=True` overrides all of the above and uses the compressed path.
+Distances are squared L2 for `metric='l2'`. Queries are cast to float32 and must have
+the index dimension (`ValueError` otherwise). Calling before `build` raises `RuntimeError`.
 
 **Returns:**
 - `ids` (np.ndarray): Neighbor IDs of shape (n_queries, k)
@@ -112,7 +129,10 @@ index.save(filepath: str) -> None
 ZGQIndex.load(filepath: str, verbose: bool = False) -> ZGQIndex
 ```
 
-Persist and restore index to/from disk.
+Persist and restore index to/from disk (pickle). `save` raises `RuntimeError` if the
+index is not built or was built with `drop_full_vectors=True`. Compressed-mode structures
+and `compressed_search`, `rerank_budget`, `drop_full_vectors` and `compressed_entry_zones`
+are not stored, so a loaded index uses the default search path.
 
 **Example:**
 ```python
@@ -130,6 +150,9 @@ index.get_stats() -> Dict
 ```
 
 Get index statistics including build times and configuration.
+
+`index.build_stats` holds `zones_time`, `graph_time`, `pq_time`, `norms_time`, `total_time`
+(seconds) and `compressed_time` and `replica_overhead` when those options are on.
 
 ---
 
@@ -182,6 +205,11 @@ config = ZGQConfig(
 | `use_residual_pq` | bool | True | Residual encoding |
 | `metric` | str | 'l2' | 'l2', 'cosine', or 'ip' |
 | `verbose` | bool | False | Print progress |
+| `use_simd`, `use_zone_guidance` | bool | True | SIMD distances; zone-guided graph search |
+| `random_state` | int | 42 | Seed for zones, PQ and graph construction |
+
+`build` adjusts `ef_search` in place: capped at 32 below 10,000 vectors and raised to at
+least 100 above 1,000,000. For dimension above 256 it raises `M` to at least 24.
 
 #### Opt-in recall options
 
@@ -201,14 +229,14 @@ on the recall/latency trade-off.
 | `adaptive_probe` | bool | False | Pick the probe count per query: zones whose centroid distance is at most `probe_ratio` times the nearest one, clamped to `[min_probe, max_probe]` (`n_probe` is ignored) |
 | `min_probe`, `max_probe` | int | 1, 32 | Adaptive probe bounds |
 | `probe_ratio` | float | 1.3 | Adaptive distance ratio threshold (>= 1) |
-| `search_mode` | str | 'graph' | 'graph': global graph search with zone re-ranking. 'zone_scan': exact candidates are all members (and replicas) of the probed zones. 'global_entry': graph candidates plus the entry points of the probed zones. hnswlib cannot take custom entry points, so this seeds the candidate set only and does not change hops |
+| `search_mode` | str | 'graph' | 'graph': global graph search with zone re-ranking. 'zone_scan': exact candidates are all members (and replicas) of the probed zones. 'global_entry': graph candidates plus the entry points of the probed zones. hnswlib cannot take custom entry points, so this seeds the candidate set only and does not change hops. The mode applies to `search` and `batch_zone_search` only, not to `batch_search(fast_mode=True)` |
 
 #### Compressed search (opt-in)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `compressed_search` | bool | False | `search`/`batch_search` walk the level-0 links of the graph and score candidates with PQ/RPQ ADC computed against each candidate's own zone centroid (entry points: nearest `compressed_entry_zones` zones). Needs `use_pq=True` |
-| `rerank_budget` | int | 0 | Exact-rerank this many top ADC candidates. Needs the raw vectors |
+| `rerank_budget` | int | 0 | Exact-rerank this many top ADC candidates (squared L2 against the raw vectors); 0 = codes only. The beam width is raised to at least this value |
 | `drop_full_vectors` | bool | False | After build, free the hnswlib index and norms; raw vectors are kept only if `rerank_budget > 0`. The index cannot be saved and has no non-compressed search path |
 | `compressed_entry_zones` | int | 4 | Zones whose entry point seeds the search |
 
@@ -305,6 +333,14 @@ metrics = compute_metrics(
     latencies=query_latencies
 )
 ```
+
+Units: `compute_recall` returns a percentage (0-100); `compute_metrics` also returns
+`mrr` and `ndcg@10` (0-1), and with `latencies` in seconds, `latency_*_ms` and
+`throughput_qps` (queries per second).
+
+`ZGQSearch(zones, graph, vectors, pq, pq_codes, vector_norms, config=SearchConfig())`
+in `zgq.search` runs the zone/graph/PQ/exact-rerank pipeline on already built components
+(`search`, `search_fast`, `search_accurate`, `batch_search`).
 
 ### Ground Truth
 

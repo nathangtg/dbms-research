@@ -44,11 +44,10 @@ def estimate_lid(vectors: np.ndarray, k: int = 20,
     if n <= k:
         raise ValueError("need more than k vectors to estimate LID")
 
+    ref_ids = np.arange(n)
     if n > max_reference:
         ref_ids = np.sort(np.random.RandomState(seed).choice(
             n, size=max_reference, replace=False))
-    else:
-        ref_ids = np.arange(n)
     ref = np.ascontiguousarray(x[ref_ids])
     in_ref = np.full(n, -1, dtype=np.int64)
     in_ref[ref_ids] = np.arange(len(ref_ids))
@@ -85,10 +84,10 @@ def _zone_sorted_lists(vectors, zone_assignments, zone_centroids):
     lists = []
     for zone_id in range(len(zone_centroids)):
         zone_vids = np.where(zone_assignments == zone_id)[0]
-        if len(zone_vids) > 0:
-            zone_vectors = vectors[zone_vids]
-            d = np.sum((zone_vectors - zone_centroids[zone_id]) ** 2, axis=1)
-            lists.append(zone_vids[np.argsort(d)])
+        if len(zone_vids) == 0:
+            continue
+        d = np.sum((vectors[zone_vids] - zone_centroids[zone_id]) ** 2, axis=1)
+        lists.append(zone_vids[np.argsort(d)])
     return lists
 
 

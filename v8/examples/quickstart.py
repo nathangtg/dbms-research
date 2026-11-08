@@ -1,10 +1,3 @@
-"""
-ZGQ v8 Quick Start Example
-===========================
-
-This example demonstrates basic usage of the ZGQ library.
-"""
-
 import numpy as np
 import time
 import os
@@ -18,7 +11,6 @@ def main():
     print("ZGQ v8 Quick Start Example")
     print("="*60)
     
-    # Generate sample data
     print("\n[1] Generating sample data...")
     np.random.seed(42)
     
@@ -32,7 +24,6 @@ def main():
     print(f"    Vectors: {n_vectors} × {dimension}")
     print(f"    Queries: {n_queries}")
     
-    # Create and build index
     print("\n[2] Building ZGQ index...")
     
     config = ZGQConfig(
@@ -53,12 +44,10 @@ def main():
     
     print(f"\n    Build time: {build_time:.2f}s")
     
-    # Search for nearest neighbors
     print("\n[3] Searching for nearest neighbors...")
     
     k = 10
     
-    # Single query
     query = queries[0]
     ids, distances = index.search(query, k=k)
     
@@ -66,14 +55,11 @@ def main():
     print(f"    Nearest neighbors: {ids[:5]}...")
     print(f"    Distances: {distances[:5]}...")
     
-    # Batch search
     print("\n[4] Batch search benchmark...")
     
-    # Warmup
     for _ in range(3):
         _ = index.batch_search(queries[:10], k=k)
     
-    # Benchmark
     n_runs = 5
     latencies = []
     
@@ -89,7 +75,6 @@ def main():
     print(f"    Latency per query: {latency_per_query:.4f} ms")
     print(f"    Throughput: {throughput:,.0f} QPS")
     
-    # Compute recall
     print("\n[5] Computing recall...")
     
     print("    Computing ground truth (brute force)...")
@@ -98,18 +83,15 @@ def main():
     recall = compute_recall(all_ids, gt_ids, k=k)
     print(f"    Recall@{k}: {recall:.1f}%")
     
-    # Save and load
     print("\n[6] Testing save/load...")
     
     index.save('/tmp/zgq_example.index')
     loaded_index = ZGQIndex.load('/tmp/zgq_example.index')
     
-    # Verify loaded index
     loaded_ids, _ = loaded_index.search(query, k=k)
     assert np.array_equal(ids, loaded_ids), "Loaded index gives different results!"
     print("    Save/load verified ✓")
     
-    # Summary
     print("\n" + "="*60)
     print("Summary")
     print("="*60)
@@ -120,7 +102,6 @@ def main():
     print(f"    Recall@{k}:        {recall:.1f}%")
     print("="*60)
     
-    # Cleanup
     os.remove('/tmp/zgq_example.index')
 
 if __name__ == '__main__':

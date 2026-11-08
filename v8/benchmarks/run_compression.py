@@ -32,14 +32,13 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Callable, Dict, List
+from typing import Dict, List
 
 import faiss
 import hnswlib
 import numpy as np
 from zgq import ZGQConfig, ZGQIndex
 from zgq import memory_model as mm
-from zgq.search import compute_recall
 
 from benchmarks.run_benchmarks import (
     DIMENSION,
@@ -76,11 +75,6 @@ def _variant(label, family, params, model, search, param_name, values, crosschec
         "values": list(values),
         "crosscheck": crosscheck,
     }
-
-
-# ----------------------------------------------------------------------------
-# Builders: each returns (list of variants, build_time_s)
-# ----------------------------------------------------------------------------
 
 
 def build_zgq_compressed(
@@ -365,11 +359,6 @@ def build_plan(args) -> List[Dict]:
     return plan
 
 
-# ----------------------------------------------------------------------------
-# Run
-# ----------------------------------------------------------------------------
-
-
 def run(args) -> Dict:
     out_dir = Path(args.out_dir)
     (out_dir / "raw").mkdir(parents=True, exist_ok=True)
@@ -476,11 +465,6 @@ def run(args) -> Dict:
     return summary
 
 
-# ----------------------------------------------------------------------------
-# Equal-memory tables
-# ----------------------------------------------------------------------------
-
-
 def _best(idx: Dict, key: str):
     pts = idx["points"]
     return max(pts, key=lambda p: p["recall_pct"]["median"])
@@ -544,11 +528,6 @@ def equal_memory_table(sc: Dict, scale: str) -> str:
             f"{mem['crosscheck']['bytes'] / sc['n_vectors']:.1f} | {mem['crosscheck_ratio']:.3f} |"
         )
     return "\n".join(lines) + "\n"
-
-
-# ----------------------------------------------------------------------------
-# ADC check: nearest-zone table vs per-candidate zone centroid
-# ----------------------------------------------------------------------------
 
 
 def adc_check(args) -> Dict:

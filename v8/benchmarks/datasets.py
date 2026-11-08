@@ -85,7 +85,6 @@ def _sidecar(path: Path) -> Path:
 
 
 def ensure_downloaded(name: str) -> Path:
-    """Return the cached file path, downloading it first if needed."""
     spec = DATASETS[name]
     d = cache_dir()
     d.mkdir(parents=True, exist_ok=True)
