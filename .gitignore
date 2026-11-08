@@ -60,7 +60,7 @@ ipython_config.py
 # Benchmark Results
 benchmark_results_*.json
 !benchmark_results.json
-!v8/results/**
+!results/**
 
 # Datasets and Large Files
 *.npy

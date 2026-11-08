@@ -1,3 +1,0 @@
-# Runtime dependencies are declared once, in setup.py (install_requires).
-# Install the package and its runtime dependencies from this directory:
--e .
