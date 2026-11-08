@@ -1,0 +1,260 @@
+{
+ "label": "ZGQ-M16+adaptive",
+ "scale": "10k",
+ "build": {
+  "time_s": 2.364787291997345,
+  "rss_delta_mb": 130.8125
+ },
+ "runs": [
+  {
+   "search_param": {
+    "ratio_pct": 105
+   },
+   "repeat": 0,
+   "elapsed_s": 0.34103850000246894,
+   "recall_pct": 43.480000000000004,
+   "latency_ms_per_query": 0.34103850000246894,
+   "qps": 2932.2202625004525
+  },
+  {
+   "search_param": {
+    "ratio_pct": 105
+   },
+   "repeat": 1,
+   "elapsed_s": 0.30848300000070594,
+   "recall_pct": 43.480000000000004,
+   "latency_ms_per_query": 0.30848300000070594,
+   "qps": 3241.6697192315673
+  },
+  {
+   "search_param": {
+    "ratio_pct": 105
+   },
+   "repeat": 2,
+   "elapsed_s": 0.29965449999144766,
+   "recall_pct": 43.480000000000004,
+   "latency_ms_per_query": 0.29965449999144766,
+   "qps": 3337.1766485353655
+  },
+  {
+   "search_param": {
+    "ratio_pct": 105
+   },
+   "repeat": 3,
+   "elapsed_s": 0.28630966700438876,
+   "recall_pct": 43.480000000000004,
+   "latency_ms_per_query": 0.28630966700438876,
+   "qps": 3492.7217458733985
+  },
+  {
+   "search_param": {
+    "ratio_pct": 105
+   },
+   "repeat": 4,
+   "elapsed_s": 0.2759063330013305,
+   "recall_pct": 43.480000000000004,
+   "latency_ms_per_query": 0.2759063330013305,
+   "qps": 3624.4184362204464
+  },
+  {
+   "search_param": {
+    "ratio_pct": 115
+   },
+   "repeat": 0,
+   "elapsed_s": 0.3675979580002604,
+   "recall_pct": 37.059999999999995,
+   "latency_ms_per_query": 0.3675979580002604,
+   "qps": 2720.3633160532727
+  },
+  {
+   "search_param": {
+    "ratio_pct": 115
+   },
+   "repeat": 1,
+   "elapsed_s": 0.37490395799977705,
+   "recall_pct": 37.059999999999995,
+   "latency_ms_per_query": 0.37490395799977705,
+   "qps": 2667.349806962013
+  },
+  {
+   "search_param": {
+    "ratio_pct": 115
+   },
+   "repeat": 2,
+   "elapsed_s": 0.37525804099277593,
+   "recall_pct": 37.059999999999995,
+   "latency_ms_per_query": 0.37525804099277593,
+   "qps": 2664.832970279379
+  },
+  {
+   "search_param": {
+    "ratio_pct": 115
+   },
+   "repeat": 3,
+   "elapsed_s": 0.37008495899499394,
+   "recall_pct": 37.059999999999995,
+   "latency_ms_per_query": 0.37008495899499394,
+   "qps": 2702.0822535333755
+  },
+  {
+   "search_param": {
+    "ratio_pct": 115
+   },
+   "repeat": 4,
+   "elapsed_s": 0.3707659999927273,
+   "recall_pct": 37.059999999999995,
+   "latency_ms_per_query": 0.3707659999927273,
+   "qps": 2697.118937603813
+  },
+  {
+   "search_param": {
+    "ratio_pct": 130
+   },
+   "repeat": 0,
+   "elapsed_s": 0.37918775000434835,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.37918775000434835,
+   "qps": 2637.215996530828
+  },
+  {
+   "search_param": {
+    "ratio_pct": 130
+   },
+   "repeat": 1,
+   "elapsed_s": 0.3846959170041373,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3846959170041373,
+   "qps": 2599.4557150167134
+  },
+  {
+   "search_param": {
+    "ratio_pct": 130
+   },
+   "repeat": 2,
+   "elapsed_s": 0.544263082992984,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.544263082992984,
+   "qps": 1837.346737722593
+  },
+  {
+   "search_param": {
+    "ratio_pct": 130
+   },
+   "repeat": 3,
+   "elapsed_s": 0.3871350830013398,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3871350830013398,
+   "qps": 2583.0777005465534
+  },
+  {
+   "search_param": {
+    "ratio_pct": 130
+   },
+   "repeat": 4,
+   "elapsed_s": 0.3966244170005666,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3966244170005666,
+   "qps": 2521.276949014895
+  },
+  {
+   "search_param": {
+    "ratio_pct": 150
+   },
+   "repeat": 0,
+   "elapsed_s": 0.3823322910029674,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3823322910029674,
+   "qps": 2615.525875088167
+  },
+  {
+   "search_param": {
+    "ratio_pct": 150
+   },
+   "repeat": 1,
+   "elapsed_s": 0.3768579160096124,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3768579160096124,
+   "qps": 2653.5199541211
+  },
+  {
+   "search_param": {
+    "ratio_pct": 150
+   },
+   "repeat": 2,
+   "elapsed_s": 0.3767988330073422,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3767988330073422,
+   "qps": 2653.9360327066465
+  },
+  {
+   "search_param": {
+    "ratio_pct": 150
+   },
+   "repeat": 3,
+   "elapsed_s": 0.39707783299672883,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.39707783299672883,
+   "qps": 2518.3979484652778
+  },
+  {
+   "search_param": {
+    "ratio_pct": 150
+   },
+   "repeat": 4,
+   "elapsed_s": 0.40163033400313,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.40163033400313,
+   "qps": 2489.851774971277
+  },
+  {
+   "search_param": {
+    "ratio_pct": 200
+   },
+   "repeat": 0,
+   "elapsed_s": 0.42848258299636655,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.42848258299636655,
+   "qps": 2333.817148428831
+  },
+  {
+   "search_param": {
+    "ratio_pct": 200
+   },
+   "repeat": 1,
+   "elapsed_s": 0.4351826250058366,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.4351826250058366,
+   "qps": 2297.8858588083294
+  },
+  {
+   "search_param": {
+    "ratio_pct": 200
+   },
+   "repeat": 2,
+   "elapsed_s": 0.410312874999363,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.410312874999363,
+   "qps": 2437.1645661900143
+  },
+  {
+   "search_param": {
+    "ratio_pct": 200
+   },
+   "repeat": 3,
+   "elapsed_s": 0.3824776249966817,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.3824776249966817,
+   "qps": 2614.532026569334
+  },
+  {
+   "search_param": {
+    "ratio_pct": 200
+   },
+   "repeat": 4,
+   "elapsed_s": 0.37937204200716224,
+   "recall_pct": 36.629999999999995,
+   "latency_ms_per_query": 0.37937204200716224,
+   "qps": 2635.9348852099142
+  }
+ ]
+}
