@@ -195,7 +195,8 @@ on the recall/latency trade-off.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `insertion_order` | str | 'zone' | HNSW insertion order: 'zone' (zone by zone) or 'random' (seeded permutation) |
+| `insertion_order` | str | 'zone' | HNSW insertion order: 'zone' (zone by zone), 'random' (seeded permutation), 'lid_desc' / 'lid_asc' (by Levina-Bickel local intrinsic dimension, k=20), 'skeleton' (random sample first, then zone order) or 'roundrobin' (one vector per zone in turn). See `zgq/core/build_order.py` |
+| `skeleton_fraction` | float | 0.05 | Share of vectors inserted first in random order when `insertion_order='skeleton'`; must be in [0, 1] |
 | `zone_replicas` | int | 1 | Zones each vector belongs to for zone scans (2 = SPANN-style boundary replication). Extra cost is `n_vectors * (zone_replicas - 1)` int32 ids, reported by `get_stats()['replica_overhead']` |
 | `adaptive_probe` | bool | False | Pick the probe count per query: zones whose centroid distance is at most `probe_ratio` times the nearest one, clamped to `[min_probe, max_probe]` (`n_probe` is ignored) |
 | `min_probe`, `max_probe` | int | 1, 32 | Adaptive probe bounds |

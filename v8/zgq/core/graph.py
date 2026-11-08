@@ -20,6 +20,7 @@ Improvement: Reduces effective search space by factor of Z
 
 import numpy as np
 import hnswlib
+from zgq.core.build_order import STRATEGIES, insertion_order
 from typing import Tuple, List, Dict, Optional, Set
 from dataclasses import dataclass
 import heapq
@@ -49,8 +50,11 @@ class GraphConfig:
     random_seed: int = 42
 
     # Insertion order for the underlying HNSW build: 'zone' (zone by zone,
-    # closest to centroid first; the default) or 'random' (seeded permutation).
+    # closest to centroid first; the default), 'random', 'lid_desc', 'lid_asc',
+    # 'skeleton' or 'roundrobin' (see zgq.core.build_order).
     insertion_order: str = 'zone'
+    # Fraction inserted first in random order when insertion_order='skeleton'
+    skeleton_fraction: float = 0.05
 
 
 class ZoneGuidedGraph:
@@ -113,9 +117,9 @@ class ZoneGuidedGraph:
         self.zone_centroids = zone_centroids.copy()
         self.n_zones = len(zone_centroids)
         
-        if self.config.insertion_order not in ('zone', 'random'):
+        if self.config.insertion_order not in STRATEGIES:
             raise ValueError(
-                f"insertion_order must be 'zone' or 'random', "
+                f"insertion_order must be one of {STRATEGIES}, "
                 f"got {self.config.insertion_order!r}"
             )
 
@@ -144,44 +148,15 @@ class ZoneGuidedGraph:
             random_seed=self.config.random_seed
         )
         
-        # ZONE-ORDERED INSERTION: Key innovation for better graph connectivity
-        # Insert vectors zone-by-zone, with zone centroids first
-        # This creates stronger intra-zone connections and better cross-zone bridges
-        
-        if self.config.insertion_order == 'random':
-            # Same ids, seeded random order (diagnostic ablation)
-            perm = np.random.RandomState(self.config.random_seed).permutation(
-                self.n_vectors
-            ).astype(np.int64)
-            self.hnsw.add_items(vectors[perm], perm)
-        # First, add zone centroids as anchor points (if we have zone info)
-        elif self.zone_centroids is not None and len(self.zone_centroids) > 0:
-            # Create insertion order: sort by zone, then by distance to centroid
-            zone_order = []
-            for zone_id in range(self.n_zones):
-                zone_mask = self.zone_assignments == zone_id
-                zone_vids = np.where(zone_mask)[0]
-                
-                if len(zone_vids) > 0:
-                    # Sort vectors within zone by distance to centroid (closest first)
-                    zone_vectors = vectors[zone_vids]
-                    centroid = self.zone_centroids[zone_id]
-                    dists_to_centroid = np.sum((zone_vectors - centroid) ** 2, axis=1)
-                    sorted_local_idx = np.argsort(dists_to_centroid)
-                    sorted_global_idx = zone_vids[sorted_local_idx]
-                    zone_order.extend(sorted_global_idx.tolist())
-            
-            # Convert to numpy arrays
-            insertion_order = np.array(zone_order, dtype=np.int64)
-            ordered_vectors = vectors[insertion_order]
-            
-            # Add in zone order - this creates better graph structure
-            self.hnsw.add_items(ordered_vectors, insertion_order)
-        else:
-            # Fallback: standard insertion
-            ids = np.arange(self.n_vectors, dtype=np.int64)
-            self.hnsw.add_items(vectors, ids)
-        
+        # Insertion order strategies live in zgq.core.build_order. The default
+        # 'zone' order inserts zone by zone, closest to the centroid first.
+        order = insertion_order(
+            self.config.insertion_order, vectors, self.zone_assignments,
+            self.zone_centroids, self.config.random_seed,
+            skeleton_fraction=self.config.skeleton_fraction
+        )
+        self.hnsw.add_items(vectors[order], order)
+
         # Set search parameter
         self.hnsw.set_ef(self.config.ef_search)
     
@@ -398,7 +373,8 @@ class ZoneGuidedGraph:
                 'use_zone_guidance': self.config.use_zone_guidance,
                 'zone_priority_factor': self.config.zone_priority_factor,
                 'space': self.config.space,
-                'insertion_order': self.config.insertion_order
+                'insertion_order': self.config.insertion_order,
+                'skeleton_fraction': self.config.skeleton_fraction
             },
             'n_vectors': self.n_vectors,
             'dimension': self.dimension,

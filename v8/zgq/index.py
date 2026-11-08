@@ -27,6 +27,7 @@ import warnings
 
 from zgq.core.zones import AdaptiveHierarchicalZones, ZoneConfig
 from zgq.core.graph import ZoneGuidedGraph, GraphConfig
+from zgq.core.build_order import STRATEGIES
 from zgq.core.quantization import ResidualProductQuantizer, RPQConfig, suggest_pq_params
 from zgq.core.distances import DistanceComputer
 from zgq.core import compressed as _cmp_mod
@@ -154,7 +155,9 @@ class ZGQConfig:
         metric: Distance metric ('l2', 'cosine', 'ip')
         verbose: Print progress information
         random_state: Random seed for reproducibility
-        insertion_order: HNSW insertion order, 'zone' (default) or 'random'
+        insertion_order: HNSW insertion order: 'zone' (default), 'random', 'lid_desc',
+            'lid_asc', 'skeleton' or 'roundrobin' (see zgq.core.build_order)
+        skeleton_fraction: Share inserted first at random for 'skeleton' (default 0.05)
         zone_replicas: Zones each vector is stored in for zone scans (1 = off)
         adaptive_probe: Choose the probe count per query from centroid distances
         min_probe, max_probe: Bounds on the adaptive probe count
@@ -203,6 +206,7 @@ class ZGQConfig:
 
     # Opt-in recall options (defaults reproduce the previous behavior exactly)
     insertion_order: str = 'zone'
+    skeleton_fraction: float = 0.05
     zone_replicas: int = 1
     adaptive_probe: bool = False
     min_probe: int = 1
@@ -215,8 +219,10 @@ class ZGQConfig:
     compressed_entry_zones: int = 4
 
     def __post_init__(self):
-        if self.insertion_order not in ('zone', 'random'):
-            raise ValueError("insertion_order must be 'zone' or 'random'")
+        if self.insertion_order not in STRATEGIES:
+            raise ValueError(f"insertion_order must be one of {STRATEGIES}")
+        if not 0.0 <= self.skeleton_fraction <= 1.0:
+            raise ValueError("skeleton_fraction must be in [0, 1]")
         if self.search_mode not in ('graph', 'zone_scan', 'global_entry'):
             raise ValueError(
                 "search_mode must be 'graph', 'zone_scan' or 'global_entry'"
@@ -361,7 +367,8 @@ class ZGQIndex:
             use_zone_guidance=self.config.use_zone_guidance,
             space=self.config.metric,
             random_seed=self.config.random_state,
-            insertion_order=self.config.insertion_order
+            insertion_order=self.config.insertion_order,
+            skeleton_fraction=self.config.skeleton_fraction
         )
         
         self.graph = ZoneGuidedGraph(graph_config)
@@ -966,6 +973,7 @@ class ZGQIndex:
                 'metric': self.config.metric,
                 'random_state': self.config.random_state,
                 'insertion_order': self.config.insertion_order,
+                'skeleton_fraction': self.config.skeleton_fraction,
                 'zone_replicas': self.config.zone_replicas,
                 'adaptive_probe': self.config.adaptive_probe,
                 'min_probe': self.config.min_probe,
