@@ -99,7 +99,7 @@ default behavior); the correct scoring is used only in the compressed mode.
 
 ## Commands and runtimes (Apple M4, 10 cores, 16 GB, macOS)
 
-Run from `v8/` with `PATH=/tmp/zgqvenv/bin:$PATH`.
+Run from the repository root with `PATH=/tmp/zgqvenv/bin:$PATH`.
 
 ```
 python -m benchmarks.run_compression --scale 100k --out-dir results/2026-11-08-improvements/compression   # about 3.5 min, log run_100k.log

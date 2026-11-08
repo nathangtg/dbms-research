@@ -9,9 +9,9 @@ python -m benchmarks.check_results results/2026-11-08/summary.json --canonical
 ```
 
 Path convention for consumers (for example `visualization/generate_ieee_figures.py`):
-`v8/results/<YYYY-MM-DD>/summary.json` (schema `zgq-bench/1`, validated by
+`results/<YYYY-MM-DD>/summary.json` (schema `zgq-bench/1`, validated by
 `benchmarks/check_results.py`) plus per-repeat raw records in
-`v8/results/<YYYY-MM-DD>/raw/<scale>_<index label>.json`.
+`results/<YYYY-MM-DD>/raw/<scale>_<index label>.json`.
 
 ## Machine
 

@@ -471,11 +471,10 @@ where $T_{\text{batch}}$ is the median over 5 timed repeats after one warm-up pa
 %==============================================================================
 
 \begin{verbatim}
-cd v8
 python -m benchmarks.run_benchmarks --scale 10k 100k 1m --out-dir results/2026-11-08
 python -m visualization.generate_ieee_figures
 python -m visualization.make_tables
-# Figures are written to v8/figures/, tables to v8/tables/.
+# Figures are written to figures/, tables to tables/.
 \end{verbatim}
 
 \end{document}

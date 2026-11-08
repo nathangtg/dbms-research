@@ -16,7 +16,7 @@ brute-force L2 ground truth. **No real dataset (for example SIFT1M) was run.** O
 | Scales | 10K, 100K, 1M vectors |
 | ZGQ degrees | only M = 16 (ZGQ-M24/M32 skipped to save time) |
 
-Command (run from `v8/`, about 80 minutes wall time in total on this machine, dominated by 1M builds and the
+Command (run from the repository root, about 80 minutes wall time in total on this machine, dominated by 1M builds and the
 nprobe sweeps):
 
 ```

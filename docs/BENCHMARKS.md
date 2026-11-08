@@ -160,7 +160,6 @@ python -m benchmarks.compare_improvements results/<date>-improvements/final/summ
 ## Running benchmarks
 
 ```bash
-cd v8
 make benchmark-smoke   # tiny-scale run plus schema check
 make benchmark         # 10K, 1000 queries, 5 repeats, into results/latest
 python -m benchmarks.run_benchmarks --scale 10k 100k 1m --out-dir results/$(date +%F)

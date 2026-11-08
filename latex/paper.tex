@@ -368,7 +368,7 @@ The device which was used to demonstrate and run the experiments to get our curr
 
 \begin{itemize}
 \item \textbf{Hardware:} Apple M4 (10 cores, run single-threaded), 16 GB RAM, arm64
-\item \textbf{OS and software:} macOS, Python 3.13.7, hnswlib 0.8.0, faiss-cpu 1.15.1, numba 0.68.1, numpy 2.5.4 (committed in \texttt{v8/results/2026-11-08/README.md})
+\item \textbf{OS and software:} macOS, Python 3.13.7, hnswlib 0.8.0, faiss-cpu 1.15.1, numba 0.68.1, numpy 2.5.4 (committed in \texttt{results/2026-11-08/README.md})
 \end{itemize}
 
 \subsubsection{Execution Configuration}
@@ -692,7 +692,7 @@ To ensure clarity, the variables utilized in Algorithm \ref{alg:zgq_search} are 
 \end{itemize}
 
 \subsection{Empirical Benchmark Results}
-All numbers in this paper come from the committed canonical run \texttt{v8/results/2026-11-08/summary.json} (synthetic clustered Gaussian data, $d=128$, 1000 queries, single thread, median of 5 repeats). Table \ref{tab:benchmark_results} gives the matched comparison HNSW-M16 against ZGQ-M16 at 100,000 vectors. Draft numbers from earlier, unreproducible runs have been withdrawn.
+All numbers in this paper come from the committed canonical run \texttt{results/2026-11-08/summary.json} (synthetic clustered Gaussian data, $d=128$, 1000 queries, single thread, median of 5 repeats). Table \ref{tab:benchmark_results} gives the matched comparison HNSW-M16 against ZGQ-M16 at 100,000 vectors. Draft numbers from earlier, unreproducible runs have been withdrawn.
 
 \begin{table}[htbp]
 \caption{Matched Comparison at 100K Vectors (Recall@10 \%, ms per query, QPS)}
@@ -903,7 +903,7 @@ This relationship is a model prediction. The canonical benchmarks do not confirm
 The experimental evaluation was conducted on synthetic datasets of 10,000, 100,000 and 1,000,000 vectors ($d=128$) with a clustered Gaussian distribution, using 1000 queries. The algorithms were tested across varying search depths ($ef_{search}$) to map the performance frontier.
 
 \subsubsection{Quantitative Benchmark Data}
-Table~\ref{tab:scales} summarizes the matched comparison HNSW-M16 against ZGQ-M16 at $ef=64$ and $ef=256$ for all three scales, together with build time. ZGQ-M24 and ZGQ-M32 (larger graphs) and IVF-PQ are in \texttt{v8/tables/results\_table.md}.
+Table~\ref{tab:scales} summarizes the matched comparison HNSW-M16 against ZGQ-M16 at $ef=64$ and $ef=256$ for all three scales, together with build time. ZGQ-M24 and ZGQ-M32 (larger graphs) and IVF-PQ are in \texttt{tables/results\_table.md}.
 
 \begin{table}[htbp]
 \caption{Matched Comparison across Scales (Recall@10 \% / latency ms per query)}
@@ -972,7 +972,7 @@ Because IVF-PQ never reaches 90\% recall in this configuration, a latency ratio 
 The results show that the zone-based design matches HNSW recall only at the smallest scale tested. At 100K and 1M vectors ZGQ is less accurate at equal $ef$ and slower to build, and it needs more memory. Any cache-locality benefit from contiguous zone storage was not measured. ZGQ is faster per query at equal $ef$, but HNSW at a lower $ef$ gives equal or better recall at similar or lower latency. We cannot conclude from these data that ZGQ is preferable to HNSW for read-heavy applications.
 
 \subsection{Visual Representation of Results}
-This section provides a visual analysis of the performance differences between ZGQ and HNSW. The figures below illustrate the trade-offs between recall, throughput, and latency, and complement the quantitative findings presented in Table~\ref{tab:benchmark_results} and Table~\ref{tab:scales}. The figures are regenerated from \texttt{summary.json} by \texttt{v8/visualization/generate\_ieee\_figures.py}.
+This section provides a visual analysis of the performance differences between ZGQ and HNSW. The figures below illustrate the trade-offs between recall, throughput, and latency, and complement the quantitative findings presented in Table~\ref{tab:benchmark_results} and Table~\ref{tab:scales}. The figures are regenerated from \texttt{summary.json} by \texttt{visualization/generate\_ieee\_figures.py}.
 
 \begin{figure}[htbp]
     \centering
@@ -1101,12 +1101,12 @@ The complete source code, benchmarking scripts, and mathematical proof documents
 
 \noindent The repository structure is organized to support reproducibility, with the stable \textbf{Version 8 (v8)} implementation of the ZGQ framework serving as the codebase for this study. The directory structure includes:
 \begin{itemize}
-    \item \texttt{v8/zgq/}: Contains the core library implementation, including the \texttt{ZGQIndex}, Adaptive Hierarchical Zones, and Residual Product Quantization logic.
-    \item \texttt{v8/benchmarks/}: Includes the full benchmarking suite (\texttt{run\_benchmarks.py}) and algorithm comparison tools used to generate the performance metrics.
-    \item \texttt{v8/docs/}: Provides supplementary theoretical proofs and API documentation.
+    \item \texttt{zgq/}: Contains the core library implementation, including the \texttt{ZGQIndex}, Adaptive Hierarchical Zones, and Residual Product Quantization logic.
+    \item \texttt{benchmarks/}: Includes the full benchmarking suite (\texttt{run\_benchmarks.py}) and algorithm comparison tools used to generate the performance metrics.
+    \item \texttt{docs/}: Provides supplementary theoretical proofs and API documentation.
     \item \texttt{latex/}: Contains the source code for this research paper.
 \end{itemize}
-While large-scale synthetic datasets are excluded due to size limits, the benchmark harness regenerates the data deterministically from a fixed seed, and the committed results in \texttt{v8/results/2026-11-08/} are the source of every number in this paper.
+While large-scale synthetic datasets are excluded due to size limits, the benchmark harness regenerates the data deterministically from a fixed seed, and the committed results in \texttt{results/2026-11-08/} are the source of every number in this paper.
 
 \begin{thebibliography}{99}
 
