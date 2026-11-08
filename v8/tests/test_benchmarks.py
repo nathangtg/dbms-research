@@ -128,3 +128,14 @@ def test_improvement_analytic_bytes_and_probes(improved):
     r1 = [p["recall_pct"]["median"] for p in idx["ZGQ-M16+zonescan-nopq"]["points"]]
     r2 = [p["recall_pct"]["median"] for p in idx["ZGQ-M16+overlap2-nopq"]["points"]]
     assert all(b >= a - 1e-9 for a, b in zip(r1, r2))
+
+
+def test_compare_improvements_report(improved):
+    from benchmarks.compare_improvements import latency_at_recall, report
+
+    _, summary = improved
+    text = report(summary)
+    assert "### tiny" in text and "Equal recall" in text and "ZGQ-M16+random" in text
+    base = next(i for i in summary["scales"]["tiny"]["indexes"] if i["label"] == "HNSW-M16")
+    assert latency_at_recall(base, 101.0) is None
+    assert latency_at_recall(base, 0.0) > 0
