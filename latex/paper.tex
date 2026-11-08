@@ -798,7 +798,7 @@ We formally derive the query complexity to demonstrate the speedup.
 \begin{equation}
 T_{ZGQ} = \mathcal{O}(\sqrt{N} \cdot d + \alpha \cdot \log N \cdot ef \cdot d)
 \end{equation}
-where $\alpha \approx 0.74$ is the path reduction factor.
+where $\alpha < 1$ is the assumed path reduction factor (Lemma on path reduction); it was not measured, and no hop counts are recorded in the committed results.
 
 \textit{Proof:} The query process involves Zone Selection and Graph Search.
 Zone Selection takes $\mathcal{O}(Z \cdot d)$ to compare query with centroids.
@@ -1067,7 +1067,7 @@ We established the connectivity improvement factor $\gamma$ by analyzing the pro
     \begin{equation}
     \gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}
     \end{equation}
-    \item With an empirical intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$ (vs $M_{HNSW}=16$), we proved a theoretical connectivity improvement of:
+    \item With an assumed (not measured) intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$ (vs $M_{HNSW}=16$), we proved a theoretical connectivity improvement of:
     \begin{equation}
     \gamma \approx 1.65
     \end{equation}

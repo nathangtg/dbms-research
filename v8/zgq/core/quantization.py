@@ -3,8 +3,9 @@ Residual Product Quantization (RPQ) for ZGQ v8
 ===============================================
 
 This module implements Residual Product Quantization which encodes
-residuals from zone centroids instead of raw vectors, achieving
-15-20% lower quantization error.
+residuals from zone centroids instead of raw vectors. Residuals have lower
+variance than raw vectors, so the expected quantization error is lower (not
+measured in this repository).
 
 Key Innovations:
 1. Residual Encoding: Encodes (vector - zone_centroid)

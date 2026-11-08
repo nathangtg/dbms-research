@@ -24,7 +24,7 @@ Path convention for consumers (for example `visualization/generate_ieee_figures.
 | numpy / scipy / scikit-learn / numba | 2.5.4 / 1.18.1 / 1.9.1 / 0.68.1 |
 | hnswlib / faiss-cpu | 0.8.0 / 1.15.1 |
 | zgq | 8.0.0 |
-| Git commit | `8444b40` plus the uncommitted harness changes that the next commit contains (`git_dirty: true` in summary.json) |
+| Git commit | `8444b40` plus uncommitted harness changes (`git_dirty: true` in summary.json). The harness was committed unchanged in `3882848`; see "Provenance" |
 
 ## Protocol
 
@@ -81,3 +81,25 @@ Full sweeps are in `summary.json`.
 * All 1M numbers come from a single 16 GB machine, with 3 to 4 minute builds per index.
 * ZGQ was run at library defaults (`n_zones='auto'`, PQ on); no per-scale tuning was done.
 * Latencies are single-threaded batch calls, not per-request latencies.
+
+## Provenance
+
+The run was made from a dirty tree: `summary.json` records base commit `8444b40`, but the harness
+did not exist there. The run was not repeated (about 20 minutes) because the code that produced it
+is identified exactly instead. All of the following files were last modified before the run finished
+(15:49) and are unchanged between commit `3882848` and the commit that added this section, apart from
+a docstring edit in `quantization.py`. Git blob ids of the code that ran:
+
+Blob ids at `3882848` (check with `git ls-tree -r 3882848 -- v8/benchmarks v8/zgq`):
+
+```
+benchmarks/__init__.py        e25a2c3285b33a8442336d34dde17442995707e1
+benchmarks/check_results.py   81be5c9faf85ff022e9728c78272ab17f12560fe
+benchmarks/run_benchmarks.py  15ec74bdd70c2a6db0ebd38078c6807c2c7af1b4
+zgq/core/distances.py         58319ee34859d009aac47cd54ef712e8055e2ac7
+zgq/core/graph.py             51b2b4c175b6730e699e9cc47364e49fbc971e9b
+zgq/core/quantization.py      11e448b49a89c2b78c0db874c750bf2e31fb2730
+zgq/core/zones.py             38a0f122bf2d2b93e61c33ee29ea658bdcfb42a9
+```
+
+To reproduce the code state, check out `3882848`.

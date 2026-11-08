@@ -28,6 +28,13 @@ RETIRED = {
     "93.2% vs 92.9%": r"\b93\.2\d?\s*\\?%|\b92\.9\d?\s*\\?%",
     "ZGQ uses less memory than HNSW": r"(19\s*\\?%\s*less memory|less memory than HNSW|lower memory than HNSW)",
     "Expected improvements": r"Expected improvements",
+    "15-20% RPQ error": r"15\s*-\s*20\s*\\?%\s*(lower|less|reduc)",
+    "0.071 ms latency": r"0\.071\s*(\\,|~)?\s*ms",
+    "64.6% recall": r"64\.6\d?\s*\\?%",
+    "35% faster queries": r"35\s*\\?%\s*faster\s+quer",
+    "20% memory reduction": r"20\s*\\?%\s*(memory|reduction in memory)",
+    "610 MB at 1M": r"~?\s*610\s*MB",
+    "alpha 0.74": r"(alpha|\\alpha)[^.\n]{0,20}0\.74",
 }
 EXEMPT = {"CLAIMS.md"}
 SKIP_DIRS = {".git", ".agents", "results", "References", "node_modules", ".venv"}

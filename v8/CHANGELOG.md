@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed v1 to v7 from the working tree (kept at git tag `pre-v8-cleanup`).
 - Reproducible benchmark harness with schema check, tests, smoke target and committed canonical results.
 - Figures and tables are generated only from `results/<date>/summary.json`.
+- Added a lock around the numba asymmetric-distance kernel launch in `zgq/core/quantization.py` (avoids a numba workqueue abort when called from several threads; no measurable change in `batch_search` time for `n_jobs` 1 vs 4).
+- Deleted `docs/theory/` drafts (untraceable empirical tables; kept at tag `pre-v8-cleanup`). THEORY.md no longer predicts results or states a 15-20% RPQ error gain.
 - Docs reconciled to measured results; retired numbers are listed in `docs/CLAIMS.md` and blocked by `make claims-check`.
 
 ## [8.0.0] - 2024-12-04

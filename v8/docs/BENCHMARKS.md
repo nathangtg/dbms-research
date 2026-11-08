@@ -66,7 +66,7 @@ Generated into `figures/` by `python -m visualization.generate_ieee_figures`:
 ### Reading the results
 
 * At 10K, ZGQ-M16 matches HNSW-M16 recall at equal `ef` (92.3% vs 92.4% at `ef=64`) and is about
-  5% slower per query (0.049 ms vs 0.046 ms).
+  2 to 7% slower per query (6.5% at `ef=64`: 0.049 ms vs 0.046 ms; about 2% at `ef=256`).
 * At 100K and 1M, ZGQ-M16 is less accurate than HNSW-M16 at every equal `ef`
   (`ef=64`: 78.9% vs 86.1% at 100K, 68.1% vs 77.6% at 1M; `ef=256`: 84.8% vs 94.2% and 76.8% vs 87.0%).
   ZGQ is faster per query at the same `ef`, but HNSW at a smaller `ef` reaches higher recall at
@@ -82,7 +82,7 @@ Generated into `figures/` by `python -m visualization.generate_ieee_figures`:
 
 ### Assumptions behind the theory (Lemma 6.1 and Theorem 6.2)
 
-The proof document (`docs/theory/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md`) predicts a query-time advantage
+The retired proof draft (`draft_papers/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md` at tag `pre-v8-cleanup`) predicts a query-time advantage
 for ZGQ. The prediction holds only under two conditions, and the results above should be read with them in mind.
 
 * **Lemma 6.1 (path reduction)** assumes spatial locality in insertion order: vectors inserted

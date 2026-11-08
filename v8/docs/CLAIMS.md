@@ -62,7 +62,7 @@ analytic; needs the authors' attention).
 | FINAL_RESULTS.md tables (95.10% recall at 10K, 78.70% vs 77.60% at 100K, 100 queries) | v8/FINAL_RESULTS.md (deleted) | Unreproducible 100-query run; replaced by docs/BENCHMARKS.md | removed |
 | Tuning table: ~33K / 30K / 20K QPS expected | v8/FINAL_RESULTS.md (deleted) | Unmeasured | removed |
 | 4x speedup from SIMD, 2x from early termination | v8/README.md | No measurement committed | removed |
-| RPQ reduces quantization error by 15-20% | v8/README.md | No measurement committed | removed |
+| RPQ reduces quantization error by 15-20% | v8/README.md, docs/THEORY.md (H3 and section 3), zgq/core/quantization.py docstring | No measurement committed. Removed from all four places; THEORY.md now labels it a hypothesis | removed |
 | O(log N) zone selection | v8/README.md | Analytic only; not benchmarked. Pointed to THEORY.md | flagged |
 | Empirical overhead <1% for N=1e5 | paper.tex Theorem 3 | Contradicted by RSS deltas; kept only as analytic estimate | corrected |
 | gamma = 1.65, alpha = 0.65, beta in [0.2, 0.4] 'empirically measured' | paper.tex, proofing.tex | No measurement in results/; relabeled as assumed model parameters | corrected |
@@ -71,13 +71,19 @@ analytic; needs the authors' attention).
 | Hardware: Intel i5-12500H, WSL2 | paper.tex | Canonical run is Apple M4, macOS; text updated | corrected |
 | Evaluation capped at 100,000 vectors | paper.tex limitations | 1M was run | corrected |
 | paper.pdf contents | latex/paper.pdf | Still shows retired numbers; not modified (policy). Rebuild from paper.tex outside this change | flagged |
-| Drafts: 94.8/11.4/43,794/13.3x, 19% less memory, 0.048, 68.2 etc. | docs/theory/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md, docs/theory/current_formula_v4.tex (moved from draft_papers/; v1 to v3 deleted as superseded by v4) | The 13.3x IVF-PQ table is replaced by a retirement notice. All files in docs/theory/ carry a historical-draft banner; remaining draft tables are superseded by BENCHMARKS.md. v4 PDF is an archived rendering | corrected |
+| Drafts: 94.8/11.4/43,794/13.3x, 19% less memory, 0.048, 68.2, 0.071 ms, 64.6%, 35% faster queries, 20% memory reduction, 610 MB, alpha 0.74 etc. | draft_papers/ (ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md, MATHEMATICAL_RESULTS_QUICK_REF.md, current_formula_v1 to v4.tex and PDFs) | Deleted. The drafts carried dozens of untraceable empirical tables; the theory that matters is in docs/THEORY.md. History is at git tag `pre-v8-cleanup`. Extra patterns for these numbers were added to `scripts/check_claims.py` | removed |
+| Expected Results table (ZGQ v8 90-95% recall, 'Lower' latency, IVF-PQ 60-80%) | docs/THEORY.md 6.3 | No source; contradicted by the canonical run. Replaced by a pointer to BENCHMARKS.md | removed |
+| alpha = 0.74 'path reduction factor'; 'empirical' alpha = 0.65 | paper.tex Theorem 4 and conclusion | Not measured; now labeled assumed | corrected |
 
 ## Stale artifacts not regenerated
 
-* `latex/paper.pdf` still contains retired numbers because the PDF is not modified by this change. Rebuild it from `latex/paper.tex`.
-* `v8/docs/proofing.pdf` is rebuilt from `proofing.tex` when `pdflatex` is available.
-* `v8/docs/theory/current_formula_v4.pdf` is the archived rendering of the v4 draft and still shows the old empirical numbers (the .tex carries a historical banner and placeholder figures; the PDF was not rebuilt).
+* `latex/paper.pdf` still contains retired numbers because the PDF is not modified by this change (user constraint). Rebuild it from `latex/paper.tex` (`make paper` builds into `latex/build/`).
+* `v8/docs/proofing.pdf` was rebuilt from `proofing.tex` and contains no retired number.
+* `docs/theory/` (including its v4 PDF) was deleted; see the drafts row above.
+
+## Harness notes
+
+* `zgq/core/quantization.py` holds `_PARALLEL_KERNEL_LOCK` around the numba ADC kernel launch to avoid a numba workqueue abort when several threads launch the parallel kernel. It is a library change, listed in CHANGELOG. `batch_search` on 20K x 64-d, 2000 queries: best of 3 is 17.6 ms (n_jobs=1) and 17.7 ms (n_jobs=4) with the lock, 17.5 ms and 17.3 ms without it, so the lock has no measurable effect.
 
 ## Known caveats on retained numbers
 

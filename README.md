@@ -7,7 +7,7 @@
 This repository documents the development of **ZGQ (Zonal Graph Quantization)**, a novel ANNS algorithm designed to optimize the memory-performance trade-off in high-dimensional vector search. ZGQ combines hierarchical zonal partitioning with optimized graph navigation. It is evaluated against HNSW and IVF-PQ; the measured results (below) do not show an advantage over HNSW.
 
 **Status of the evidence (canonical run 2026-11-08, synthetic data, single thread, Apple M4):**
-- At 10K vectors ZGQ-M16 matches HNSW-M16 recall at equal `ef` (92.3% vs 92.4% at `ef=64`) and is about 5% slower per query.
+- At 10K vectors ZGQ-M16 matches HNSW-M16 recall at equal `ef` (92.3% vs 92.4% at `ef=64`) and is 2 to 7% slower per query.
 - At 100K and 1M vectors ZGQ is less accurate than HNSW-M16 at every equal `ef` (for example 78.9% vs 86.1% at 100K, `ef=64`), and HNSW reaches the same recall at lower latency.
 - ZGQ builds 1.2x to 2.7x slower and uses much more memory than HNSW. HNSW is hnswlib (C++); ZGQ is Python, so timing is not an algorithmic comparison.
 - IVF-PQ recall saturates at 64%, 61% and 56% (10K, 100K, 1M) without refinement.
