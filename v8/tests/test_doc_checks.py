@@ -45,3 +45,14 @@ def test_links_check_detects_broken(tmp_path):
 
 def test_repo_links_resolve():
     assert check_links.main(["--root", str(ROOT.parent)]) == 0
+
+
+def test_claims_check_exempts_only_archived_v1_preprint(tmp_path):
+    preprint = tmp_path / "v8" / "docs" / "preprint"
+    preprint.mkdir(parents=True)
+    (preprint / "v1.md").write_text("reaches 94.8% recall\n")
+    (preprint / "v2.md").write_text("reaches 94.8% recall\n")
+    (tmp_path / "v8" / "docs" / "other.md").write_text("reaches 94.8% recall\n")
+    (tmp_path / "v1.md").write_text("reaches 94.8% recall\n")
+    flagged = {str(p.as_posix()) for p, _, _ in check_claims.find_violations(tmp_path)}
+    assert flagged == {"v8/docs/preprint/v2.md", "v8/docs/other.md", "v1.md"}
