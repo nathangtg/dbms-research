@@ -118,36 +118,21 @@ Generate by varying:
 
 ```bash
 cd v8
-python -m benchmarks.run_benchmarks --dataset 10k
+make benchmark-smoke   # tiny-scale run plus schema check
+make benchmark         # 10K, 1000 queries, 5 repeats
 ```
 
 ### Full Benchmark Suite
 
 ```bash
-# Generate all datasets
-python -m benchmarks.run_benchmarks --dataset 10k --generate
-python -m benchmarks.run_benchmarks --dataset 100k --generate
-
-# Run benchmarks
-python -m benchmarks.run_benchmarks --dataset 10k
-python -m benchmarks.run_benchmarks --dataset 100k
+python -m benchmarks.run_benchmarks --scale 10k 100k --out-dir results/$(date +%F)
+python -m benchmarks.check_results results/<date>/summary.json --canonical
 ```
 
-### Custom Benchmark
-
-```python
-from benchmarks.run_benchmarks import benchmark_algorithm
-
-results = benchmark_algorithm(
-    name="ZGQ Custom",
-    build_fn=lambda v: index.build(v),
-    search_fn=lambda q, k: index.batch_search(q, k),
-    vectors=vectors,
-    queries=queries,
-    ground_truth=gt,
-    k=10
-)
-```
+Output layout: `results/<date>/summary.json` (schema `zgq-bench/1`) and
+`results/<date>/raw/<scale>_<index>.json` with every per-repeat measurement.
+`--scale` accepts `tiny`, `10k`, `100k`, `1m`. Data and ground truth are
+regenerated from the seed on every run, so no data files are stored.
 
 ## Reporting Results
 

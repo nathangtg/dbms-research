@@ -182,7 +182,8 @@ def test_index_build():
 When making performance changes, run benchmarks:
 
 ```bash
-python -m benchmarks.run_benchmarks --dataset 10k
+make benchmark-smoke   # quick sanity check
+make benchmark         # canonical 10K run into results/latest
 ```
 
 Include benchmark results in your PR if performance is affected.

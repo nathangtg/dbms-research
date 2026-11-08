@@ -70,6 +70,7 @@ setup(
             "isort>=5.12.0",
             "mypy>=1.0.0",
             "flake8>=6.0.0",
+            "psutil>=5.9.0",
         ],
         "benchmark": [
             "matplotlib>=3.5.0",
@@ -77,6 +78,7 @@ setup(
             "pandas>=1.4.0",
             "tqdm>=4.64.0",
             "faiss-cpu>=1.7.0",
+            "psutil>=5.9.0",
         ],
         "all": [
             "pytest>=7.0.0",
@@ -90,6 +92,7 @@ setup(
             "pandas>=1.4.0",
             "tqdm>=4.64.0",
             "faiss-cpu>=1.7.0",
+            "psutil>=5.9.0",
         ],
     },
     entry_points={

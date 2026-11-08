@@ -74,9 +74,8 @@ v8/
 │       ├── metrics.py           # Evaluation metrics
 │       └── io.py                # Save/load functionality
 ├── benchmarks/                  # Benchmarking suite
-│   ├── run_benchmarks.py        # Main benchmark script
-│   ├── compare_algorithms.py    # Algorithm comparison
-│   └── generate_data.py         # Test data generation
+│   ├── run_benchmarks.py        # Reproducible harness (ZGQ, HNSW, IVF-PQ)
+│   └── check_results.py         # summary.json schema validator
 ├── tests/                       # Unit tests
 │   ├── test_index.py
 │   ├── test_search.py
