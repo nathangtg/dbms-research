@@ -1,0 +1,458 @@
+{
+  "scale": "100k",
+  "n_vectors": 100000,
+  "dim": 128,
+  "k": 10,
+  "seed": 42,
+  "n_queries": 1000,
+  "M": 16,
+  "ef_construction": 200,
+  "threads": 1,
+  "runs": [
+    {
+      "n_zones_requested": 50,
+      "build_s": 19.313506040998618,
+      "fast_mode_ef64": {
+        "recall": 85.49000000000001,
+        "latency_ms": 0.07334008299949346
+      },
+      "d2": [
+        {
+          "n_probe": 1,
+          "with_pq_rerank": {
+            "recall": 83.99,
+            "latency_ms": 0.10055329200258711
+          },
+          "without_pq_rerank": {
+            "recall": 83.99,
+            "latency_ms": 0.09900733299582498
+          }
+        },
+        {
+          "n_probe": 4,
+          "with_pq_rerank": {
+            "recall": 52.39,
+            "latency_ms": 0.2919522089941893
+          },
+          "without_pq_rerank": {
+            "recall": 88.12,
+            "latency_ms": 0.15423720800026786
+          }
+        },
+        {
+          "n_probe": 16,
+          "with_pq_rerank": {
+            "recall": 24.0,
+            "latency_ms": 0.47426899999845773
+          },
+          "without_pq_rerank": {
+            "recall": 92.45,
+            "latency_ms": 0.3414084579999326
+          }
+        },
+        {
+          "n_probe": 64,
+          "with_pq_rerank": {
+            "recall": 13.83,
+            "latency_ms": 0.9286309170056484
+          },
+          "without_pq_rerank": {
+            "recall": 98.90999999999998,
+            "latency_ms": 0.8300542919969303
+          }
+        }
+      ],
+      "d3": {
+        "n_zones": 48,
+        "zone_size": {
+          "min": 173,
+          "median": 1026.5,
+          "max": 11974
+        },
+        "oracle_zone_recall": 0.9217000000000001,
+        "rows": [
+          {
+            "n_probe": 1,
+            "frac_true_neighbors_outside_select_zones": 0.2392,
+            "frac_true_neighbors_outside_flat_nearest": 0.24080000000000001,
+            "frac_queries_nn1_zone_probed": 0.764
+          },
+          {
+            "n_probe": 4,
+            "frac_true_neighbors_outside_select_zones": 0.1527,
+            "frac_true_neighbors_outside_flat_nearest": 0.122,
+            "frac_queries_nn1_zone_probed": 0.854
+          },
+          {
+            "n_probe": 16,
+            "frac_true_neighbors_outside_select_zones": 0.0697,
+            "frac_true_neighbors_outside_flat_nearest": 0.006900000000000001,
+            "frac_queries_nn1_zone_probed": 0.926
+          },
+          {
+            "n_probe": 64,
+            "frac_true_neighbors_outside_select_zones": 0.0011,
+            "frac_true_neighbors_outside_flat_nearest": 0.0,
+            "frac_queries_nn1_zone_probed": 0.999
+          }
+        ]
+      }
+    },
+    {
+      "n_zones_requested": 100,
+      "build_s": 19.025889040996844,
+      "fast_mode_ef64": {
+        "recall": 83.58,
+        "latency_ms": 0.06977408300008392
+      },
+      "d2": [
+        {
+          "n_probe": 1,
+          "with_pq_rerank": {
+            "recall": 78.64000000000001,
+            "latency_ms": 0.09677324999938719
+          },
+          "without_pq_rerank": {
+            "recall": 78.64000000000001,
+            "latency_ms": 0.0955819170048926
+          }
+        },
+        {
+          "n_probe": 4,
+          "with_pq_rerank": {
+            "recall": 53.95999999999999,
+            "latency_ms": 0.2866711669994402
+          },
+          "without_pq_rerank": {
+            "recall": 86.4,
+            "latency_ms": 0.14952904199890327
+          }
+        },
+        {
+          "n_probe": 16,
+          "with_pq_rerank": {
+            "recall": 27.51,
+            "latency_ms": 0.467588125000475
+          },
+          "without_pq_rerank": {
+            "recall": 91.11000000000001,
+            "latency_ms": 0.33591666699794587
+          }
+        },
+        {
+          "n_probe": 64,
+          "with_pq_rerank": {
+            "recall": 18.96,
+            "latency_ms": 0.9040671670009033
+          },
+          "without_pq_rerank": {
+            "recall": 98.79,
+            "latency_ms": 0.8027544579963433
+          }
+        }
+      ],
+      "d3": {
+        "n_zones": 96,
+        "zone_size": {
+          "min": 30,
+          "median": 966.0,
+          "max": 6982
+        },
+        "oracle_zone_recall": 0.8709000000000001,
+        "rows": [
+          {
+            "n_probe": 1,
+            "frac_true_neighbors_outside_select_zones": 0.2992,
+            "frac_true_neighbors_outside_flat_nearest": 0.3045,
+            "frac_queries_nn1_zone_probed": 0.707
+          },
+          {
+            "n_probe": 4,
+            "frac_true_neighbors_outside_select_zones": 0.1656,
+            "frac_true_neighbors_outside_flat_nearest": 0.14980000000000002,
+            "frac_queries_nn1_zone_probed": 0.845
+          },
+          {
+            "n_probe": 16,
+            "frac_true_neighbors_outside_select_zones": 0.0697,
+            "frac_true_neighbors_outside_flat_nearest": 0.0040999999999999995,
+            "frac_queries_nn1_zone_probed": 0.926
+          },
+          {
+            "n_probe": 64,
+            "frac_true_neighbors_outside_select_zones": 0.0,
+            "frac_true_neighbors_outside_flat_nearest": 0.0,
+            "frac_queries_nn1_zone_probed": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "n_zones_requested": 316,
+      "build_s": 18.65754483299679,
+      "fast_mode_ef64": {
+        "recall": 80.14000000000001,
+        "latency_ms": 0.06369729199650465
+      },
+      "d2": [
+        {
+          "n_probe": 1,
+          "with_pq_rerank": {
+            "recall": 66.83,
+            "latency_ms": 0.09299262499553151
+          },
+          "without_pq_rerank": {
+            "recall": 66.83,
+            "latency_ms": 0.0935088749974966
+          }
+        },
+        {
+          "n_probe": 4,
+          "with_pq_rerank": {
+            "recall": 58.989999999999995,
+            "latency_ms": 0.2812398339956417
+          },
+          "without_pq_rerank": {
+            "recall": 82.39000000000001,
+            "latency_ms": 0.14506395799980965
+          }
+        },
+        {
+          "n_probe": 16,
+          "with_pq_rerank": {
+            "recall": 43.78,
+            "latency_ms": 0.46196645899908617
+          },
+          "without_pq_rerank": {
+            "recall": 88.16000000000001,
+            "latency_ms": 0.3325606250000419
+          }
+        },
+        {
+          "n_probe": 64,
+          "with_pq_rerank": {
+            "recall": 40.57000000000001,
+            "latency_ms": 1.3272924999982934
+          },
+          "without_pq_rerank": {
+            "recall": 95.1,
+            "latency_ms": 1.2177057919980143
+          }
+        }
+      ],
+      "d3": {
+        "n_zones": 304,
+        "zone_size": {
+          "min": 1,
+          "median": 214.5,
+          "max": 1069
+        },
+        "oracle_zone_recall": 0.7052999999999999,
+        "rows": [
+          {
+            "n_probe": 1,
+            "frac_true_neighbors_outside_select_zones": 0.3446,
+            "frac_true_neighbors_outside_flat_nearest": 0.2888,
+            "frac_queries_nn1_zone_probed": 0.673
+          },
+          {
+            "n_probe": 4,
+            "frac_true_neighbors_outside_select_zones": 0.159,
+            "frac_true_neighbors_outside_flat_nearest": 0.029299999999999996,
+            "frac_queries_nn1_zone_probed": 0.853
+          },
+          {
+            "n_probe": 16,
+            "frac_true_neighbors_outside_select_zones": 0.0697,
+            "frac_true_neighbors_outside_flat_nearest": 0.0002999999999999999,
+            "frac_queries_nn1_zone_probed": 0.926
+          },
+          {
+            "n_probe": 64,
+            "frac_true_neighbors_outside_select_zones": 0.0,
+            "frac_true_neighbors_outside_flat_nearest": 0.0,
+            "frac_queries_nn1_zone_probed": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "n_zones_requested": 632,
+      "build_s": 19.03699704199971,
+      "fast_mode_ef64": {
+        "recall": 80.13,
+        "latency_ms": 0.06543045800208347
+      },
+      "d2": [
+        {
+          "n_probe": 1,
+          "with_pq_rerank": {
+            "recall": 59.96,
+            "latency_ms": 0.09938133299874607
+          },
+          "without_pq_rerank": {
+            "recall": 59.96,
+            "latency_ms": 0.0989477920011268
+          }
+        },
+        {
+          "n_probe": 4,
+          "with_pq_rerank": {
+            "recall": 57.95,
+            "latency_ms": 0.28913883399945917
+          },
+          "without_pq_rerank": {
+            "recall": 81.22999999999999,
+            "latency_ms": 0.15189804200053914
+          }
+        },
+        {
+          "n_probe": 16,
+          "with_pq_rerank": {
+            "recall": 43.12,
+            "latency_ms": 0.4788207500023418
+          },
+          "without_pq_rerank": {
+            "recall": 89.58,
+            "latency_ms": 0.34846333300083643
+          }
+        },
+        {
+          "n_probe": 64,
+          "with_pq_rerank": {
+            "recall": 40.1,
+            "latency_ms": 1.391045625001425
+          },
+          "without_pq_rerank": {
+            "recall": 98.10999999999999,
+            "latency_ms": 1.281317749999289
+          }
+        }
+      ],
+      "d3": {
+        "n_zones": 624,
+        "zone_size": {
+          "min": 1,
+          "median": 12.5,
+          "max": 1037
+        },
+        "oracle_zone_recall": 0.6077,
+        "rows": [
+          {
+            "n_probe": 1,
+            "frac_true_neighbors_outside_select_zones": 0.4751,
+            "frac_true_neighbors_outside_flat_nearest": 0.439,
+            "frac_queries_nn1_zone_probed": 0.546
+          },
+          {
+            "n_probe": 4,
+            "frac_true_neighbors_outside_select_zones": 0.1718,
+            "frac_true_neighbors_outside_flat_nearest": 0.058,
+            "frac_queries_nn1_zone_probed": 0.84
+          },
+          {
+            "n_probe": 16,
+            "frac_true_neighbors_outside_select_zones": 0.0698,
+            "frac_true_neighbors_outside_flat_nearest": 0.0023999999999999994,
+            "frac_queries_nn1_zone_probed": 0.926
+          },
+          {
+            "n_probe": 64,
+            "frac_true_neighbors_outside_select_zones": 0.0,
+            "frac_true_neighbors_outside_flat_nearest": 0.0,
+            "frac_queries_nn1_zone_probed": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "n_zones_requested": 1000,
+      "build_s": 19.3027177499971,
+      "fast_mode_ef64": {
+        "recall": 81.6,
+        "latency_ms": 0.0654525000063586
+      },
+      "d2": [
+        {
+          "n_probe": 1,
+          "with_pq_rerank": {
+            "recall": 60.19,
+            "latency_ms": 0.10464549999596784
+          },
+          "without_pq_rerank": {
+            "recall": 60.19,
+            "latency_ms": 0.10360966699954588
+          }
+        },
+        {
+          "n_probe": 4,
+          "with_pq_rerank": {
+            "recall": 58.75,
+            "latency_ms": 0.29319837499497226
+          },
+          "without_pq_rerank": {
+            "recall": 82.47000000000001,
+            "latency_ms": 0.15677479200530797
+          }
+        },
+        {
+          "n_probe": 16,
+          "with_pq_rerank": {
+            "recall": 43.67,
+            "latency_ms": 0.48454245799803175
+          },
+          "without_pq_rerank": {
+            "recall": 89.42,
+            "latency_ms": 0.3552167909947457
+          }
+        },
+        {
+          "n_probe": 64,
+          "with_pq_rerank": {
+            "recall": 38.269999999999996,
+            "latency_ms": 1.4331834589975188
+          },
+          "without_pq_rerank": {
+            "recall": 96.37,
+            "latency_ms": 1.3221202080021612
+          }
+        }
+      ],
+      "d3": {
+        "n_zones": 982,
+        "zone_size": {
+          "min": 1,
+          "median": 1.0,
+          "max": 1061
+        },
+        "oracle_zone_recall": 0.5554,
+        "rows": [
+          {
+            "n_probe": 1,
+            "frac_true_neighbors_outside_select_zones": 0.5141,
+            "frac_true_neighbors_outside_flat_nearest": 0.49260000000000004,
+            "frac_queries_nn1_zone_probed": 0.494
+          },
+          {
+            "n_probe": 4,
+            "frac_true_neighbors_outside_select_zones": 0.18309999999999998,
+            "frac_true_neighbors_outside_flat_nearest": 0.08319999999999998,
+            "frac_queries_nn1_zone_probed": 0.833
+          },
+          {
+            "n_probe": 16,
+            "frac_true_neighbors_outside_select_zones": 0.0711,
+            "frac_true_neighbors_outside_flat_nearest": 0.004999999999999999,
+            "frac_queries_nn1_zone_probed": 0.925
+          },
+          {
+            "n_probe": 64,
+            "frac_true_neighbors_outside_select_zones": 0.0,
+            "frac_true_neighbors_outside_flat_nearest": 0.0,
+            "frac_queries_nn1_zone_probed": 1.0
+          }
+        ]
+      }
+    }
+  ]
+}

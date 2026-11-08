@@ -279,12 +279,17 @@ def d1_insertion_order(
 
 
 def d2_nprobe(queries, gt, idx: ZGQIndex, n_probes=N_PROBES) -> Dict:
+    """Zone path recall vs n_probe, with the PQ shortlist stage on (default) and off."""
     rows = []
     for npb in n_probes:
-        t0 = time.perf_counter()
-        ids = np.stack([idx.search(q, K, n_probe=npb)[0][:K] for q in queries])
-        elapsed = time.perf_counter() - t0
-        rows.append({"n_probe": npb, **_point(ids, elapsed, gt, len(queries))})
+        row = {"n_probe": npb}
+        for label, pq in (("with_pq_rerank", True), ("without_pq_rerank", False)):
+            t0 = time.perf_counter()
+            ids = np.stack(
+                [idx.search(q, K, n_probe=npb, use_pq_rerank=pq)[0][:K] for q in queries]
+            )
+            row[label] = _point(ids, time.perf_counter() - t0, gt, len(queries))
+        rows.append(row)
     return {"ef_search": idx.config.ef_search, "rows": rows}
 
 
