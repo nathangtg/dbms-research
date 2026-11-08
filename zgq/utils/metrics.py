@@ -106,7 +106,6 @@ def compute_distance_stats(distances: np.ndarray) -> Dict:
 
 
 class BenchmarkResult:
-
     def __init__(
         self,
         name: str,

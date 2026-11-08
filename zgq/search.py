@@ -1,30 +1,31 @@
-import numpy as np
-from typing import Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from typing import Optional, Tuple
+
+import numpy as np
 
 from zgq.core.distances import DistanceComputer, select_top_k_distances
 from zgq.core.quantization import ResidualProductQuantizer
+from zgq.utils.metrics import compute_recall  # noqa: F401  (re-exported)
 
 
 @dataclass
 class SearchConfig:
+    n_probe: int = 8
+    expand_neighbors: bool = True
+    max_expansion: int = 2
 
-    n_probe: int = 8                    # Number of zones to search
-    expand_neighbors: bool = True       # Expand to neighboring zones
-    max_expansion: int = 2              # Maximum neighbor expansion
+    k_candidates_factor: int = 3        # candidates = k * factor
+    use_pq_filter: bool = True
 
-    k_candidates_factor: int = 3        # Candidates = k * factor
-    use_pq_filter: bool = True          # Use PQ for initial filtering
+    k_rerank_factor: int = 2            # reranked = k * factor
+    use_exact_rerank: bool = True
+    use_early_termination: bool = True
 
-    k_rerank_factor: int = 2            # Rerank = k * factor
-    use_exact_rerank: bool = True       # Use exact distances for final ranking
-    use_early_termination: bool = True  # Early terminate distance computation
-
-    quality_threshold: float = 0.9      # Stop if estimated recall >= threshold
+    quality_threshold: float = 0.9
 
 
 class ZGQSearch:
-
     def __init__(
         self,
         zones,
@@ -198,7 +199,6 @@ class ZGQSearch:
         if n_jobs == 1:
             results = [search_one(i) for i in range(n_queries)]
         else:
-            from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=n_jobs) as executor:
                 results = list(executor.map(search_one, range(n_queries)))
 
@@ -232,21 +232,3 @@ def compute_ground_truth(
         gt_distances[i] = top_dists
 
     return gt_ids, gt_distances
-
-
-def compute_recall(
-    predicted: np.ndarray,
-    ground_truth: np.ndarray,
-    k: int = 10
-) -> float:
-    n_queries = predicted.shape[0]
-    k = min(k, predicted.shape[1], ground_truth.shape[1])
-
-    recalls = []
-    for i in range(n_queries):
-        pred_set = set(predicted[i, :k])
-        true_set = set(ground_truth[i, :k])
-        recall = len(pred_set & true_set) / k
-        recalls.append(recall)
-
-    return np.mean(recalls) * 100

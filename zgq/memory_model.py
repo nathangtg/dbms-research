@@ -148,7 +148,7 @@ def _faiss_graph(n: int, M: int) -> Dict[str, float]:
 
 
 def faiss_hnswpq_bytes(n: int, dim: int, M: int, pq_m: int, pq_bits: int = 8) -> Dict:
-    comps = {
+    comps: Dict[str, float] = {
         "pq_codes": n * pq_m * pq_bits / 8,
         "pq_codebooks": pq_codebook_bytes(dim, pq_bits),
     }
@@ -157,6 +157,6 @@ def faiss_hnswpq_bytes(n: int, dim: int, M: int, pq_m: int, pq_bits: int = 8) ->
 
 
 def faiss_hnswsq8_bytes(n: int, dim: int, M: int) -> Dict:
-    comps = {"sq8_codes": n * dim, "sq8_trained": 2 * dim * FLOAT}
+    comps: Dict[str, float] = {"sq8_codes": n * dim, "sq8_trained": 2 * dim * FLOAT}
     comps.update(_faiss_graph(n, M))
     return _result(comps, n)

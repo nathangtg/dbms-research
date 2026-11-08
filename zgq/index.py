@@ -1,8 +1,10 @@
-import numpy as np
+import pickle
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional, Tuple, Union
 from dataclasses import dataclass
-import pickle
+
+import numpy as np
 
 from zgq.core.zones import AdaptiveHierarchicalZones, ZoneConfig
 from zgq.core.graph import ZoneGuidedGraph, GraphConfig
@@ -49,6 +51,13 @@ def _batch_rerank_fast(queries, vectors, candidate_ids, k):
     result_distances = distances[rows, top_k_indices]
 
     return result_ids, result_distances
+
+
+def _map_queries(search_one, n_queries, n_jobs):
+    if n_jobs == 1:
+        return [search_one(i) for i in range(n_queries)]
+    with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        return list(executor.map(search_one, range(n_queries)))
 
 
 @dataclass
@@ -264,7 +273,7 @@ class ZGQIndex:
 
         if self.config.verbose:
             print(f"\n{'='*60}")
-            print(f"✓ ZGQ Index Built Successfully")
+            print("✓ ZGQ Index Built Successfully")
             print(f"  Total time: {self.build_stats['total_time']:.2f}s")
             print(f"{'='*60}\n")
 
@@ -338,7 +347,9 @@ class ZGQIndex:
             query_terms = np.einsum('ij,ij->i', queries, queries)[:, None].astype(np.float32)
         return adc_tables, query_terms, zone_distances
 
-    def _entries(self, queries: np.ndarray, zone_distances: Optional[np.ndarray] = None) -> np.ndarray:
+    def _entries(
+        self, queries: np.ndarray, zone_distances: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         if zone_distances is None:
             zone_distances = self._tables(queries)[2]
         n_entry_zones = min(self.config.compressed_entry_zones, zone_distances.shape[1])
@@ -400,7 +411,8 @@ class ZGQIndex:
         zones = self.zones.select_zones(query, config.max_probe)
         squared_distances = np.sum((self.zones.fine_centroids[zones] - query) ** 2, axis=1)
         # squared L2, while probe_ratio applies to plain distances
-        n_selected = int(np.sum(squared_distances <= (config.probe_ratio ** 2) * squared_distances[0]))
+        within_ratio = squared_distances <= (config.probe_ratio ** 2) * squared_distances[0]
+        n_selected = int(np.sum(within_ratio))
         n_selected = max(config.min_probe, min(n_selected, config.max_probe, len(zones)))
         return zones[:n_selected]
 
@@ -489,12 +501,7 @@ class ZGQIndex:
         def search_one(i):
             return self._search_impl(queries[i], k, n_probe, None, use_pq_rerank)
 
-        if n_jobs == 1:
-            results = [search_one(i) for i in range(n_queries)]
-        else:
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=n_jobs) as executor:
-                results = list(executor.map(search_one, range(n_queries)))
+        results = _map_queries(search_one, n_queries, n_jobs)
 
         all_ids = np.zeros((n_queries, k), dtype=np.int64)
         all_distances = np.zeros((n_queries, k), dtype=np.float32)
@@ -556,12 +563,7 @@ class ZGQIndex:
         def search_one(i):
             return self.search(queries[i], k, n_probe, ef_search)
 
-        if n_jobs == 1:
-            results = [search_one(i) for i in range(n_queries)]
-        else:
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=n_jobs) as executor:
-                results = list(executor.map(search_one, range(n_queries)))
+        results = _map_queries(search_one, n_queries, n_jobs)
 
         all_ids = np.zeros((n_queries, k), dtype=np.int64)
         all_distances = np.zeros((n_queries, k), dtype=np.float32)
