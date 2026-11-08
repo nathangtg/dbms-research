@@ -2,7 +2,7 @@
 
 Every performance number or comparative statement that appeared in the docs, with its source and
 status. Sources are paths inside `results/2026-11-08/summary.json` (the canonical run) unless noted.
-Improvement-option rows cite `results/2026-11-08-improvements/final/comparison.md`, a table generated from that folder's `summary.json` by `python -m benchmarks.compare_improvements`.
+Improvement-option rows cite `results/2026-11-08-improvements/final/comparison.md`, a table generated from that folder's `summary.json` by `uv run python -m benchmarks.compare_improvements`.
 
 Statuses: **verified** (traced to the committed results), **corrected** (replaced by a measured value),
 **removed** (deleted because it is unsupported or contradicted), **flagged** (not edited, or only

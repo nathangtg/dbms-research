@@ -55,7 +55,9 @@ Phase-by-phase account of the study: [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md
 ## Installation
 
 ```bash
-pip install -e ".[dev]"   # or: pip install -e . for runtime only
+uv sync              # dev environment (default group), creates .venv from uv.lock
+uv sync --no-dev     # runtime dependencies only
+uv run pytest        # run the tests
 ```
 
 ## Quick Start
@@ -88,8 +90,9 @@ ids, distances = index.batch_search(queries, k=10, n_jobs=4)
 ├── CONTRIBUTING.md
 ├── Makefile                     # test, verify, benchmark, figures, tables, claims and link checks
 ├── setup.py                     # Package setup and dependency source
-├── requirements.txt             # "-e ."
-├── requirements-dev.txt         # "-e .[dev]"
+├── pyproject.toml               # package metadata and dependencies (uv)
+├── uv.lock                      # locked dependency versions
+├── .python-version              # default interpreter for uv
 ├── pytest.ini
 ├── zgq/                         # Main package
 │   ├── __init__.py

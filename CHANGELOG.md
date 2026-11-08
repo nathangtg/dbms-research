@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Dependency management moved to uv (pyproject.toml, uv.lock).
+
 Phases 4 to 8 below are not part of a tagged release. Phase 3 is the 8.0.0 code base and phases 1 and 2
 are the pre-8.0.0 history.
 

@@ -22,18 +22,14 @@ Please be respectful and constructive in all interactions. We welcome contributo
    cd dbms-research
    ```
 
-2. Create a virtual environment:
+2. Install [uv](https://docs.astral.sh/uv/) and sync the environment (creates `.venv` from `uv.lock`,
+   including the `dev` dependency group):
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Linux/Mac
-   # or
-   .\.venv\Scripts\activate  # Windows
+   uv sync
    ```
 
-3. Install development dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
+3. Run commands through uv, for example `uv run pytest` or `make test`. After editing
+   dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`.
 
 4. Verify installation:
    ```bash
@@ -62,7 +58,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 
 3. Run tests:
    ```bash
-   pytest tests/
+   uv run pytest tests/
    ```
 
 4. Format code:
@@ -141,16 +137,16 @@ def search(self, query: np.ndarray, k: int = 10) -> Tuple[np.ndarray, np.ndarray
 
 ```bash
 # All tests
-pytest tests/
+uv run pytest tests/
 
 # Specific test file
-pytest tests/test_zgq.py
+uv run pytest tests/test_zgq.py
 
 # With coverage
-pytest --cov=zgq tests/
+uv run pytest --cov=zgq tests/
 
 # Skip slow tests
-pytest -m "not slow" tests/
+uv run pytest -m "not slow" tests/
 ```
 
 ### Writing Tests
