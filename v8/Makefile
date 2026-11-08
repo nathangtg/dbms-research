@@ -1,4 +1,4 @@
-.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full figures tables claims-check links-check clean build docs example verify all help paper
+.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full study-smoke study-check study-report figures tables claims-check links-check clean build docs example verify all help paper
 
 # Default Python interpreter
 PYTHON ?= python3
@@ -47,6 +47,24 @@ benchmark-smoke:  ## Tiny-scale benchmark run plus schema check
 
 benchmark-check:  ## Validate committed canonical results against the schema
 	@for f in results/*/summary.json; do $(PYTHON) -m benchmarks.check_results $$f --canonical || exit 1; done
+
+study-smoke:  ## Tiny build-order study run (synthetic), aggregate, schema check and report
+	rm -rf .smoke_study
+	$(PYTHON) -m benchmarks.build_order_study --n-base 2000 --n-queries 100 --repeats 2 \
+		--ef 16 64 256 --strategies zone random skeleton --skeleton-fractions 0.05 \
+		--seeds 0 1 --experiment e1 e3 --out-dir .smoke_study/raw
+	$(PYTHON) -m benchmarks.build_order_study --aggregate .smoke_study/raw \
+		--out .smoke_study/study_summary.json
+	$(PYTHON) -m benchmarks.build_order_study --check .smoke_study/study_summary.json
+	$(PYTHON) -m benchmarks.build_order_report .smoke_study/study_summary.json
+	rm -rf .smoke_study
+
+study-check:  ## Validate committed build-order study summaries (results/*-novelty)
+	@for f in $$(find results -path '*-novelty*' -name study_summary.json); do \
+		$(PYTHON) -m benchmarks.build_order_study --check $$f || exit 1; done
+
+study-report:  ## Regenerate comparison.md and figures for STUDY=<path to study_summary.json>
+	$(PYTHON) -m benchmarks.build_order_report $(STUDY)
 
 RESULTS ?= results/2026-11-08/summary.json
 
@@ -107,6 +125,8 @@ verify:  ## Verify installation and run quick tests (includes benchmark-smoke)
 		print(f'Search test passed: found {len(idx)} neighbors')"
 	$(MAKE) benchmark-smoke
 	$(MAKE) benchmark-check
+	$(MAKE) study-smoke
+	$(MAKE) study-check
 	$(MAKE) claims-check
 	$(MAKE) links-check
 	$(PYTHON) -c "import matplotlib" && $(MAKE) figures tables

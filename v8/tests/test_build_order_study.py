@@ -203,3 +203,16 @@ def test_e3_runs_and_records_insertion_time():
     assert bos.check_run(run) == []
     assert run["insertion_time_s"] > 0
     assert run["points"][-1]["recall_pct"]["median"] > 80.0
+
+
+def test_report_generates_markdown_and_figures(tmp_path):
+    from benchmarks import build_order_report as rep
+
+    runs = [_fake_run(s, seed, sh) for seed in (0, 1)
+            for s, sh in (("random", 0.0), ("zone", 0.02))]
+    path = tmp_path / "study_summary.json"
+    path.write_text(json.dumps(bos.aggregate(runs)))
+    assert rep.main([str(path)]) == 0
+    text = (tmp_path / "comparison.md").read_text()
+    for section in ("Recall@10", "Equal-recall latency", "concurrent jobs", "Graph structure"):
+        assert section in text
