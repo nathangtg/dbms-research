@@ -1,4 +1,4 @@
-.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full figures tables claims-check links-check clean build docs example verify all help
+.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full figures tables claims-check links-check clean build docs example verify all help paper
 
 # Default Python interpreter
 PYTHON ?= python3
@@ -55,6 +55,15 @@ figures:  ## Regenerate figures/ from the canonical summary.json (no benchmarkin
 
 tables:  ## Regenerate tables/ (Markdown and LaTeX) from the canonical summary.json
 	$(PYTHON) -m visualization.make_tables --results $(RESULTS) --output tables
+
+paper:  ## Build ../latex/paper.pdf with latexmk (falls back to pdflatex); build files go to ../latex/build
+	@mkdir -p ../latex/build
+	@if command -v latexmk >/dev/null 2>&1; then \
+		cd ../latex && latexmk -pdf -interaction=nonstopmode -outdir=build paper.tex; \
+	elif command -v pdflatex >/dev/null 2>&1; then \
+		cd ../latex && for i in 1 2; do pdflatex -interaction=nonstopmode -output-directory=build paper.tex || exit 1; done; \
+	else echo "neither latexmk nor pdflatex found; install a TeX distribution"; exit 1; fi
+	@echo "Built ../latex/build/paper.pdf (the tracked ../latex/paper.pdf is not overwritten)"
 
 claims-check:  ## Fail if a retired benchmark number appears in docs or LaTeX
 	$(PYTHON) scripts/check_claims.py

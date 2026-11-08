@@ -137,6 +137,9 @@ Another study conducted by Manohar et al. \cite{manohar2024} addressed the scali
 
 A similar attempt at creating a zone-based algorithm has been done before by Akhil and Sivashankar \cite{akhil2025} where they would find the current HNSW algorithm would degrade when given a large lump of data. Their approach partitions the Dataset into smaller local zones using K-Means where each zone is going to hold and maintain an independent HNSW graph. Whilst their approach improves the scalability of the HNSW-based algorithm, it introduces memory overhead from managing several graphs.
 
+\paragraph{Relation to prior zone-based HNSW (Akhil and Sivashankar).}
+Akhil and Sivashankar's ZHNSW \cite{akhil2025} decomposes the search space into smaller localized HNSW graphs and, at query time, searches several zones chosen by adaptive zone selection (fixed fraction, distance threshold or heuristic), with the aim of parallelizing search at billion scale; it is evaluated on SIFT1B, DEEP1B, GLOVE-1.2M and MUSIC100M on an NVIDIA DGX A100. ZGQ shares the idea of partitioning the data into zones that each hold an HNSW graph. It differs in that it adds product quantization within zones and a zone-guided entry point into the graph, and in our evaluation it is a single-threaded, in-memory, synthetic-data study at up to 1M vectors. We have not reproduced ZHNSW and make no performance comparison against it; the two systems are related work to each other, not benchmarked competitors.
+
 Moving on to hardware focused optimization, Zhang et al. \cite{zhang2025} wrote on the I/O latency bottleneck in which disk-based ANNS algorithm faces. A new method focusing on wider neighborhood coverage is introduced as eXtended Neighborhood Graph which is often referred as XN-Graph. The paper focuses on implementing a Boundary-Adaptive partition which resulted in effective parallel graph construction complimented with an In-memory search. The paper claimed to have achieve a 4000 QPS with 90\% recall.
 
 Most ANNS faces poor performance with the vector-query are embedded with metadata constraints, where according to Gollapudi et al. \cite{gollapudi2023} the standard processing pipeline fails when given low specificity metadata. The paper proposed a new graph construction algorithm namely the FilteredVamana and StitchedVamana. These algorithms have an aim to modify the graph to be label (metadata)-aware. The edges are appended and removed based off the proximity and the labels that the vector holds. These algorithms resulted in high-throughput whilst also achieving high-recall in SSD based storage.
@@ -421,7 +424,7 @@ Our proposed solution, which is the Zonal Graph Quantization (ZGQ) are implement
 \begin{itemize}
     \item \textbf{Library:} \texttt{hnswlib} version 0.8.0+
     \item \textbf{Purpose:} To construct independent HNSW graphs within each different zone.
-    \item \textbf{Configuration:} Using reduced M = 8 to compare to M = 16 for full HNSW which has the goal of decreasing memory usage
+    \item \textbf{Configuration:} Local graphs use the same $M=16$ as the HNSW baseline (matched comparison); the variants ZGQ-M24 and ZGQ-M32 raise $M$ to test whether higher connectivity closes the recall gap (\texttt{results/2026-11-08/summary.json})
 \end{itemize}
 
 \subsubsection{Quantization Module}
@@ -627,7 +630,7 @@ The \texttt{ResidualProductQuantizer} in \texttt{core/quantization.py} implement
 The \texttt{ZoneGuidedGraph} class (\texttt{core/graph.py}) wraps the \texttt{hnswlib} index with zone-aware logic.
 \begin{itemize}
     \item \textbf{Zone Entry Points:} During construction, the system maintains a registry of entry points for each zone. This allows the search algorithm to inject the query directly into the most relevant local subgraph, bypassing the global entry node traversal typical of standard HNSW.
-    \item \textbf{Connectivity:} The graph is built with a reduced connectivity parameter ($M=8$ vs $M=16$ for baseline) to save memory, relying on the zone structure to maintain recall.
+    \item \textbf{Connectivity:} The benchmarked graphs use $M=16$ (matched to the HNSW baseline) and the variants $M=24$ and $M=32$; no reduced-$M$ configuration was benchmarked, so no memory saving from a smaller $M$ is claimed.
 \end{itemize}
 
 \subsection{Search Execution Flow}

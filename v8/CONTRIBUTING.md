@@ -198,6 +198,16 @@ make figures   # figures/ from results/2026-11-08/summary.json
 make tables    # tables/ (Markdown and LaTeX)
 ```
 
+### Building the paper
+
+```bash
+make paper   # latexmk -pdf (pdflatex fallback); output in ../latex/build/paper.pdf
+```
+
+Build files are written to `latex/build/`, which is git-ignored, so the tracked `latex/paper.pdf` is
+not overwritten. Copy the result over `latex/paper.pdf` only when you intend to update the tracked PDF.
+Without latexmk or pdflatex, install a TeX distribution (for example MacTeX or TeX Live).
+
 `make verify` also runs `make claims-check` (retired numbers must not reappear in the docs) and
 `make links-check` (Markdown and LaTeX links and paths must resolve). Add new claims to
 `docs/CLAIMS.md` with their source.

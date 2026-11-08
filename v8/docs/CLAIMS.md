@@ -67,17 +67,17 @@ analytic; needs the authors' attention).
 | Empirical overhead <1% for N=1e5 | paper.tex Theorem 3 | Contradicted by RSS deltas; kept only as analytic estimate | corrected |
 | gamma = 1.65, alpha = 0.65, beta in [0.2, 0.4] 'empirically measured' | paper.tex, proofing.tex | No measurement in results/; relabeled as assumed model parameters | corrected |
 | Theory-vs-empirical match: 1.30 vs 1.28 | proofing.tex | Based on retired numbers; measured iso-recall ratio about 0.66, model unvalidated | corrected |
-| Reduced M=8 for ZGQ graphs in the methodology | paper.tex lines about local graph quantization | Does not match the benchmarked configuration (M=16/24/32). Not edited; flagged for the authors | flagged |
+| Reduced M=8 for ZGQ graphs in the methodology | paper.tex local graph quantization and zone-guided graph sections | Did not match the benchmarked configuration (M=16/24/32). Text now states M=16 matched plus M=24/32 variants | corrected |
 | Hardware: Intel i5-12500H, WSL2 | paper.tex | Canonical run is Apple M4, macOS; text updated | corrected |
 | Evaluation capped at 100,000 vectors | paper.tex limitations | 1M was run | corrected |
 | paper.pdf contents | latex/paper.pdf | Still shows retired numbers; not modified (policy). Rebuild from paper.tex outside this change | flagged |
-| draft_papers/*: 94.8/11.4/43,794/13.3x, 19% less memory, 0.048, 68.2 etc. | draft_papers/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md (lines 532, 730, 732), code/current_formula_v3.tex (1674, 1699), code/current_formula_v4.tex (138, 206), pdf/current_formula_v1.tex (628) | Draft documents from earlier iterations; not edited, listed here | flagged |
+| Drafts: 94.8/11.4/43,794/13.3x, 19% less memory, 0.048, 68.2 etc. | docs/theory/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md, docs/theory/current_formula_v4.tex (moved from draft_papers/; v1 to v3 deleted as superseded by v4) | The 13.3x IVF-PQ table is replaced by a retirement notice. All files in docs/theory/ carry a historical-draft banner; remaining draft tables are superseded by BENCHMARKS.md. v4 PDF is an archived rendering | corrected |
 
 ## Stale artifacts not regenerated
 
 * `latex/paper.pdf` still contains retired numbers because the PDF is not modified by this change. Rebuild it from `latex/paper.tex`.
 * `v8/docs/proofing.pdf` is rebuilt from `proofing.tex` when `pdflatex` is available.
-* `draft_papers/` is listed above only; its files are not edited.
+* `v8/docs/theory/current_formula_v4.pdf` is the archived rendering of the v4 draft and still shows the old empirical numbers (the .tex carries a historical banner and placeholder figures; the PDF was not rebuilt).
 
 ## Known caveats on retained numbers
 

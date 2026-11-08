@@ -1,5 +1,8 @@
 # ZGQ: Key Mathematical Results Quick Reference
 
+> **Status: historical draft.** Analytic results only. Any empirical number here is superseded
+> by `v8/docs/BENCHMARKS.md`. The path reduction lemma (Lemma 2.1 here, Lemma 6.1 in the proof document) and the query time theorem carry the conditions stated in `v8/docs/BENCHMARKS.md`.
+
 ## Core Theorems
 
 ### 1. Space Complexity (Theorem 2.1)

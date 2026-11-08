@@ -12,7 +12,7 @@ from urllib.parse import unquote
 
 MD_LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)|!\[[^\]]*\]\(([^)\s]+)\)")
 TEX_GRAPHIC = re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}")
-SKIP_DIRS = {".git", ".agents", "results", "References", "draft_papers", ".venv", "zgq.egg-info"}
+SKIP_DIRS = {".git", ".agents", "results", "References", ".venv", "zgq.egg-info"}
 
 
 def default_root() -> Path:

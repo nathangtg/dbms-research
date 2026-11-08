@@ -80,6 +80,23 @@ Generated into `figures/` by `python -m visualization.generate_ieee_figures`:
   is the fastest index at low recall and cannot reach the recall of the graph indexes without refinement.
   A latency ratio against IVF-PQ at 90% recall cannot be computed because IVF-PQ never reaches 90%.
 
+### Assumptions behind the theory (Lemma 6.1 and Theorem 6.2)
+
+The proof document (`docs/theory/ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md`) predicts a query-time advantage
+for ZGQ. The prediction holds only under two conditions, and the results above should be read with them in mind.
+
+* **Lemma 6.1 (path reduction)** assumes spatial locality in insertion order: vectors inserted
+  consecutively into a zone graph are spatially close, which shortens edges and reduces hops
+  (`E[h_ZGQ] <= alpha * E[h_HNSW]`, alpha < 1). The assumption is not enforced or measured by the
+  library. The benchmark data are synthetic with no particular insertion order, and no hop counts are
+  recorded in `results/`, so alpha is unmeasured here. The hop counts quoted in the proof document
+  (13.2 vs 9.8) come from an earlier run and are not reproducible.
+* **Theorem 6.2 (query time)** requires `N > 10^4` and `alpha < 1 - sqrt(N) / (log N * ef)`. The 10K
+  results sit at this boundary, not inside the regime, so they cannot test the theorem. The 100K and 1M
+  results are inside the regime, and there ZGQ does not beat HNSW on the recall/latency frontier, so the
+  measurements do not confirm the theorem's conclusion. Either alpha is not below the required bound
+  on this data, or the cost model omits terms that matter in the implementation (the model is unvalidated).
+
 ## Parameter guidance
 
 | Goal | Suggestion |

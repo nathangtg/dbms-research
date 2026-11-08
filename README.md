@@ -26,7 +26,6 @@ dbms-research/
 │   ├── benchmarks/
 │   └── docs/
 ├── latex/        # Research paper LaTeX source
-├── draft_papers/ # Mathematical proofs and drafts
 └── References/   # Cited papers
 ```
 

@@ -29,6 +29,9 @@
 
 \maketitle
 
+\noindent\textbf{Status: historical draft.} Empirical figures in this document come from earlier unreproducible runs and are superseded by \texttt{v8/docs/BENCHMARKS.md}. The figures that came from the removed \texttt{v7/} directory are replaced by placeholders. The PDF alongside it is the archived rendering.
+
+
 \begin{abstract}
 We present Zonal Graph Quantization (ZGQ), a hybrid indexing method that combines K-Means zonal partitioning with HNSW graph construction. This document provides mathematical proofs and empirical validation of two ZGQ architectures: (1) ZGQ Multi-Graph achieves 20\% memory reduction with 3--4× query latency trade-off, and (2) ZGQ Unified achieves 35\% faster queries than baseline HNSW through zone-aware graph topology. Results are validated on datasets ranging from 10K to 100K vectors in 128 dimensions.
 \end{abstract}
@@ -167,7 +170,7 @@ Figure~\ref{fig:latency_comparison} shows the actual latency measurements. The d
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{v7/figures_zgq_vs_hnsw/fig3_latency_comparison.png}
+\fbox{\parbox{0.7\textwidth}{Figure omitted: source image from the removed v7 directory}}
 \caption{Query latency comparison: ZGQ Multi-Graph (blue) vs HNSW (orange). Multi-Graph architecture shows higher latency due to multiple graph searches, but the gap closes at scale (4.5× at 10K → 3.1× at 100K).}
 \label{fig:latency_comparison}
 \end{figure}
@@ -182,7 +185,7 @@ Figure~\ref{fig:latency_comparison} shows the actual latency measurements. The d
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{v7/figures_zgq_vs_hnsw/fig2_memory_comparison.png}
+\fbox{\parbox{0.7\textwidth}{Figure omitted: source image from the removed v7 directory}}
 \caption{Memory footprint comparison showing consistent 20\% reduction in Multi-Graph architecture. At 10K vectors: 4.9 MB vs 6.1 MB; at 100K vectors: 48.9 MB vs 61.0 MB.}
 \label{fig:memory_comparison}
 \end{figure}
@@ -196,7 +199,7 @@ At billion-scale, this projects to 121 GB savings compared to standard HNSW.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{v7/figures_zgq_vs_hnsw/fig1_recall_comparison.png}
+\fbox{\parbox{0.7\textwidth}{Figure omitted: source image from the removed v7 directory}}
 \caption{Recall@10 comparison showing ZGQ Multi-Graph maintains competitive or superior accuracy. At 10K: 55.1\% vs 54.7\%; at 100K: 21.2\% vs 17.7\%. ZGQ exhibits better scaling properties.}
 \label{fig:recall_comparison}
 \end{figure}
@@ -213,7 +216,7 @@ This suggests zone-based partitioning provides structural advantages for maintai
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{v7/benchmarks/figures_algorithm_comparison/01_algorithm_comparison.png}
+\fbox{\parbox{0.7\textwidth}{Figure omitted: source image from the removed v7 directory}}
 \caption{Comprehensive comparison including IVF baseline. IVF achieves higher recall (34.4\%) but with 54× slower queries (7.5 ms vs 0.14 ms for ZGQ). Different algorithm classes optimize for different objectives.}
 \label{fig:algorithm_comparison}
 \end{figure}
@@ -230,7 +233,7 @@ Context is critical when evaluating ZGQ:
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{v7/benchmarks/figures_algorithm_comparison/02_speed_vs_recall.png}
+\fbox{\parbox{0.7\textwidth}{Figure omitted: source image from the removed v7 directory}}
 \caption{Speed vs recall trade-off space. ZGQ Unified achieves optimal balance (fastest queries at competitive recall), while ZGQ Multi-Graph trades speed for memory efficiency.}
 \label{fig:speed_recall}
 \end{figure}

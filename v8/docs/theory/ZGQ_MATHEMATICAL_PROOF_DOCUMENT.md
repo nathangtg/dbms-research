@@ -1,5 +1,11 @@
 # Zonal Graph Quantization (ZGQ): Mathematical Proof of Concept
 
+> **Status: historical draft (October 2025).** The analytic derivations are kept for reference.
+> The empirical figures in this file (for example hop counts, alpha, latency and recall
+> tables) come from earlier unreproducible runs and are superseded by `v8/docs/BENCHMARKS.md`
+> and `v8/results/2026-11-08/summary.json`. The canonical benchmark does not support
+> Lemma 6.1 or Theorem 6.2 at 100K and 1M vectors; see `v8/docs/THEORY.md`.
+
 ## Document Information
 - **Project**: Zonal Graph Quantization for Scalable Vector Search
 - **Authors**: Nathan Aldyth Prananta Ginting, Jordan Chay Ming Hong, Jaeden Ting YiYong
@@ -721,17 +727,9 @@ For N = 10⁴: Speedup ≈ 10000/13 ≈ **769×** (theoretical)
 
 **Empirical Validation (High Recall Regime >90%)**:
 
-Recent experiments targeting >90% recall demonstrate the practical advantage of ZGQ over IVF-PQ.
+Retired. An earlier version of this section reported a latency speedup of more than ten times over IVF-PQ at more than 90% recall. That run is not reproducible, and in the canonical benchmark (`v8/results/2026-11-08/`) IVF-PQ never reaches 90% recall (maximum 64.4%, 61.5% and 56.2% at 10K, 100K and 1M), so the ratio cannot be computed. See `v8/docs/BENCHMARKS.md` and `v8/docs/CLAIMS.md`.
 
-| Algorithm | Latency (ms) | Speedup vs IVF-PQ |
-|-----------|--------------|-------------------|
-| IVF-PQ | ~151.6 | 1.0× |
-| HNSW | 14.6 | 10.4× |
-| **ZGQ** | **11.4** | **13.3×** |
-
-**Key Finding**: ZGQ is **13.3× faster** than IVF-PQ when tuned for high recall (>90%), validating the theoretical efficiency of zone-guided graph traversal over exhaustive probe-based search.
-
-**Note**: Empirical speedup is lower than theoretical maximum due to:
+**Note**: Any practical speedup over the theoretical figure would be reduced by:
 1. IVF uses fewer probes (n_probe = 10, not full scan)
 2. ZGQ has zone selection overhead
 3. Cache effects and implementation optimizations

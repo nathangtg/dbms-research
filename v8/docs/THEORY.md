@@ -205,3 +205,11 @@ These innovations combine to achieve faster query times than HNSW while maintain
 2. Jegou, H., Douze, M., & Schmid, C. (2011). Product quantization for nearest neighbor search. IEEE TPAMI.
 
 3. Johnson, J., Douze, M., & Jégou, H. (2019). Billion-scale similarity search with GPUs. IEEE TBD.
+
+## Conditions on the theoretical claims
+
+The path reduction lemma (Lemma 6.1 in `docs/theory/`) assumes that spatial locality in insertion
+order reduces edge lengths. The query time theorem (Theorem 6.2) requires `N > 10^4` and a bound on
+alpha. The 10K benchmark sits at that boundary. See "Assumptions behind the theory" in
+[BENCHMARKS.md](BENCHMARKS.md) for how the measured results relate to both. The earlier drafts are in
+[theory/](theory/) and are historical.

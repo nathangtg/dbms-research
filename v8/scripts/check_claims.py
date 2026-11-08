@@ -30,7 +30,7 @@ RETIRED = {
     "Expected improvements": r"Expected improvements",
 }
 EXEMPT = {"CLAIMS.md"}
-SKIP_DIRS = {".git", ".agents", "results", "References", "draft_papers", "node_modules", ".venv"}
+SKIP_DIRS = {".git", ".agents", "results", "References", "node_modules", ".venv"}
 
 
 def default_root() -> Path:
