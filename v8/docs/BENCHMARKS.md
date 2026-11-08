@@ -97,6 +97,21 @@ for ZGQ. The prediction holds only under two conditions, and the results above s
   measurements do not confirm the theorem's conclusion. Either alpha is not below the required bound
   on this data, or the cost model omits terms that matter in the implementation (the model is unvalidated).
 
+## Compression-first comparison at equal memory
+
+Analytic bytes/vector (`zgq/memory_model.py`, checked against saved/serialized sizes to within 0.2%)
+at 100K and 1M, compressed ZGQ (graph over RPQ/PQ codes) against FAISS HNSW+PQ, HNSW+SQ8, IVF-PQ and
+IVF-PQR. Full tables, commands, runtimes and limitations: `results/2026-11-08-improvements/compression/README.md`.
+
+* In the 60 to 120 B/vector band IVFPQR-pq32-r64 reaches about 93% (100K) and 85.7% (1M) at 110 and 105 B/vector;
+  the ZGQ compressed variants in that band reach 5.5% (100K) and 12.2% (1M).
+* In the 200 to 300 B/vector band HNSWSQ8-M8 reaches 90.0% (100K) and 80.3% (1M) at 208.6 B/vector; ZGQ
+  compressed reaches 60.1% at 201 B/vector (100K).
+* ZGQ compressed beats FAISS HNSW+PQ at similar bytes only through residual coding (the non-residual ZGQ
+  variant ties it: 19.0% vs 19.1% at 100K).
+* ZGQ compressed with exact rerank on kept raw vectors: 95.7% at 777 B/vector (100K) vs HNSW-M16 96.7% at 661.
+* Conclusion: at equal memory ZGQ compressed loses. Synthetic data, one machine, untuned, builds with 8 threads.
+
 ## Parameter guidance
 
 | Goal | Suggestion |
@@ -143,5 +158,5 @@ the seed on every run, so no data files are stored. The 1M scale took about 20 m
 8. **Fast-mode artifact.** ZGQ's `fast_mode` reranking raises its effective `ef` at small `ef`,
    so low-`ef` comparisons favor ZGQ for reasons unrelated to graph quality.
 9. **No tuning.** ZGQ ran at library defaults and no hyperparameter search was done for either side.
-10. **IVF-PQ configuration.** One configuration (m=32, no refinement) was run. IVF-PQ with refinement or
-    a different `m` would reach higher recall.
+10. **IVF-PQ configuration.** The canonical run used one configuration (m=32, no refinement). The compression
+    comparison above adds IVF-PQ with pq_m 16/32/64 and IVF-PQR; with refinement or a larger `m` IVF-PQ reaches higher recall.

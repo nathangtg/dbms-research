@@ -199,6 +199,20 @@ here; see `docs/BENCHMARKS.md` for measured results.
 | `probe_ratio` | float | 1.3 | Adaptive distance ratio threshold (>= 1) |
 | `search_mode` | str | 'graph' | 'graph': global graph search with zone re-ranking. 'zone_scan': exact candidates are all members (and replicas) of the probed zones. 'global_entry': graph candidates plus the entry points of the probed zones. hnswlib cannot take custom entry points, so this seeds the candidate set only and does not change hops |
 
+#### Compressed search (opt-in)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `compressed_search` | bool | False | `search`/`batch_search` walk the level-0 links of the graph and score candidates with PQ/RPQ ADC computed against each candidate's own zone centroid (entry points: nearest `compressed_entry_zones` zones). Needs `use_pq=True` |
+| `rerank_budget` | int | 0 | Exact-rerank this many top ADC candidates. Needs the raw vectors |
+| `drop_full_vectors` | bool | False | After build, free the hnswlib index and norms; raw vectors are kept only if `rerank_budget > 0`. The index cannot be saved and has no non-compressed search path |
+| `compressed_entry_zones` | int | 4 | Zones whose entry point seeds the search |
+
+`index.compressed_memory_bytes()` returns the actual bytes of the stored compressed arrays;
+`zgq.memory_model` has the analytic size functions for ZGQ, hnswlib and FAISS indexes.
+The compressed fields are not persisted by `save`/`load`. Measured results:
+`results/2026-11-08-improvements/compression/README.md` (ZGQ compressed loses at equal memory).
+
 `batch_zone_search(queries, k, n_probe, ef_search, use_pq_rerank, n_jobs)` is the
 batch form of `search`. It sets `index.last_batch_stats` (`mean_probes`, `probes`).
 Note `use_pq_rerank=True` (default) applies the PQ shortlist, which lowered recall

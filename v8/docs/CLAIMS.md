@@ -33,6 +33,8 @@ analytic; needs the authors' attention).
 | 100K ef=256 QPS: HNSW-M16 6,326; ZGQ-M16 8,210 | `100k.indexes points[ef=256].qps` | verified |
 | 100K ef=64 ZGQ-M24 78.6%, ZGQ-M32 80.1% | `100k.indexes points[ef=64]` | verified |
 | ZGQ recall higher than HNSW at ef=16 is a fast_mode rerank_factor=3 artifact | `results/2026-11-08/README.md protocol; zgq/index.py batch_search` | verified (mechanism from code) |
+| Compression at equal memory (100K/1M): IVFPQR-pq32-r64 92.9%/85.7% at 109.9/105.3 B/vec; ZGQ-C-PQ-M8-pq16 5.5% (100K), ZGQ-C-RPQ-M8-pq16 12.2% (1M) in the same band; HNSWSQ8-M8 90.0%/80.3% at 208.6 B/vec; ZGQ-C-RPQ-M8-pq32 60.1% at 201.2 B/vec (100K); ZGQ-C+rerank50 95.7% at 777.2 B/vec vs HNSW-M16 96.7% at 660.5 (100K) | `results/2026-11-08-improvements/compression/compression_summary.json` (non-canonical schema `zgq-compression/1`; analytic bytes/vector, 8 build threads) | verified |
+| ADC shortlist check: nearest-zone table vs per-candidate-zone ADC, recall 43.4% vs 48.1% at n_probe 64, exact scoring 99.9% (100K, 200 queries) | `results/2026-11-08-improvements/compression/adc_check_100k.json` | verified |
 | Machine: Apple M4, 10 cores, 16 GB, macOS, Python 3.13.7 | `summary.json environment` | verified |
 
 ## Claims removed, corrected or flagged
