@@ -109,6 +109,13 @@ class AdaptiveHierarchicalZones:
         self.coarse_centroids: Optional[np.ndarray] = None
         self.assignments: Optional[np.ndarray] = None
         self.inverted_lists: Dict[int, List[int]] = {}
+
+        # Optional boundary replication (opt-in). Kept apart from `assignments`
+        # and `inverted_lists` so graph and PQ code paths are unchanged.
+        # replica_assignments[i] lists the extra zones (not the primary) of vector i.
+        self.n_replicas: int = 1
+        self.replica_assignments: Optional[np.ndarray] = None
+        self.replica_lists: Dict[int, np.ndarray] = {}
         
         # Coarse-to-fine mapping
         self.coarse_to_fine: Dict[int, List[int]] = {}
@@ -508,6 +515,80 @@ class AdaptiveHierarchicalZones:
         sorted_indices = np.argsort(fine_distances)[:n_probe]
         return candidate_fine[sorted_indices]
     
+    def build_replicas(self, vectors: np.ndarray, n_replicas: int) -> None:
+        """
+        Replicate each vector into its `n_replicas` nearest zones (SPANN style).
+
+        The primary zone stays `assignments[i]`. The remaining `n_replicas - 1`
+        nearest zones by centroid distance are stored in `replica_assignments`
+        and `replica_lists`. Stored ids only, vectors are not duplicated.
+        """
+        if not self.is_built:
+            raise RuntimeError("Zones must be built before replication")
+        n_zones = len(self.fine_centroids)
+        n_replicas = int(n_replicas)
+        if n_replicas < 1:
+            raise ValueError("n_replicas must be >= 1")
+        n_extra = min(n_replicas, n_zones) - 1
+        self.n_replicas = n_replicas
+        self.replica_lists = {}
+        if n_extra <= 0:
+            self.replica_assignments = np.zeros((len(vectors), 0), dtype=np.int32)
+            return
+
+        vectors = np.asarray(vectors, dtype=np.float32)
+        cent = self.fine_centroids.astype(np.float32)
+        c_sq = np.sum(cent * cent, axis=1)
+        extra = np.zeros((len(vectors), n_extra), dtype=np.int32)
+        chunk = 4096
+        for s in range(0, len(vectors), chunk):
+            blk = vectors[s:s + chunk]
+            d = c_sq[None, :] - 2.0 * (blk @ cent.T)
+            rows = np.arange(len(blk))
+            d[rows, self.assignments[s:s + chunk]] = np.inf  # exclude primary
+            part = np.argpartition(d, n_extra - 1, axis=1)[:, :n_extra]
+            order = np.argsort(np.take_along_axis(d, part, axis=1), axis=1)
+            extra[s:s + chunk] = np.take_along_axis(part, order, axis=1)
+        self.replica_assignments = extra
+        self._rebuild_replica_lists()
+
+    def _rebuild_replica_lists(self) -> None:
+        extra = self.replica_assignments
+        self.replica_lists = {}
+        if extra is None or extra.shape[1] == 0:
+            return
+        flat_z = extra.reshape(-1)
+        flat_v = np.repeat(np.arange(extra.shape[0], dtype=np.int64), extra.shape[1])
+        order = np.argsort(flat_z, kind='stable')
+        flat_z, flat_v = flat_z[order], flat_v[order]
+        bounds = np.flatnonzero(np.diff(flat_z)) + 1
+        for z_ids, v_ids in zip(np.split(flat_z, bounds), np.split(flat_v, bounds)):
+            if len(z_ids):
+                self.replica_lists[int(z_ids[0])] = v_ids
+
+    def get_replica_overhead(self) -> Dict:
+        """Analytic cost of replication: extra stored ids (int32 each)."""
+        extra = 0 if self.replica_assignments is None else int(self.replica_assignments.size)
+        return {
+            'n_replicas': self.n_replicas,
+            'extra_ids': extra,
+            'extra_bytes': extra * 4,
+            'extra_fraction': extra / max(1, self.n_vectors),
+        }
+
+    def get_zone_candidates(self, zone_ids) -> np.ndarray:
+        """Unique vector ids in the given zones, including replica members."""
+        parts = []
+        for z in zone_ids:
+            z = int(z)
+            parts.append(np.asarray(self.inverted_lists.get(z, []), dtype=np.int64))
+            r = self.replica_lists.get(z)
+            if r is not None:
+                parts.append(r)
+        if not parts:
+            return np.zeros(0, dtype=np.int64)
+        return np.unique(np.concatenate(parts))
+
     def get_zone_vectors(self, zone_id: int) -> List[int]:
         """Get vector IDs belonging to a fine zone."""
         return self.inverted_lists.get(zone_id, [])
@@ -558,7 +639,9 @@ class AdaptiveHierarchicalZones:
             'assignments': self.assignments,
             'inverted_lists': {int(k): list(v) for k, v in self.inverted_lists.items()},
             'coarse_to_fine': {int(k): list(v) for k, v in self.coarse_to_fine.items()},
-            'fine_to_coarse': {int(k): int(v) for k, v in self.fine_to_coarse.items()}
+            'fine_to_coarse': {int(k): int(v) for k, v in self.fine_to_coarse.items()},
+            'n_replicas': self.n_replicas,
+            'replica_assignments': self.replica_assignments
         }
     
     @classmethod
@@ -576,6 +659,9 @@ class AdaptiveHierarchicalZones:
         zones.inverted_lists = {int(k): list(v) for k, v in state['inverted_lists'].items()}
         zones.coarse_to_fine = {int(k): list(v) for k, v in state['coarse_to_fine'].items()}
         zones.fine_to_coarse = {int(k): int(v) for k, v in state['fine_to_coarse'].items()}
+        zones.n_replicas = state.get('n_replicas', 1)
+        zones.replica_assignments = state.get('replica_assignments')
+        zones._rebuild_replica_lists()
         zones.is_built = True
         
         return zones

@@ -153,6 +153,15 @@ class ZGQConfig:
         metric: Distance metric ('l2', 'cosine', 'ip')
         verbose: Print progress information
         random_state: Random seed for reproducibility
+        insertion_order: HNSW insertion order, 'zone' (default) or 'random'
+        zone_replicas: Zones each vector is stored in for zone scans (1 = off)
+        adaptive_probe: Choose the probe count per query from centroid distances
+        min_probe, max_probe: Bounds on the adaptive probe count
+        probe_ratio: A zone is probed when its centroid distance is at most
+            probe_ratio times the nearest centroid distance (adaptive only)
+        search_mode: 'graph' (default), 'zone_scan' or 'global_entry'.
+            Applies to search() and batch_zone_search(), not to the
+            fast_mode batch_search path.
     """
     
     # Zone settings
@@ -180,6 +189,29 @@ class ZGQConfig:
     # General settings
     verbose: bool = False
     random_state: int = 42
+
+    # Opt-in recall options (defaults reproduce the previous behavior exactly)
+    insertion_order: str = 'zone'
+    zone_replicas: int = 1
+    adaptive_probe: bool = False
+    min_probe: int = 1
+    max_probe: int = 32
+    probe_ratio: float = 1.3
+    search_mode: str = 'graph'
+
+    def __post_init__(self):
+        if self.insertion_order not in ('zone', 'random'):
+            raise ValueError("insertion_order must be 'zone' or 'random'")
+        if self.search_mode not in ('graph', 'zone_scan', 'global_entry'):
+            raise ValueError(
+                "search_mode must be 'graph', 'zone_scan' or 'global_entry'"
+            )
+        if self.zone_replicas < 1:
+            raise ValueError("zone_replicas must be >= 1")
+        if not 1 <= self.min_probe <= self.max_probe:
+            raise ValueError("require 1 <= min_probe <= max_probe")
+        if self.probe_ratio < 1.0:
+            raise ValueError("probe_ratio must be >= 1.0")
 
 
 class ZGQIndex:
@@ -237,6 +269,7 @@ class ZGQIndex:
         
         # Build timing
         self.build_stats: Dict = {}
+        self.last_batch_stats: Dict = {}
     
     def build(self, vectors: np.ndarray) -> 'ZGQIndex':
         """
@@ -284,6 +317,10 @@ class ZGQIndex:
         self.zones = AdaptiveHierarchicalZones(zone_config)
         self.zones.build(vectors)
         
+        if self.config.zone_replicas > 1:
+            self.zones.build_replicas(vectors, self.config.zone_replicas)
+            self.build_stats['replica_overhead'] = self.zones.get_replica_overhead()
+
         self.build_stats['zones_time'] = time.time() - step_start
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['zones_time']:.2f}s")
@@ -299,7 +336,8 @@ class ZGQIndex:
             ef_search=self.config.ef_search,
             use_zone_guidance=self.config.use_zone_guidance,
             space=self.config.metric,
-            random_seed=self.config.random_state
+            random_seed=self.config.random_state,
+            insertion_order=self.config.insertion_order
         )
         
         self.graph = ZoneGuidedGraph(graph_config)
@@ -419,9 +457,25 @@ class ZGQIndex:
         Returns:
             (ids, distances): Arrays of shape (k,)
         """
+        ids, distances, _ = self._search_impl(query, k, n_probe, ef_search, use_pq_rerank)
+        return ids, distances
+
+    def _choose_zones(self, query: np.ndarray, n_probe: int) -> np.ndarray:
+        """Zones to probe: fixed n_probe, or adaptive from the centroid distance ratio."""
+        cfg = self.config
+        if not cfg.adaptive_probe:
+            return self.zones.select_zones(query, n_probe)
+        zones = self.zones.select_zones(query, cfg.max_probe)
+        d = np.sum((self.zones.fine_centroids[zones] - query) ** 2, axis=1)
+        # d is squared L2; the ratio applies to distances
+        n = int(np.sum(d <= (cfg.probe_ratio ** 2) * d[0]))
+        n = max(cfg.min_probe, min(n, cfg.max_probe, len(zones)))
+        return zones[:n]
+
+    def _search_impl(self, query, k, n_probe, ef_search, use_pq_rerank):
         if not self.is_built:
             raise RuntimeError("Index must be built before searching")
-        
+
         query = np.ascontiguousarray(query.astype(np.float32))
         
         if query.shape[0] != self.dimension:
@@ -430,17 +484,32 @@ class ZGQIndex:
             )
         
         # Step 1: Select zones to search
-        selected_zones = self.zones.select_zones(query, n_probe)
-        
+        selected_zones = self._choose_zones(query, n_probe)
+        n_probed = len(selected_zones)
+
         # Step 2: Search graph with zone guidance
         if ef_search is not None:
             self.graph.set_ef(ef_search)
-        
-        # Get candidates from graph
-        k_candidates = min(k * n_probe, self.n_vectors)
-        candidate_ids, candidate_dists = self.graph.search(
-            query, k_candidates, selected_zones
-        )
+
+        mode = self.config.search_mode
+        if mode == 'zone_scan':
+            # IVF-style: candidates are all members (and replicas) of probed zones
+            candidate_ids = self.zones.get_zone_candidates(selected_zones)
+            if len(candidate_ids) == 0:
+                candidate_ids, _ = self.graph.search(query, k, selected_zones)
+        else:
+            # Get candidates from graph
+            k_candidates = min(k * n_probed, self.n_vectors)
+            candidate_ids, candidate_dists = self.graph.search(
+                query, k_candidates, selected_zones
+            )
+            if mode == 'global_entry':
+                # Seed the candidate set with the entry points of probed zones
+                seeds = [self.graph.zone_entry_points.get(int(z), []) for z in selected_zones]
+                seeds = np.array([i for g in seeds for i in g], dtype=np.int64)
+                candidate_ids = np.unique(
+                    np.concatenate([np.asarray(candidate_ids, dtype=np.int64), seeds])
+                )
         
         # Step 3: PQ-based re-ranking (if enabled and more candidates than k)
         if self.config.use_pq and use_pq_rerank and len(candidate_ids) > k:
@@ -474,8 +543,61 @@ class ZGQIndex:
         final_ids = candidate_ids[top_k]
         final_distances = exact_distances[top_k]
         
-        return final_ids, final_distances
-    
+        return final_ids, final_distances, n_probed
+
+    def batch_zone_search(
+        self,
+        queries: np.ndarray,
+        k: int = 10,
+        n_probe: int = 8,
+        ef_search: Optional[int] = None,
+        use_pq_rerank: bool = True,
+        n_jobs: int = 1
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Batch version of the zone path (`search`), honoring `use_pq_rerank` and the
+        opt-in `search_mode`, replicas and adaptive probing.
+
+        Sets `self.last_batch_stats` with the mean and per-query probe counts.
+        With n_jobs > 1 queries run in threads; the shared hnswlib ef is set once
+        up front and the numba ADC kernel launch is serialized by a lock in
+        zgq/core/quantization.py.
+        """
+        if not self.is_built:
+            raise RuntimeError("Index must be built before searching")
+        queries = np.ascontiguousarray(queries.astype(np.float32))
+        if queries.shape[1] != self.dimension:
+            raise ValueError(
+                f"Query dimension {queries.shape[1]} != index dimension {self.dimension}"
+            )
+        n_queries = len(queries)
+        if ef_search is not None:
+            self.graph.set_ef(ef_search)
+
+        def one(i):
+            return self._search_impl(queries[i], k, n_probe, None, use_pq_rerank)
+
+        if n_jobs == 1:
+            results = [one(i) for i in range(n_queries)]
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+                results = list(executor.map(one, range(n_queries)))
+
+        all_ids = np.zeros((n_queries, k), dtype=np.int64)
+        all_distances = np.zeros((n_queries, k), dtype=np.float32)
+        probes = np.zeros(n_queries, dtype=np.int32)
+        for i, (ids, dists, n_probed) in enumerate(results):
+            n_results = min(k, len(ids))
+            all_ids[i, :n_results] = ids[:n_results]
+            all_distances[i, :n_results] = dists[:n_results]
+            probes[i] = n_probed
+        self.last_batch_stats = {
+            'mean_probes': float(probes.mean()) if n_queries else 0.0,
+            'probes': probes,
+        }
+        return all_ids, all_distances
+
     def batch_search(
         self,
         queries: np.ndarray,
@@ -666,6 +788,8 @@ class ZGQIndex:
         if self.is_built:
             stats['build_stats'] = self.build_stats
             stats['n_zones'] = len(self.zones.fine_centroids) if self.zones else 0
+            if self.zones and self.zones.n_replicas > 1:
+                stats['replica_overhead'] = self.zones.get_replica_overhead()
             
             if self.pq:
                 stats['pq_info'] = self.pq.get_memory_usage(self.n_vectors)
@@ -695,7 +819,14 @@ class ZGQIndex:
                 'pq_bits': self.config.pq_bits,
                 'use_residual_pq': self.config.use_residual_pq,
                 'metric': self.config.metric,
-                'random_state': self.config.random_state
+                'random_state': self.config.random_state,
+                'insertion_order': self.config.insertion_order,
+                'zone_replicas': self.config.zone_replicas,
+                'adaptive_probe': self.config.adaptive_probe,
+                'min_probe': self.config.min_probe,
+                'max_probe': self.config.max_probe,
+                'probe_ratio': self.config.probe_ratio,
+                'search_mode': self.config.search_mode
             },
             'data': {
                 'vectors': self.vectors,
