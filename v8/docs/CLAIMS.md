@@ -88,6 +88,7 @@ analytic; needs the authors' attention).
 | Drafts: 94.8/11.4/43,794/13.3x, 19% less memory, 0.048, 68.2, 0.071 ms, 64.6%, 35% faster queries, 20% memory reduction, 610 MB, alpha 0.74 etc. | draft_papers/ (ZGQ_MATHEMATICAL_PROOF_DOCUMENT.md, MATHEMATICAL_RESULTS_QUICK_REF.md, current_formula_v1 to v4.tex and PDFs) | Deleted. The drafts carried dozens of untraceable empirical tables; the theory that matters is in docs/THEORY.md. History is at git tag `pre-v8-cleanup`. Extra patterns for these numbers were added to `scripts/check_claims.py` | removed |
 | Expected Results table (ZGQ v8 90-95% recall, 'Lower' latency, IVF-PQ 60-80%) | docs/THEORY.md 6.3 | No source; contradicted by the canonical run. Replaced by a pointer to BENCHMARKS.md | removed |
 | alpha = 0.74 'path reduction factor'; 'empirical' alpha = 0.65 | paper.tex Theorem 4 and conclusion | Not measured; now labeled assumed | corrected |
+| v1 TechRxiv preprint archived verbatim | docs/preprint/v1.md | Archived copy of the published v1; its retired numbers are exempt from claims-check by exact path; see the v1->v2 change log (to be written) | flagged |
 
 ## Stale artifacts not regenerated
 
