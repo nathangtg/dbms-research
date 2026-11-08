@@ -19,7 +19,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -59,12 +58,15 @@ profile_default/
 ipython_config.py
 
 # Benchmark Results
-benchmark_results*.json
-results/
-*.json
+benchmark_results_*.json
+!benchmark_results.json
+!v8/results/**
 
 # Datasets and Large Files
 *.npy
+*.pkl
+*.pickle
+data/
 *.npz
 *.h5
 *.hdf5
@@ -73,6 +75,9 @@ results/
 
 # Index Files (generated)
 *.index
+*.zgq
+*.nbc
+*.nbi
 *.idx
 *.faiss
 
@@ -129,11 +134,24 @@ site/
 # Scratch and test files
 scratchpad.md
 scratch/
-test_*.py
 temp_*.py
 debug_*.py
 
-# Generated reports
-report*.md
-summary*.txt
-analysis*.txt
+# LaTeX build artifacts
+*.aux
+*.toc
+*.log
+*.out
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.lof
+*.lot
+*.nav
+*.snm
+
+# Agent task state
+.agents/
+.smoke_results/

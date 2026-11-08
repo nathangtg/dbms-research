@@ -3,8 +3,9 @@ Residual Product Quantization (RPQ) for ZGQ v8
 ===============================================
 
 This module implements Residual Product Quantization which encodes
-residuals from zone centroids instead of raw vectors, achieving
-15-20% lower quantization error.
+residuals from zone centroids instead of raw vectors. Residuals have lower
+variance than raw vectors, so the expected quantization error is lower (not
+measured in this repository).
 
 Key Innovations:
 1. Residual Encoding: Encodes (vector - zone_centroid)
@@ -24,11 +25,16 @@ Compression: d * 4 bytes → m bytes (m ≤ d)
 Typical: 128 * 4 = 512 bytes → 16 bytes = 32x compression
 """
 
+import threading
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from sklearn.cluster import MiniBatchKMeans
 from dataclasses import dataclass
 from numba import njit, prange, float32, uint8
+
+# Numba's default 'workqueue' threading layer aborts the process if a parallel
+# kernel is launched from several Python threads at once, so serialise launches.
+_PARALLEL_KERNEL_LOCK = threading.Lock()
 
 
 @dataclass
@@ -299,7 +305,8 @@ class ResidualProductQuantizer:
         Returns:
             Approximate squared distances of shape (N,)
         """
-        return _asymmetric_distance_numba(codes, distance_table)
+        with _PARALLEL_KERNEL_LOCK:
+            return _asymmetric_distance_numba(codes, distance_table)
     
     def decode(self, codes: np.ndarray) -> np.ndarray:
         """

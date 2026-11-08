@@ -79,7 +79,7 @@ Subang Jaya, Malaysia\\
 \maketitle
 
 \begin{abstract}
-With the rapid development of Artificial Intelligence, new database types like vector databases have become essential. The Approximate Nearest Neighbour Search (ANNS) is a very important algorithmic operation in these systems. Graph-based algorithms are noted to be best in indexing amongst other algorithms due to their speed. Hierarchical Navigable Small World (HNSW) and other cutting-edge algorithms are faster and more accurate for searching, but they use a lot of memory and cost a lot to build, which makes them hard to scale for datasets with billions of records. This study analyses the memory-performance trade-off by comparing HNSW with partitioning-based approaches and presents a novel hybrid framework. Our methodology involves a comparative study of a proposed zonal framework, which partitions the dataset into smaller clusters and constructs independent, lightweight HNSW graphs within each zone to reduce complexity. The findings discovered throughout this research phase are expected to be able to demonstrate that a hybrid approach can reduce index memory size while maintaining recall rates competitive with standard HNSW. Our research results may highlight the viability of hybrid structures for creating scalable, resource-efficient vector search solutions, which addresses a pain point and may solve a critical challenge in deploying large-scale AI systems which handle heavy flow of data. The source code and datasets for this research are available at \url{https://github.com/nathangtg/dbms-research}.
+With the rapid development of Artificial Intelligence, new database types like vector databases have become essential. The Approximate Nearest Neighbour Search (ANNS) is a very important algorithmic operation in these systems. Graph-based algorithms are noted to be best in indexing amongst other algorithms due to their speed. Hierarchical Navigable Small World (HNSW) and other cutting-edge algorithms are faster and more accurate for searching, but they use a lot of memory and cost a lot to build, which makes them hard to scale for datasets with billions of records. This study analyses the memory-performance trade-off by comparing HNSW with partitioning-based approaches and presents a novel hybrid framework. Our methodology involves a comparative study of a proposed zonal framework, which partitions the dataset into smaller clusters and constructs independent, lightweight HNSW graphs within each zone to reduce complexity. The findings discovered throughout this research phase are expected to be able to demonstrate that a hybrid approach can reduce index memory size while maintaining recall rates competitive with standard HNSW. Our research results may highlight the viability of hybrid structures for creating scalable, resource-efficient vector search solutions, which addresses a pain point and may solve a critical challenge in deploying large-scale AI systems which handle heavy flow of data. In the canonical benchmark (synthetic data, single thread) the proposed framework matched HNSW recall at 10K vectors but was less accurate than HNSW at 100K and 1M vectors, built more slowly and used more memory, so the hybrid design did not outperform HNSW in our measurements. The source code and benchmark results for this research are available at \url{https://github.com/nathangtg/dbms-research}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -136,6 +136,9 @@ Chen et al. \cite{chen2021} faces the in-memory ANNS issue faced by algorithms l
 Another study conducted by Manohar et al. \cite{manohar2024} addressed the scaling issues that current parallel graph-based algorithms face, this paper determined that most graph-based algorithms rely too heavily on locks as well as other sequential processes which leads to the algorithm being slow and inefficient when being ran on modern multi-core CPUs. This paper introduces ParlayANN. The algorithm consists of libraries of deterministic and parallel algorithms, where the algorithm uses Prefix Doubling (an act to insert points in parallel batches on an immutable reference of the graph itself). The algorithm implementation was shown to be efficient and is well-scalable on multi-core processors which outperforms its predecessors such as HNSW as well as DiskANN.
 
 A similar attempt at creating a zone-based algorithm has been done before by Akhil and Sivashankar \cite{akhil2025} where they would find the current HNSW algorithm would degrade when given a large lump of data. Their approach partitions the Dataset into smaller local zones using K-Means where each zone is going to hold and maintain an independent HNSW graph. Whilst their approach improves the scalability of the HNSW-based algorithm, it introduces memory overhead from managing several graphs.
+
+\paragraph{Relation to prior zone-based HNSW (Akhil and Sivashankar).}
+Akhil and Sivashankar's ZHNSW \cite{akhil2025} decomposes the search space into smaller localized HNSW graphs and, at query time, searches several zones chosen by adaptive zone selection (fixed fraction, distance threshold or heuristic), with the aim of parallelizing search at billion scale; it is evaluated on SIFT1B, DEEP1B, GLOVE-1.2M and MUSIC100M on an NVIDIA DGX A100. ZGQ shares the idea of partitioning the data into zones that each hold an HNSW graph. It differs in that it adds product quantization within zones and a zone-guided entry point into the graph, and in our evaluation it is a single-threaded, in-memory, synthetic-data study at up to 1M vectors. We have not reproduced ZHNSW and make no performance comparison against it; the two systems are related work to each other, not benchmarked competitors.
 
 Moving on to hardware focused optimization, Zhang et al. \cite{zhang2025} wrote on the I/O latency bottleneck in which disk-based ANNS algorithm faces. A new method focusing on wider neighborhood coverage is introduced as eXtended Neighborhood Graph which is often referred as XN-Graph. The paper focuses on implementing a Boundary-Adaptive partition which resulted in effective parallel graph construction complimented with an In-memory search. The paper claimed to have achieve a 4000 QPS with 90\% recall.
 
@@ -364,8 +367,8 @@ The generation process for all of the data's follows a standard normal distribut
 The device which was used to demonstrate and run the experiments to get our current figures follows the specification of:
 
 \begin{itemize}
-\item \textbf{Hardware:} A Workstation with an CPU namely the Intel core I5-12500H complimented with an NVIDIA graphics card namely the RTX3050 complimented with 16 Gigabytes of Ram and 512 Gigabytes of SSD storage
-\item \textbf{OS:} Using WSL2 Ubuntu 24, under Windows 11
+\item \textbf{Hardware:} Apple M4 (10 cores, run single-threaded), 16 GB RAM, arm64
+\item \textbf{OS and software:} macOS, Python 3.13.7, hnswlib 0.8.0, faiss-cpu 1.15.1, numba 0.68.1, numpy 2.5.4 (committed in \texttt{v8/results/2026-11-08/README.md})
 \end{itemize}
 
 \subsubsection{Execution Configuration}
@@ -421,7 +424,7 @@ Our proposed solution, which is the Zonal Graph Quantization (ZGQ) are implement
 \begin{itemize}
     \item \textbf{Library:} \texttt{hnswlib} version 0.8.0+
     \item \textbf{Purpose:} To construct independent HNSW graphs within each different zone.
-    \item \textbf{Configuration:} Using reduced M = 8 to compare to M = 16 for full HNSW which has the goal of decreasing memory usage
+    \item \textbf{Configuration:} Local graphs use the same $M=16$ as the HNSW baseline (matched comparison); the variants ZGQ-M24 and ZGQ-M32 raise $M$ to test whether higher connectivity closes the recall gap (\texttt{results/2026-11-08/summary.json})
 \end{itemize}
 
 \subsubsection{Quantization Module}
@@ -627,7 +630,7 @@ The \texttt{ResidualProductQuantizer} in \texttt{core/quantization.py} implement
 The \texttt{ZoneGuidedGraph} class (\texttt{core/graph.py}) wraps the \texttt{hnswlib} index with zone-aware logic.
 \begin{itemize}
     \item \textbf{Zone Entry Points:} During construction, the system maintains a registry of entry points for each zone. This allows the search algorithm to inject the query directly into the most relevant local subgraph, bypassing the global entry node traversal typical of standard HNSW.
-    \item \textbf{Connectivity:} The graph is built with a reduced connectivity parameter ($M=8$ vs $M=16$ for baseline) to save memory, relying on the zone structure to maintain recall.
+    \item \textbf{Connectivity:} The benchmarked graphs use $M=16$ (matched to the HNSW baseline) and the variants $M=24$ and $M=32$; no reduced-$M$ configuration was benchmarked, so no memory saving from a smaller $M$ is claimed.
 \end{itemize}
 
 \subsection{Search Execution Flow}
@@ -689,36 +692,36 @@ To ensure clarity, the variables utilized in Algorithm \ref{alg:zgq_search} are 
 \end{itemize}
 
 \subsection{Empirical Benchmark Results}
-To substantiate the theoretical advantages of ZGQ, we present the raw performance data from our comparative benchmarks on the 100,000-vector dataset. Table \ref{tab:benchmark_results} details the Recall@10, Query Latency, and Throughput (QPS) for both HNSW and ZGQ across varying search depths ($ef_{search}$).
+All numbers in this paper come from the committed canonical run \texttt{v8/results/2026-11-08/summary.json} (synthetic clustered Gaussian data, $d=128$, 1000 queries, single thread, median of 5 repeats). Table \ref{tab:benchmark_results} gives the matched comparison HNSW-M16 against ZGQ-M16 at 100,000 vectors. Draft numbers from earlier, unreproducible runs have been withdrawn.
 
 \begin{table}[htbp]
-\caption{Quantitative Benchmark Results (100k Vectors)}
+\caption{Matched Comparison at 100K Vectors (Recall@10 \%, ms per query, QPS)}
 \label{tab:benchmark_results}
 \centering
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Algorithm} & \textbf{Config ($ef$)} & \textbf{Recall@10 (\%)} & \textbf{Latency (ms)} & \textbf{QPS} \\
 \midrule
-HNSW & 64 & 87.40 & 8.97 & 55,735 \\
-ZGQ & 64 & \textbf{90.34} & 9.02 & 55,449 \\
+HNSW-M16 & 64 & \textbf{86.1} & 0.084 & 11,954 \\
+ZGQ-M16 & 64 & 78.9 & \textbf{0.065} & \textbf{15,403} \\
 \midrule
-HNSW & 128 & 91.06 & 12.97 & 38,552 \\
-ZGQ & 128 & \textbf{93.18} & \textbf{11.42} & \textbf{43,794} \\
+HNSW-M16 & 128 & \textbf{90.3} & 0.115 & 8,671 \\
+ZGQ-M16 & 128 & 81.9 & \textbf{0.087} & \textbf{11,553} \\
 \midrule
-HNSW & 200 & 92.90 & 14.62 & 34,190 \\
-ZGQ & 200 & \textbf{94.82} & \textbf{14.05} & \textbf{35,594} \\
+HNSW-M16 & 256 & \textbf{94.2} & 0.158 & 6,326 \\
+ZGQ-M16 & 256 & 84.8 & \textbf{0.122} & \textbf{8,210} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The data reveals a consistent performance advantage for ZGQ, particularly in the high-recall regime. At $ef=128$, ZGQ not only achieves a higher recall (93.18\% vs 91.06\%) but does so with significantly lower latency (11.42 ms vs 12.97 ms), resulting in a 13.6\% improvement in throughput. This empirical evidence directly supports Theorem 4 regarding query complexity reduction.
+At equal $ef$, ZGQ-M16 is 20 to 30\% faster per query but 7 to 10 recall points less accurate at 100K and 1M vectors. At 10K vectors the two match in recall (92.3\% vs 92.4\% at $ef=64$) and ZGQ is about 5\% slower. HNSW at a smaller $ef$ reaches a given recall at lower latency than any ZGQ setting in the sweep, so the faster per-query time of ZGQ at equal $ef$ is not an efficiency advantage. HNSW is the C++ \texttt{hnswlib}; ZGQ is Python with numba, so absolute timings include implementation overhead.
 
 \subsection{Visualization and Benchmarking Pipeline}
 To ensure reproducibility and rigorous comparison, we developed a dedicated visualization suite in \texttt{visualization/generate\_ieee\_figures.py}.
 \begin{itemize}
-    \item \textbf{Live Benchmarking:} The script integrates directly with the \texttt{BenchmarkRunner} class, executing real-time performance tests on the current hardware rather than relying on static logs.
-    \item \textbf{IEEE Compliance:} All generated figures are programmatically styled to meet IEEE publication standards (300 DPI, specific font sizes, and colorblind-friendly palettes).
-    \item \textbf{Metric Calculation:} The pipeline automatically computes derived metrics such as QPS (Queries Per Second) and the Pareto frontier for Recall-Latency trade-offs.
+    \item \textbf{Results Only:} The figure script reads only \texttt{results/<date>/summary.json}. It performs no benchmarking, so every plotted point is traceable to the committed results.
+    \item \textbf{IEEE Compliance:} Figures are styled for single and double column widths at 300 DPI with a colorblind-friendly palette.
+    \item \textbf{Tables:} \texttt{visualization/make\_tables.py} renders Markdown and LaTeX tables from the same file.
 \end{itemize}
 
 \section{Results and Discussion}
@@ -749,7 +752,7 @@ In ZGQ, vectors from the same zone are inserted consecutively. At insertion time
 \begin{equation}
 P_{same}^{ordered} = \frac{|z \cap \{x_1, \ldots, x_{t-1}\}|}{t-1} \geq \frac{n_z - (n - t + 1)}{t - 1}
 \end{equation}
-For vectors inserted in the middle of their zone, this probability approaches 1, significantly increasing intra-zone connectivity. The improved local connectivity factor is derived from the ratio of expected intra-zone edges in ZGQ versus HNSW. Given $M_{ZGQ} = 32$ and $M_{HNSW} = 16$, and empirical $\alpha \approx 0.65$, we achieve $\gamma \approx 1.65$. This dense intra-zone connectivity allows ZGQ to maintain higher recall with fewer global hops.
+For vectors inserted in the middle of their zone, this probability approaches 1, significantly increasing intra-zone connectivity. The improved local connectivity factor is derived from the ratio of expected intra-zone edges in ZGQ versus HNSW. Given $M_{ZGQ} = 32$ and $M_{HNSW} = 16$, and assumed $\alpha \approx 0.65$, we achieve $\gamma \approx 1.65$. This dense intra-zone connectivity allows ZGQ to maintain higher recall with fewer global hops.
 
 \paragraph{Search Path Reduction}
 The partitioning strategy reduces the effective graph diameter during search.
@@ -786,7 +789,7 @@ Comparing to HNSW space $S_{HNSW} = N \cdot (d + M)$, the ratio of overhead is:
 \begin{equation}
 \frac{\Delta S}{S_{HNSW}} = \frac{\sqrt{N} \cdot d + N}{N \cdot (d + M)} \approx \frac{1}{d+M} + \frac{d}{\sqrt{N}(d+M)}
 \end{equation}
-As $N \to \infty$, the overhead fraction approaches zero. For $N=10^5$, the empirical overhead is $<1\%$.
+As $N \to \infty$, the overhead fraction approaches zero. This is an analytic estimate. Measured RSS deltas in the canonical run are much larger for ZGQ than for HNSW (about 820 MB vs 16 MB at 100K), so the implementation does not currently match the analytic space bound.
 
 \paragraph{Query Time Optimization}
 We formally derive the query complexity to demonstrate the speedup.
@@ -795,7 +798,7 @@ We formally derive the query complexity to demonstrate the speedup.
 \begin{equation}
 T_{ZGQ} = \mathcal{O}(\sqrt{N} \cdot d + \alpha \cdot \log N \cdot ef \cdot d)
 \end{equation}
-where $\alpha \approx 0.74$ is the path reduction factor.
+where $\alpha < 1$ is the assumed path reduction factor (Lemma on path reduction); it was not measured, and no hop counts are recorded in the committed results.
 
 \textit{Proof:} The query process involves Zone Selection and Graph Search.
 Zone Selection takes $\mathcal{O}(Z \cdot d)$ to compare query with centroids.
@@ -894,37 +897,36 @@ Combining the theoretical bounds with the implementation details, we can derive 
 \end{equation}
 where $\delta_M$ is the per-node overhead from higher connectivity.
 
-Our benchmarks confirm this relationship. As shown in the results, ZGQ achieves higher QPS because the zone guidance allows for a smaller effective search depth ($ef_{ZGQ} < ef_{HNSW}$) to reach the same recall target. The vectorized re-ranking further reduces the constant factor overhead $\delta_M$, resulting in the observed 28\% throughput improvement. Specifically, ZGQ achieves a recall of 93.2\% at $ef=128$, whereas HNSW requires $ef=200$ to achieve 92.9\%, demonstrating the superior efficiency of the zone-guided approach.
+This relationship is a model prediction. The canonical benchmarks do not confirm it: at iso-recall on 100K vectors (ZGQ-M32 $ef=256$ at 86.2\% recall, 7,837 QPS; HNSW-M16 $ef=64$ at 86.1\%, 11,954 QPS) the measured ratio is about 0.66, not above 1. The model parameters ($\delta_M$ and the overhead factors) were not measured.
 
 \subsection{Presenting Results}
-The experimental evaluation was conducted on a synthetic dataset of 100,000 vectors ($d=128$) with a clustered Gaussian distribution to simulate real-world semantic grouping. The algorithms were tested across varying search depths ($ef_{search}$) to map the performance frontier.
+The experimental evaluation was conducted on synthetic datasets of 10,000, 100,000 and 1,000,000 vectors ($d=128$) with a clustered Gaussian distribution, using 1000 queries. The algorithms were tested across varying search depths ($ef_{search}$) to map the performance frontier.
 
 \subsubsection{Quantitative Benchmark Data}
-Table~\ref{tab:benchmark_results} summarizes the performance metrics for the HNSW baseline ($M=16$) and ZGQ  ($M=32$) across three distinct search configurations.
+Table~\ref{tab:scales} summarizes the matched comparison HNSW-M16 against ZGQ-M16 at $ef=64$ and $ef=256$ for all three scales, together with build time. ZGQ-M24 and ZGQ-M32 (larger graphs) and IVF-PQ are in \texttt{v8/tables/results\_table.md}.
 
 \begin{table}[htbp]
-\caption{Comparative Performance Benchmarks (100K Vectors)}
-\label{tab:benchmark_results}
+\caption{Matched Comparison across Scales (Recall@10 \% / latency ms per query)}
+\label{tab:scales}
 \centering
-\begin{tabularx}{\columnwidth}{@{}l c c c c c@{}}
+\begin{tabular}{llccc}
 \toprule
-\textbf{Algorithm} & \textbf{\thead{$ef_{search}$}} & \textbf{\thead{Recall@10}} & \textbf{\thead{QPS}} & \textbf{\thead{Latency\\(ms)}} & \textbf{\thead{Build\\(s)}} \\
+\textbf{Scale} & \textbf{Index} & \textbf{Build (s)} & \textbf{$ef=64$} & \textbf{$ef=256$} \\
 \midrule
-HNSW & 64 & 87.4\% & 55,735 & 8.97 & 2.14 \\
-HNSW & 128 & 91.1\% & 38,552 & 12.97 & 2.14 \\
-HNSW & 200 & 92.9\% & 34,190 & 14.62 & 2.14 \\
-\midrule
-\textbf{ZGQ} & 64 & \textbf{90.3\%} & 55,449 & 9.02 & 3.59 \\
-\textbf{ZGQ} & 128 & \textbf{93.2\%} & \textbf{43,794} & \textbf{11.42} & 3.59 \\
-\textbf{ZGQ} & 200 & \textbf{94.8\%} & 35,594 & 14.07 & 3.59 \\
+10K & HNSW-M16 & 0.9 & 92.4 / 0.046 & 98.7 / 0.099 \\
+10K & ZGQ-M16 & 2.4 & 92.3 / 0.049 & 98.2 / 0.101 \\
+100K & HNSW-M16 & 11.8 & 86.1 / 0.084 & 94.2 / 0.158 \\
+100K & ZGQ-M16 & 19.0 & 78.9 / 0.065 & 84.8 / 0.122 \\
+1M & HNSW-M16 & 172.8 & 77.6 / 0.124 & 87.0 / 0.226 \\
+1M & ZGQ-M16 & 203.7 & 68.1 / 0.091 & 76.8 / 0.174 \\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
-As shown in Table~\ref{tab:benchmark_results}, ZGQ demonstrates a consistent advantage in retrieval accuracy (Recall@10) across all $ef_{search}$ settings. Notably, at $ef=128$, ZGQ achieves a recall of 93.2\%, surpassing the HNSW baseline at $ef=200$ (92.9\%) while simultaneously delivering higher throughput.
+As shown in Table~\ref{tab:scales}, ZGQ-M16 matches HNSW-M16 at 10K but is less accurate at 100K and 1M at every equal $ef_{search}$. IVF-PQ recall saturates at 64.4\%, 61.5\% and 56.2\% (10K, 100K, 1M) without refinement.
 
 \subsubsection{Visual Representation of Trends}
-The Recall-Throughput trade-off, often referred to as the Pareto frontier, is critical for determining the efficiency of an index. Experimental trends (refer to Figure~\ref{fig:pareto_frontier}) indicate that the ZGQ curve dominates the HNSW curve in the high-recall region ($>90\%$). Specifically, to achieve a target recall of $\sim93\%$, ZGQ maintains a throughput of over 43,000 QPS, whereas HNSW drops to approximately 34,000 QPS to achieve slightly lower recall.
+The Recall-Throughput trade-off, often referred to as the Pareto frontier, is critical for determining the efficiency of an index. Experimental trends (refer to Figure~\ref{fig:pareto_frontier}) show that no ZGQ setting dominates HNSW-M16: at 100K vectors HNSW reaches 86.1\% recall at 0.084 ms, while ZGQ-M16 needs $ef=256$ and 0.122 ms to reach 84.8\%.
 
 \subsection{Comparative Analysis and Discussion}
 
@@ -932,108 +934,107 @@ The Recall-Throughput trade-off, often referred to as the Pareto frontier, is cr
 The analysis focuses on the trade-offs between accuracy (Recall), speed (Latency/QPS), and construction cost (Build Time).
 
 \subsubsection{Recall and Connectivity Analysis}
-ZGQ consistently outperforms HNSW in Recall@10, showing gains between $+0.3\%$ and $+1.9\%$ at comparable settings. This empirical result validates \textbf{Theorem 2.3 (Improved Local Connectivity)}. The zone-ordered insertion strategy increases the probability that neighboring nodes in the graph belong to the same semantic cluster. We quantify this connectivity improvement factor $\gamma$ as:
+In the canonical run ZGQ-M16 equals HNSW-M16 in Recall@10 at 10K vectors and is 7 to 10 points lower at 100K and 1M vectors at equal $ef$. The measurements therefore do not validate \textbf{Theorem 2.3 (Improved Local Connectivity)} as a recall benefit. The theory is that zone-ordered insertion increases the probability that neighboring nodes belong to the same semantic cluster. The connectivity improvement factor $\gamma$ is modeled as:
 
 \begin{equation}
 \gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}
 \end{equation}
 
-Using the experimental parameters $M_{ZGQ}=32$, $M_{HNSW}=16$, and an observed intra-zone density factor $\alpha \approx 0.65$, we derive $\gamma \approx 1.65$. This 65\% improvement in local connectivity ensures that edge connections are semantically dense, reducing the likelihood of the greedy search algorithm terminating in a local minimum before finding the true nearest neighbors.
+With the assumed parameters $M_{ZGQ}=32$, $M_{HNSW}=16$ and an assumed intra-zone density factor $\alpha \approx 0.65$, the model gives $\gamma \approx 1.65$. Neither $\alpha$ nor $\gamma$ was measured in the canonical run, so $\gamma \approx 1.65$ is a model value and not an observed improvement.
 
 \subsubsection{Latency and Throughput Efficiency}
-A critical finding is observed when comparing configurations at "Iso-Recall" (equivalent accuracy). Comparing HNSW ($ef=200$, Recall 92.9\%) with ZGQ ($ef=128$, Recall 93.2\%) reveals:
-\begin{itemize}
-    \item \textbf{Throughput:} ZGQ achieves \textbf{43,794 QPS} vs. HNSW's \textbf{34,190 QPS}, a \textbf{28\% increase}.
-    \item \textbf{Latency:} ZGQ reduces latency from \textbf{14.62 ms} to \textbf{11.42 ms}, a \textbf{22\% reduction}.
-\end{itemize}
+Comparing configurations at ``iso-recall'' (equivalent accuracy) at 100K vectors, ZGQ-M32 at $ef=256$ reaches 86.2\% recall at 0.128 ms (7,837 QPS), while HNSW-M16 at $ef=64$ reaches 86.1\% at 0.084 ms (11,954 QPS). HNSW is the faster of the two by about 1.5x. ZGQ-M32 is also a larger graph, so this is not a matched-$M$ comparison, but the conclusion holds for ZGQ-M16 too, which is less accurate still.
 
-This efficiency gain aligns with \textbf{Theorem 2.4 (Search Path Length Reduction)}. The partitioning allows the search algorithm to "skip" the upper layers of the global graph and utilize the zone centroids as shortcuts. The expected path length reduction is modeled by:
+\textbf{Theorem 2.4 (Search Path Length Reduction)} models the expected path length as:
 
 \begin{equation}
-\mathbb{E}[L_{ZGQ}] = \mathbb{E} \cdot \left(1 - \frac{\beta}{Z}\right)
+\mathbb{E}[L_{ZGQ}] = \mathbb{E}[L_{HNSW}] \cdot \left(1 - \frac{\beta}{Z}\right)
 \end{equation}
 
-With a zone-guidance efficiency factor $\beta \in [0.2, 0.4]$, the total number of hops required to reach the target is significantly reduced, which directly translates to lower latency.
+with an assumed zone-guidance efficiency factor $\beta \in [0.2, 0.4]$. Path lengths and node visits were not measured, so the model is not validated by this study. The lower per-query time of ZGQ at equal $ef$ may come from the fast-mode rerank factor of 3, which raises the effective $ef$ at small values, and from other implementation differences.
 
 \subsubsection{Scalability and Build Time Trade-off}
-While ZGQ excels in online query performance, it incurs a penalty in offline index construction. The Build Time for ZGQ (3.59s) is approximately \textbf{1.67x slower} than HNSW (2.14s). This latency is attributed to two factors:
+ZGQ builds slower than HNSW at every scale: 2.4 s vs 0.9 s at 10K, 19.0 s vs 11.8 s at 100K and 203.7 s vs 172.8 s at 1M for M16 (1.2x to 2.7x across all ZGQ variants). Its index also uses far more memory (RSS delta of about 820 MB vs 16 MB at 100K; macOS deltas are unreliable in absolute terms, so only the ordering is claimed). Likely contributors are:
 \begin{enumerate}
     \item \textbf{Partitioning Overhead:} The K-Means clustering step adds computational complexity prior to graph construction.
-    \item \textbf{Implementation Friction:} The HNSW baseline utilizes the highly optimized C++ \texttt{hnswlib} directly, whereas the ZGQ implementation involves Python-side orchestration. As noted in the literature, graph-based algorithms often face serialization bottlenecks on CPUs; the Python overhead exacerbates this during the construction phase.
+    \item \textbf{Implementation Friction:} The HNSW baseline utilizes the highly optimized C++ \texttt{hnswlib} directly, whereas the ZGQ implementation involves Python-side orchestration. This was not isolated experimentally.
 \end{enumerate}
 
 \subsubsection{Comparison with IVF-PQ}
-A key contribution of this study is the demonstration of ZGQ's superiority over traditional quantization-based methods in the high-recall regime.
-Figure~\ref{fig:latency_ivf} illustrates the latency required to reach $>90\%$ recall.
+Figure~\ref{fig:latency_ivf} shows latency at each index's highest-recall setting.
 \begin{itemize}
-    \item \textbf{IVF-PQ:} Requires $\sim151.6$ ms. To achieve high recall, IVF-PQ must probe a large number of clusters ($n_{probe}$), degrading to near-linear scan performance.
-    \item \textbf{ZGQ:} Achieves the same recall in \textbf{11.4 ms}.
+    \item \textbf{IVF-PQ} (no refinement) is the fastest index at low recall but its recall saturates at 64.4\% (10K), 61.5\% (100K) and 56.2\% (1M) regardless of $n_{probe}$.
+    \item \textbf{ZGQ and HNSW} reach higher recall at higher latency: at 100K, up to 94.2\% for HNSW-M16 and 86.2\% for ZGQ-M32.
 \end{itemize}
-This represents a \textbf{13.3x speedup} over IVF-PQ. This empirical result validates \textbf{Theorem 6}, confirming that zone-guided graph traversal is fundamentally more efficient than exhaustive probing for high-accuracy retrieval. While IVF-PQ is memory-efficient, it fails to scale in performance when strict accuracy constraints are applied. ZGQ bridges this gap, offering the speed of graphs with the structured organization of partitioning.
+Because IVF-PQ never reaches 90\% recall in this configuration, a latency ratio at 90\% recall cannot be computed, so no speedup over IVF-PQ is claimed. A different IVF-PQ configuration (refinement, a different number of sub-quantizers) could reach higher recall and was not evaluated. The measurements therefore do not validate \textbf{Theorem 6}; they only show that unrefined IVF-PQ cannot reach high recall on this data.
 
 \subsection{Overall Discussion}
-The results indicate that ZGQ successfully modifies the graph topology to favor local navigability over global connectivity. By breaking the monolithic graph into smaller, zone-specific subgraphs, ZGQ mitigates the "random memory access" problem inherent in HNSW traversal. The improved cache locality—resulting from accessing nodes stored contiguously within a zone—likely contributes to the 22\% reduction in latency. The findings suggest that for read-heavy applications where query speed is paramount (e.g., RAG systems), the increased build time is an acceptable trade-off for superior runtime performance.
+The results show that the zone-based design matches HNSW recall only at the smallest scale tested. At 100K and 1M vectors ZGQ is less accurate at equal $ef$ and slower to build, and it needs more memory. Any cache-locality benefit from contiguous zone storage was not measured. ZGQ is faster per query at equal $ef$, but HNSW at a lower $ef$ gives equal or better recall at similar or lower latency. We cannot conclude from these data that ZGQ is preferable to HNSW for read-heavy applications.
 
 \subsection{Visual Representation of Results}
-This section provides a visual analysis of the performance differences between ZGQ and HNSW. The figures below illustrate the trade-offs between recall, throughput, and latency, confirming the quantitative findings presented in Table~\ref{tab:benchmark_results}.
+This section provides a visual analysis of the performance differences between ZGQ and HNSW. The figures below illustrate the trade-offs between recall, throughput, and latency, and complement the quantitative findings presented in Table~\ref{tab:benchmark_results} and Table~\ref{tab:scales}. The figures are regenerated from \texttt{summary.json} by \texttt{v8/visualization/generate\_ieee\_figures.py}.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\columnwidth]{figures/fig_pareto_frontier.pdf}
-    \caption{Recall vs. Throughput (Pareto Frontier). The ZGQ curve (Blue) consistently lies above and to the right of the HNSW curve (Red) in the high-recall region ($>90\%$), indicating superior efficiency. For any given recall target, ZGQ delivers higher QPS.}
+    \caption{Recall vs. latency at 100K vectors (log scale) for HNSW-M16, ZGQ-M16, the larger-graph variants ZGQ-M24 and ZGQ-M32, and IVF-PQ. No ZGQ setting dominates HNSW-M16: at equal recall HNSW is at least as fast.}
     \label{fig:pareto_frontier}
 \end{figure}
 
 
 
 \subsection{Critical Evaluation}
-The research objective was to optimize the memory-performance trade-off. The findings confirm that ZGQ achieves this by delivering higher recall and throughput. The theoretical model predicting a throughput increase ($\frac{QPS_{ZGQ}}{QPS_{HNSW}} \approx 1.30$) aligns closely with the empirical result of 1.28x. However, the build-time degradation highlights a limitation in the current Python-based implementation. While the algorithmic logic holds, the lack of a unified C++ implementation prevents ZGQ from matching the construction speed of the baseline.
+The research objective was to optimize the memory-performance trade-off. The measurements do not show that ZGQ achieves this: it uses more memory than HNSW and, at 100K and 1M vectors, delivers lower recall at equal $ef$. The theoretical model predicting a throughput increase ($QPS_{ZGQ}/QPS_{HNSW} \approx 1.30$) is not confirmed; the measured iso-recall ratio at 100K is about 0.66. The build-time gap is partly attributable to the Python-based implementation, but this was not isolated, and it does not explain the recall gap.
 
 \subsection{Linking to Literature Review}
-Our findings corroborate the work of Akhil and Sivashankar [1], who proposed that partitioning datasets into local zones can improve scalability. However, unlike their approach which suffered from memory overhead due to unoptimized graph management, ZGQ’s use of quantization within zones demonstrates that hybrid structures can maintain high recall. Furthermore, the results contradict the general assumption in Wang et al. [2] that higher graph quality (denser $M$) always leads to lower search performance due to distance computation overhead; ZGQ proves that if the density is \textit{localized} via zones, throughput can actually increase.
+Our findings corroborate the work of Akhil and Sivashankar [1], who proposed that partitioning datasets into local zones can improve scalability. In our measurements ZGQ's hybrid structure maintained HNSW-level recall only at 10K vectors and used more memory than HNSW, so we cannot claim that it avoids the memory overhead they reported. Larger $M$ (ZGQ-M24, M32) changed ZGQ recall only slightly at equal $ef$ (100K, $ef=64$: 78.6\% and 80.1\% vs 78.9\% for M16) and cost slightly more per query; our data neither contradict nor extend the discussion in Wang et al. [2].
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\columnwidth]{figures/latency_ivf.png}
-    \caption{Latency to Reach $>90\%$ Recall. ZGQ is significantly faster than IVF-PQ, achieving the target recall with 13.3x lower latency. This highlights the advantage of the hybrid graph-quantization approach over pure partitioning methods.}
+    \includegraphics[width=0.95\columnwidth]{figures/fig_ivf_pq_latency.pdf}
+    \caption{Latency at each index's highest-recall setting (recall labelled on each bar). IVF-PQ is fast but saturates at 56 to 64\% recall, so the bars are not at equal recall.}
     \label{fig:latency_ivf}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\columnwidth]{figures/trade_off.png}
-    \caption{Memory vs. Latency Trade-off. ZGQ achieves a balanced performance profile, offering lower latency than HNSW with a comparable memory footprint.}
+    \includegraphics[width=0.95\columnwidth]{figures/fig_ivf_pq_tradeoff.pdf}
+    \caption{Recall vs. throughput for HNSW-M16, ZGQ-M16 and IVF-PQ at 10K, 100K and 1M vectors (darker is smaller). No memory axis is shown because RSS deltas on macOS are unreliable; ZGQ's measured memory use is far above HNSW's.}
     \label{fig:trade_off}
 \end{figure}
 
 \subsection{Conclude the Results and Discussion}
-In conclusion, ZGQ demonstrates a superior Pareto frontier compared to standard HNSW, winning on 3 out of 4 critical performance metrics (Recall, Throughput, Latency). The framework successfully leverages zonal partitioning to reduce search path lengths, validating the theoretical models. The primary trade-off is the index construction time, which remains a target for future optimization.
+In conclusion, ZGQ-M16 matched HNSW-M16 recall at 10K vectors but was less accurate at 100K and 1M vectors at every equal $ef$, built 1.2x to 2.7x slower and used much more memory. HNSW at a lower $ef$ matched or beat every ZGQ setting on the recall-latency frontier. The zonal design is not shown to be superior in this study. The study is limited by synthetic data, 1000 queries, one machine and a Python implementation compared against C++ hnswlib.
 
 \section{Conclusion and Future Work}
 
 \subsection{Summary of Key Findings}
-This research has presented a comprehensive evaluation of \textbf{Zonal Graph Quantization (ZGQ)}, a hybrid indexing framework designed to address the scalability limits of current vector search algorithms. The study conclusively demonstrates that ZGQ outperforms the industry-standard HNSW on key in-memory performance metrics. Specifically, ZGQ achieved a \textbf{0.3\% to 1.9\% improvement in Recall@10}, a \textbf{28\% increase in Query Throughput (QPS)}, and a \textbf{22\% reduction in Latency} at equivalent accuracy levels. While the index construction time for ZGQ was approximately 67\% slower due to partitioning overhead and implementation constraints, the significant gains in online search performance validate the efficacy of the zone-ordered graph construction strategy.
+This research has presented an evaluation of \textbf{Zonal Graph Quantization (ZGQ)}, a hybrid indexing framework designed to address the scalability limits of current vector search algorithms. In the canonical run, ZGQ-M16 matched HNSW-M16 recall at 10K vectors (92.3\% vs 92.4\% at $ef=64$) and was less accurate at 100K (78.9\% vs 86.1\%) and 1M (68.1\% vs 77.6\%). Its build time was 1.2x to 2.7x slower and its memory use much higher. ZGQ is faster per query at equal $ef$ (20 to 30\% at 100K and 1M), but this does not translate into a better recall-latency frontier.
 
 \subsection{Link Back to Objectives}
-The primary objective of this study was to propose and validate a solution that balances memory efficiency with high-performance search. The empirical analysis confirms that ZGQ addresses this objective by reducing the expected search path length (\textbf{Theorem 2.4}) and maximizing local connectivity (\textbf{Theorem 2.3}). The framework successfully mitigates the diminishing returns of monolithic graph scaling, offering a viable path for high-recall, low-latency retrieval in large-scale vector databases.
+The primary objective of this study was to propose and evaluate a solution that balances memory efficiency with high-performance search. The empirical analysis does not confirm that ZGQ meets this objective at the scales tested. The theoretical results (Theorems 2.3 and 2.4) are model predictions that the measurements neither validate nor isolate.
 
 \subsection{Contributions of the Research}
 This study contributes to the field of high-dimensional information retrieval by:
 \begin{enumerate}
-    \item \textbf{Formalizing Zone-Ordered Insertion:} Providing theoretical and empirical evidence that ordering vector insertion by semantic zones significantly improves graph navigability ($\gamma \approx 1.65$).
-    \item \textbf{Hybrid Framework Validation:} Demonstrating that bridging the gap between partitioning (IVF) and graph (HNSW) methods yields a superior performance frontier than either approach in isolation.
-    \item \textbf{Performance Characterization:} Offering a rigorous benchmark of hybrid indexing on high-dimensional ($d=128$) data, providing a reference point for future optimization of in-memory indices.
+    \item \textbf{Formalizing Zone-Ordered Insertion:} Providing a theoretical model of how ordering vector insertion by semantic zones could improve graph navigability ($\gamma \approx 1.65$ is a model value). The benchmark does not confirm the benefit.
+    \item \textbf{Hybrid Framework Validation:} Evaluating a hybrid of partitioning (IVF) and graph (HNSW) methods. In our measurements it does not yield a better frontier than HNSW alone.
+    \item \textbf{Performance Characterization:} Offering a reproducible benchmark of hybrid indexing on synthetic high-dimensional ($d=128$) data, with committed results, as a reference point for future optimization.
 \end{enumerate}
 
 \subsection{Implications for Practice}
-The findings are particularly relevant for the deployment of \textbf{Retrieval Augmented Generation (RAG)} and real-time recommendation systems. In these applications, the "read" volume (queries) vastly outstrips the "write" volume (indexing). Therefore, the trade-off of slower index construction is strategically sound to achieve the 22\% reduction in query latency provided by ZGQ. Database architects can leverage this framework to reduce infrastructure costs by serving higher throughput on equivalent hardware.
+The measurements do not support recommending ZGQ over HNSW for RAG or recommendation workloads today. Build-time and memory costs are higher and recall is lower at 100K and above. A native implementation and real-data evaluation are needed before drawing practical conclusions.
 
 \subsection{Limitations}
 The study acknowledges the following limitations:
 \begin{itemize}
     \item \textbf{Implementation Overhead:} The ZGQ prototype relies on a hybrid Python/C++ workflow, which introduces serialization costs that inflate build times compared to a pure C++ solution.
     \item \textbf{Synthetic Data:} While the clustered Gaussian dataset mimics semantic grouping, it may not fully capture the manifold complexities of unstructured data found in production environments.
-    \item \textbf{Hardware Constraints:} Due to memory limitations (16GB RAM), the evaluation was capped at 100,000 vectors. While trends suggest scalability, behavior at the billion-scale remains projected rather than empirically proven in this specific report.
+    \item \textbf{Scale:} The evaluation covers 10K, 100K and 1M vectors on a 16 GB machine. Behavior at billion scale is not measured.
+    \item \textbf{Single Machine and Query Count:} One Apple M4 laptop under macOS, 1000 queries per setting, single thread. Memory figures from RSS deltas are unreliable on macOS, so only the ordering ZGQ above HNSW is claimed.
+    \item \textbf{Python vs C++:} HNSW is C++ hnswlib while ZGQ is Python with numba; timing differences are not purely algorithmic.
+    \item \textbf{Matched Settings:} Only HNSW-M16 vs ZGQ-M16 is matched. ZGQ-M24 and M32 are larger graphs, and HNSW was not run at those $M$ values.
+    \item \textbf{Unrefined IVF-PQ:} One IVF-PQ configuration without refinement was run.
 \end{itemize}
 
 \subsection{Recommendations for Future Research}
@@ -1066,7 +1067,7 @@ We established the connectivity improvement factor $\gamma$ by analyzing the pro
     \begin{equation}
     \gamma = 1 + \frac{\alpha \cdot (M_{ZGQ} - M_{HNSW})}{M_{HNSW}}
     \end{equation}
-    \item With an empirical intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$ (vs $M_{HNSW}=16$), we proved a theoretical connectivity improvement of:
+    \item With an assumed (not measured) intra-zone density factor $\alpha \approx 0.65$ and increased local connectivity $M_{ZGQ}=32$ (vs $M_{HNSW}=16$), we proved a theoretical connectivity improvement of:
     \begin{equation}
     \gamma \approx 1.65
     \end{equation}
@@ -1081,14 +1082,14 @@ We derived the reduction in search path length by decomposing the search complex
     \begin{equation}
     \mathbb{E}[L_{ZGQ}] = \mathbb{E}[L_{HNSW}] \cdot \left(1 - \frac{\beta}{Z}\right)
     \end{equation}
-    \item For a sufficiently large number of zones $Z$, this simplifies to a path reduction of $(1 - \beta)$, theoretically predicting the 22\% latency reduction observed in our benchmarks.
+    \item For a sufficiently large number of zones $Z$, this simplifies to a path reduction of $(1 - \beta)$, which would predict a latency reduction under the model's assumed $\beta$. The benchmarks do not measure path length and do not confirm this.
 \end{itemize}
 
 Finally, our space complexity analysis confirmed that the overhead of maintaining zone centroids scales as $\mathcal{O}(\sqrt{N})$, ensuring that ZGQ maintains the asymptotic space efficiency of HNSW while delivering superior query performance.
 
-Empirically, ZGQ demonstrated a superior balance between resource utilization and search accuracy. Our experiments on 100,000-vector datasets confirmed that ZGQ achieves competitive Recall@k rates comparable to standard HNSW while significantly reducing memory footprint and index construction time. These results validate the theoretical predictions of our model, highlighting the efficacy of the hybrid zonal approach.
+Empirically, the canonical benchmarks showed ZGQ-M16 matching HNSW-M16 recall at 10K vectors and trailing it at 100K and 1M vectors, with slower builds and higher memory use. These results do not validate the theoretical predictions of our model, and the hybrid design remains a research prototype.
 
-In conclusion, ZGQ offers a scalable and resource-efficient solution for next-generation vector databases, particularly for applications requiring high-throughput retrieval on resource-constrained infrastructure. The framework paves the way for future advancements in billion-scale indexing, democratizing access to efficient vector search technology for the broader AI and database community.
+In conclusion, ZGQ in its current form does not outperform HNSW in our measurements. Closing the recall gap at 100K and above, reducing memory, and a native implementation are the open problems.
 
 \section*{Acknowledgment}
 We extend our sincere gratitude to the open-source community for the robust technologies that formed the foundation of our experimental framework. We also thank the engineering teams behind the cloud computing platforms utilized for our benchmarking and testing. Finally, we express our deep appreciation to the researchers and authors contributing to the field of Approximate Nearest Neighbor Search; their foundational papers and findings significantly powered our literature review and provided the essential references that guided the development of the ZGQ technology.
@@ -1105,7 +1106,7 @@ The complete source code, benchmarking scripts, and mathematical proof documents
     \item \texttt{v8/docs/}: Provides supplementary theoretical proofs and API documentation.
     \item \texttt{latex/}: Contains the source code for this research paper.
 \end{itemize}
-While large-scale synthetic datasets are excluded due to size limits, the repository includes deterministic generation scripts to exactly reproduce the experimental data.
+While large-scale synthetic datasets are excluded due to size limits, the benchmark harness regenerates the data deterministically from a fixed seed, and the committed results in \texttt{v8/results/2026-11-08/} are the source of every number in this paper.
 
 \begin{thebibliography}{99}
 

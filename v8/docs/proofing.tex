@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-This document provides a rigorous mathematical foundation for the performance advantages of Zone-Guided Quantized Search (ZGQ) v8 over Hierarchical Navigable Small World (HNSW) graphs. We present formal proofs for graph connectivity improvements, derive complexity bounds, and validate our theoretical predictions with empirical benchmarks. Our analysis demonstrates that ZGQ achieves \textbf{+0.3\% to +1.9\% higher recall} while simultaneously delivering \textbf{+28\% higher throughput} and \textbf{-22\% lower latency} compared to HNSW at equivalent quality levels.
+This document presents a mathematical model for the expected behaviour of Zone-Guided Quantized Search (ZGQ) v8 relative to Hierarchical Navigable Small World (HNSW) graphs: graph connectivity arguments and complexity bounds under stated assumptions. It then compares the model's predictions with the canonical benchmark run of 2026-11-08 (synthetic clustered data, single thread, Apple M4). \textbf{The measurements do not support the predicted advantage.} ZGQ-M16 matches HNSW-M16 recall at 10K vectors, is less accurate than HNSW-M16 at every equal $\ef$ at 100K and 1M vectors, builds 1.2x to 2.7x slower, and uses far more memory. The model parameters ($\gamma$, $\beta$, $\alpha$) quoted in the theory sections are assumed values, not measured values.
 \end{abstract}
 
 \tableofcontents
@@ -138,7 +138,7 @@ The improved local connectivity factor is derived from:
 \gamma = \frac{\mathbb{E}[\text{intra-zone edges}]_{\zgq}}{\mathbb{E}[\text{intra-zone edges}]_{\hnsw}}
 \]
 
-Given $M_{\zgq} = 32$ and $M_{\hnsw} = 16$, and empirical $\alpha \approx 0.65$:
+Given $M_{\zgq} = 32$ and $M_{\hnsw} = 16$, and assumed $\alpha \approx 0.65$:
 \[
 \gamma = 1 + \frac{0.65 \cdot (32 - 16)}{16} = 1 + \frac{10.4}{16} = 1.65
 \]
@@ -257,14 +257,17 @@ The factor of 0.2 (rather than 1.0) accounts for:
 \section{Empirical Validation}
 %==============================================================================
 
+All numbers in this section are read from \texttt{results/2026-11-08/summary.json} (schema \texttt{zgq-bench/1}); see \texttt{docs/CLAIMS.md} for the source of each figure.
+
 \subsection{Benchmark Configuration}
 
 \begin{tcolorbox}[title=Experimental Setup]
 \begin{itemize}
-    \item \textbf{Dataset}: 100,000 vectors, 128 dimensions, clustered distribution
-    \item \textbf{Queries}: 500 queries, 10-NN retrieval
-    \item \textbf{Runs}: 10 iterations per configuration
-    \item \textbf{Hardware}: Standard CPU (no GPU acceleration)
+    \item \textbf{Dataset}: synthetic clustered Gaussian, 128 dimensions, 10K, 100K and 1M vectors
+    \item \textbf{Queries}: 1000 queries, 10-NN retrieval, exact brute-force ground truth
+    \item \textbf{Runs}: 1 warm-up pass and 5 timed repeats per setting, median reported
+    \item \textbf{Hardware}: Apple M4 (10 cores, 16 GB, macOS), single thread
+    \item \textbf{Implementations}: HNSW is hnswlib 0.8.0 (C++); ZGQ is Python with numba
 \end{itemize}
 \end{tcolorbox}
 
@@ -272,59 +275,49 @@ The factor of 0.2 (rather than 1.0) accounts for:
 
 \begin{table}[h]
 \centering
-\caption{Algorithm Parameter Comparison}
+\caption{Algorithm configurations. Only HNSW-M16 vs ZGQ-M16 is a matched comparison.}
 \label{tab:params}
 \begin{tabular}{lcc}
 \toprule
-\textbf{Parameter} & \textbf{HNSW (Baseline)} & \textbf{ZGQ v8} \\
+\textbf{Index} & \textbf{$M$} & \textbf{Role} \\
 \midrule
-Connectivity ($M$) & 16 & 32 \\
-Construction depth ($\ef_c$) & 200 & 400 \\
-Insertion order & Random & Zone-ordered \\
-Search depth ($\ef_s$) & 200 & 128 \\
+HNSW-M16 & 16 & baseline \\
+ZGQ-M16 & 16 & matched \\
+ZGQ-M24, ZGQ-M32 & 24, 32 & variants (larger graph) \\
+IVF-PQ & -- & baseline (no refinement) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Benchmark Results}
 
-\begin{theorem}[Empirical Performance Bounds]
-Based on benchmark data (see Figure~\ref{fig:summary}), ZGQ v8 achieves:
-\begin{align}
-\recall_{\zgq} &\geq \recall_{\hnsw} + 0.3\% \label{eq:recall-bound} \\
-\qps_{\zgq} &\geq 1.28 \cdot \qps_{\hnsw} \label{eq:qps-bound} \\
-\text{Latency}_{\zgq} &\leq 0.78 \cdot \text{Latency}_{\hnsw} \label{eq:latency-bound}
-\end{align}
-at iso-recall configurations.
-\end{theorem}
-
 \begin{table}[h]
 \centering
-\caption{100K Scale Benchmark Results (Draft Findings)}
+\caption{Recall@10 (\%) and latency (ms per query) at equal $\ef$, matched comparison, median of 5 repeats.}
 \label{tab:results}
-\begin{tabular}{lccccc}
+\begin{tabular}{llcccc}
 \toprule
-\textbf{Algorithm} & \textbf{ef\_search} & \textbf{Recall@10} & \textbf{QPS} & \textbf{Latency (ms)} & \textbf{Build (s)} \\
+\textbf{Scale} & \textbf{Index} & \textbf{$\ef=64$ recall} & \textbf{$\ef=64$ ms} & \textbf{$\ef=256$ recall} & \textbf{$\ef=256$ ms} \\
 \midrule
-HNSW & 64 & 87.4\% & 55,735 & 8.97 & 2.14 \\
-HNSW & 128 & 91.1\% & 38,552 & 12.97 & 2.14 \\
-HNSW & 200 & 92.9\% & 34,190 & 14.62 & 2.14 \\
-\midrule
-ZGQ v8 & 64 & 90.3\% & 55,449 & 9.02 & 3.59 \\
-ZGQ v8 & 128 & \textbf{93.2\%} & \textbf{43,794} & \textbf{11.42} & 3.59 \\
-ZGQ v8 & 200 & 94.8\% & 35,594 & 14.07 & 3.59 \\
+10K & HNSW-M16 & 92.4 & 0.046 & 98.7 & 0.099 \\
+10K & ZGQ-M16 & 92.3 & 0.049 & 98.2 & 0.101 \\
+100K & HNSW-M16 & 86.1 & 0.084 & 94.2 & 0.158 \\
+100K & ZGQ-M16 & 78.9 & 0.065 & 84.8 & 0.122 \\
+1M & HNSW-M16 & 77.6 & 0.124 & 87.0 & 0.226 \\
+1M & ZGQ-M16 & 68.1 & 0.091 & 76.8 & 0.174 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Key Comparisons}
 
-\begin{tcolorbox}[title=Iso-Recall Comparison (Primary Finding), colback=green!5]
-\textbf{ZGQ (ef=128) vs HNSW (ef=200):}
+\begin{tcolorbox}[title=Reading of the matched comparison, colback=gray!5]
 \begin{itemize}
-    \item \textbf{Recall}: 93.2\% vs 92.9\% $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ +0.3\%}}
-    \item \textbf{QPS}: 43,794 vs 34,190 $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ +28\%}}
-    \item \textbf{Latency}: 11.42ms vs 14.62ms $\Rightarrow$ \textcolor{green!60!black}{\textbf{ZGQ -22\%}}
+    \item \textbf{10K}: recall is equal within 0.1 to 0.5 points; ZGQ-M16 is about 5\% slower at $\ef=64$.
+    \item \textbf{100K and 1M}: ZGQ-M16 is 7 to 10 recall points below HNSW-M16 at the same $\ef$. It is faster per query at the same $\ef$, but HNSW at a smaller $\ef$ gives higher recall at similar or lower latency (1M: HNSW $\ef=64$ is 77.6\% at 0.124 ms, ZGQ-M16 $\ef=256$ is 76.8\% at 0.174 ms).
+    \item \textbf{Iso-recall at 100K}: ZGQ-M32 $\ef=256$ reaches 86.2\% at 0.128 ms; HNSW-M16 $\ef=64$ reaches 86.1\% at 0.084 ms. HNSW is the faster of the two.
+    \item \textbf{Build time}: ZGQ is 1.2x to 2.7x slower (1M: 203.7 s for ZGQ-M16 vs 172.8 s for HNSW-M16).
+    \item \textbf{Memory}: ZGQ's RSS delta is far larger than HNSW's (100K: about 820 MB vs 16 MB). Absolute values are unreliable on macOS; only the ordering is claimed.
 \end{itemize}
 \end{tcolorbox}
 
@@ -332,126 +325,76 @@ ZGQ v8 & 200 & 94.8\% & 35,594 & 14.07 & 3.59 \\
 \section{Comparative Analysis with IVF-PQ}
 %==============================================================================
 
-While HNSW represents the state-of-the-art for graph-based methods, Inverted File with Product Quantization (IVF-PQ) is the standard for memory-constrained scenarios. We extended our evaluation to compare ZGQ against IVF-PQ to characterize the memory-latency trade-off.
-
-\subsection{The Cost of Compression}
-IVF-PQ achieves high memory efficiency by compressing vectors into short codes (e.g., $m=16$ sub-vectors, 8 bits each). However, this compression introduces quantization error. To achieve high recall (e.g., Recall@10 $> 90\%$), the search algorithm must inspect a large fraction of the dataset (high `n\_probe`), which degrades query latency.
+IVF-PQ (FAISS, \texttt{nlist}$=2\sqrt{N}$, 32 sub-quantizers, 8 bits, no refinement) was swept over \texttt{nprobe} from 1 to 256.
 
 \subsection{Performance Trade-offs}
-Our benchmarks (Figure~\ref{fig:ivf_latency} and Figure~\ref{fig:ivf_tradeoff}) reveal a distinct crossover point:
+Figures~\ref{fig:ivf_latency} and~\ref{fig:ivf_tradeoff} show:
 \begin{itemize}
-    \item \textbf{Low Recall ($<80\%$)}: IVF-PQ is highly efficient, offering low latency and minimal memory footprint.
-    \item \textbf{High Recall ($>90\%$)}: ZGQ outperforms IVF-PQ in latency. To reach 93\% recall, IVF-PQ requires scanning a significant portion of the inverted lists, causing latency to spike to $\approx 34$ms. In contrast, ZGQ maintains a latency of $11.42$ms, representing a \textbf{3x speedup}.
+    \item IVF-PQ is the fastest index at low recall (for example 10K, $\texttt{nprobe}=1$: 16.0\% recall at 0.013 ms).
+    \item IVF-PQ recall saturates at 64.4\% (10K), 61.5\% (100K) and 56.2\% (1M) regardless of \texttt{nprobe}. Without refinement it does not reach 90\% recall on this data, so no latency ratio at 90\% recall can be computed and none is claimed.
 \end{itemize}
 
 \subsection{Memory Footprint}
-ZGQ occupies a "middle ground" in the memory hierarchy:
-\begin{itemize}
-    \item \textbf{IVF-PQ}: $\approx 25$ MB (Highly Compressed)
-    \item \textbf{ZGQ}: $\approx 49$ MB (Balanced)
-    \item \textbf{HNSW}: $\approx 61$ MB (Graph Overhead)
-\end{itemize}
-
-This confirms that ZGQ is the optimal choice for applications requiring both high accuracy and low latency, where memory is a secondary constraint compared to throughput.
+No absolute index sizes are claimed. RSS deltas on macOS are unreliable (the IVF-PQ delta at 1M is negative). The earlier per-index MB figures are retired; see \texttt{docs/CLAIMS.md}.
 
 %==============================================================================
 \section{Theoretical vs Empirical Correlation}
 %==============================================================================
 
-\begin{proposition}[Model Validation]
-The theoretical predictions align with empirical results within acceptable bounds:
-\[
-\left|\frac{\qps_{\zgq}^{\text{theory}}}{\qps_{\hnsw}^{\text{theory}}} - \frac{\qps_{\zgq}^{\text{empirical}}}{\qps_{\hnsw}^{\text{empirical}}}\right| < 0.05
-\]
-\end{proposition}
-
-\begin{proof}
-From Theorem~\ref{thm:efficiency}:
-\[
-\frac{\qps_{\zgq}^{\text{theory}}}{\qps_{\hnsw}^{\text{theory}}} \approx 1.30
-\]
-
-From Table~\ref{tab:results}:
-\[
-\frac{\qps_{\zgq}^{\text{empirical}}}{\qps_{\hnsw}^{\text{empirical}}} = \frac{43,794}{34,190} \approx 1.28
-\]
-
-Difference: $|1.30 - 1.28| = 0.02 < 0.05$ \checkmark
-\end{proof}
+Theorem~\ref{thm:efficiency} predicts $\qps_{\zgq}/\qps_{\hnsw} \approx 1.30$ at iso-recall. The canonical run does not confirm this. At iso-recall on 100K vectors (ZGQ-M32 $\ef=256$, 7,837 QPS; HNSW-M16 $\ef=64$, 11,954 QPS) the ratio is about 0.66. The model's assumptions (the values of $\gamma$, $\beta$ and the 0.2 overhead factor) were not measured and the model should be treated as unvalidated. Possible causes include the zone-guided search not reducing node visits in the implementation, the Python overhead, and the effect of PQ on the candidate set; none of these was isolated.
 
 %==============================================================================
 \section{Empirical Results and Visualizations}
 %==============================================================================
 
-The following figures from the benchmark suite support our theoretical analysis. All figures are generated from the comprehensive benchmark suite at 100K scale.
+The figures below are generated by \texttt{python -m visualization.generate\_ieee\_figures} from \texttt{results/2026-11-08/summary.json} only. Each panel is one scale (10K, 100K, 1M) unless noted.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_summary_table.pdf}
-\caption{Performance Summary Table showing ZGQ v8 wins on 3 out of 4 metrics compared to HNSW. ZGQ achieves higher recall, throughput (QPS), and lower latency, with the trade-off of longer build time due to Python implementation versus C++ optimized HNSW.}
-\label{fig:summary}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_recall_vs_qps.pdf}
-\caption{Recall vs. Throughput (QPS) comparison showing the Pareto frontier. ZGQ v8 achieves superior recall-throughput trade-off, demonstrating that at equivalent recall levels, ZGQ delivers significantly higher query throughput than HNSW.}
+\includegraphics[width=0.95\textwidth]{../figures/fig_recall_vs_qps.pdf}
+\caption{Recall@10 vs throughput (QPS) for HNSW-M16, ZGQ-M16 and the larger-graph variants ZGQ-M24 and ZGQ-M32. At 100K and 1M the HNSW curve lies above and to the right of the ZGQ curves at equal recall; at 10K the curves overlap.}
 \label{fig:pareto}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_latency_comparison.pdf}
-\caption{Query latency comparison at different search depths (ef\_search). ZGQ v8 demonstrates consistently lower query latency across all configurations, with the most significant advantage appearing at the iso-recall point (ZGQ ef=128 vs HNSW ef=200, showing 22\% latency reduction).}
+\includegraphics[width=0.95\textwidth]{../figures/fig_latency_comparison.pdf}
+\caption{Recall@10 vs latency per query. ZGQ is faster at equal $\ef$ but reaches lower recall, so at equal recall HNSW is at least as fast. The ZGQ recall at $\ef=16$ is raised by the fast-mode rerank factor of 3 and is not a graph-quality effect.}
 \label{fig:latency}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_radar_chart.pdf}
-\caption{Multi-dimensional performance radar chart comparing ZGQ v8 and HNSW across all key metrics. The chart visualizes ZGQ's advantages in recall, throughput, and latency, while also showing HNSW's advantage in build time. The overlapping area demonstrates where each algorithm excels.}
-\label{fig:radar}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_throughput_bars.pdf}
-\caption{Throughput (QPS) comparison across different ef\_search configurations. Bar chart clearly demonstrates ZGQ's 28\% throughput advantage at the iso-recall configuration (ef=128 for ZGQ vs ef=200 for HNSW).}
-\label{fig:throughput}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_pareto_frontier.pdf}
-\caption{Pareto frontier analysis showing the recall-efficiency trade-off space. Points closer to the top-right corner represent superior configurations. ZGQ's curve dominates HNSW's curve in the high-recall region, confirming the theoretical efficiency advantage proven in Theorem~\ref{thm:efficiency}.}
+\includegraphics[width=0.7\textwidth]{../figures/fig_pareto_frontier.pdf}
+\caption{Recall vs latency (log scale) at 100K vectors, including IVF-PQ. No ZGQ setting dominates HNSW-M16; IVF-PQ is fast but saturates at 61.5\% recall.}
 \label{fig:pareto_frontier}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_build_time.pdf}
-\caption{Index build time comparison. HNSW (C++ implementation) completes index construction in 2.14 seconds, while ZGQ v8 (Python implementation) requires 3.59 seconds. This 68\% longer build time is the primary trade-off for ZGQ's superior query performance.}
+\includegraphics[width=0.7\textwidth]{../figures/fig_build_time.pdf}
+\caption{Index build time (log scale) per scale. ZGQ builds 1.2x to 2.7x slower than HNSW-M16. HNSW is C++ (hnswlib); ZGQ is Python with numba, so part of the gap is implementation overhead.}
 \label{fig:buildtime}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_scaling_analysis.pdf}
-\caption{Scaling analysis showing performance trends across different dataset sizes and configurations. The analysis demonstrates how ZGQ's advantages become more pronounced as the dataset size increases, validating the theoretical prediction from Theorem~\ref{thm:path-length}.}
+\includegraphics[width=0.7\textwidth]{../figures/fig_scaling_analysis.pdf}
+\caption{Recall@10 at $\ef=64$ vs dataset size. Recall falls for every graph index as the dataset grows, and ZGQ falls faster than HNSW-M16 in these runs. This does not support the claim that ZGQ's advantage grows with dataset size.}
 \label{fig:scaling}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_ivf_pq_latency.pdf}
-\caption{Latency comparison against IVF-PQ. ZGQ demonstrates significantly lower latency to reach high recall (>90\%) compared to IVF-PQ, highlighting the efficiency of the graph-based refinement over pure quantization-based search.}
+\includegraphics[width=0.85\textwidth]{../figures/fig_ivf_pq_latency.pdf}
+\caption{Latency at each index's highest-recall setting, with the recall labelled on each bar. IVF-PQ latency is low but its highest recall is 56 to 64\%, so the bars are not at equal recall.}
 \label{fig:ivf_latency}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{../figures_ieee/fig_ivf_pq_tradeoff.pdf}
-\caption{Memory vs. Latency trade-off analysis including IVF-PQ. While IVF-PQ offers the lowest memory footprint, it incurs a high latency cost for high-recall queries. ZGQ occupies the "balanced" sweet spot, offering competitive memory usage with superior query speed.}
+\includegraphics[width=0.7\textwidth]{../figures/fig_ivf_pq_tradeoff.pdf}
+\caption{Recall vs throughput for HNSW-M16, ZGQ-M16 and IVF-PQ at all scales (darker is smaller). No memory axis is shown because RSS deltas on macOS are unreliable.}
 \label{fig:ivf_tradeoff}
 \end{figure}
 
@@ -462,37 +405,33 @@ The following figures from the benchmark suite support our theoretical analysis.
 \subsection{Summary of Contributions}
 
 \begin{enumerate}
-    \item \textbf{Zone-Ordered Insertion} (Theorem~\ref{thm:local-connectivity}): Improves local connectivity by factor $\gamma \approx 1.65$
-    
-    \item \textbf{Search Path Reduction} (Theorem~\ref{thm:path-length}): Reduces expected path length by factor $(1 - \beta) \approx 0.7$
-    
-    \item \textbf{Iso-Recall Efficiency} (Theorem~\ref{thm:efficiency}): Achieves 28\% higher throughput at equivalent recall
+    \item \textbf{Zone-Ordered Insertion} (Theorem~\ref{thm:local-connectivity}): the model predicts better local connectivity. The improvement factor $\gamma$ is an assumed parameter and was not measured.
+    \item \textbf{Search Path Reduction} (Theorem~\ref{thm:path-length}): the model predicts shorter expected paths. Path lengths were not measured.
+    \item \textbf{Iso-Recall Efficiency} (Theorem~\ref{thm:efficiency}): predicted a throughput gain at equal recall. The canonical run does not show it (iso-recall QPS ratio about 0.66 at 100K).
 \end{enumerate}
 
 \subsection{Key Findings}
 
-\begin{tcolorbox}[title=Main Result, colback=blue!5]
-\textbf{ZGQ v8 wins on 3 out of 4 metrics} when compared to HNSW:
+\begin{tcolorbox}[title=Measured result (2026-11-08), colback=blue!5]
 \begin{center}
-\begin{tabular}{lcc}
-\textbf{Metric} & \textbf{Winner} & \textbf{Margin} \\
+\begin{tabular}{lp{7.5cm}}
+\textbf{Metric} & \textbf{ZGQ-M16 vs HNSW-M16} \\
 \hline
-Recall@10 & \textcolor{green!60!black}{ZGQ} & +0.3\% to +1.9\% \\
-Throughput (QPS) & \textcolor{green!60!black}{ZGQ} & +28\% \\
-Query Latency & \textcolor{green!60!black}{ZGQ} & -22\% \\
-Build Time & HNSW & (C++ advantage) \\
+Recall@10 at equal $\ef$ & Equal at 10K; 7 to 10 points lower at 100K and 1M \\
+Latency at equal $\ef$ & About 5\% slower at 10K; 20 to 30\% faster at 100K and 1M, at lower recall \\
+Latency at equal recall & HNSW is at least as fast \\
+Build time & ZGQ 1.2x to 2.7x slower \\
+Memory & ZGQ uses far more (ordering only) \\
 \end{tabular}
 \end{center}
 \end{tcolorbox}
 
 \subsection{Practical Implications}
 
-For practitioners choosing between HNSW and ZGQ:
-
 \begin{itemize}
-    \item \textbf{Choose ZGQ when}: Query performance (QPS, latency) is critical and recall must be maximized
-    \item \textbf{Build time trade-off}: ZGQ's higher build time (Python vs C++) is acceptable for offline indexing scenarios
-    \item \textbf{Scaling behavior}: ZGQ's advantages increase with dataset size due to zone-based locality
+    \item On this data ZGQ does not beat hnswlib HNSW on the recall and latency frontier at any tested scale.
+    \item ZGQ is implemented in Python; part of the build-time and latency gap is implementation overhead, and a C++ port would be needed for a fair algorithmic comparison.
+    \item The results are for synthetic data, one machine and 1000 queries. See the limitations in \texttt{docs/BENCHMARKS.md}.
 \end{itemize}
 
 %==============================================================================
@@ -507,7 +446,7 @@ The intra-zone density factor $\alpha$ is computed as:
 \alpha = \frac{1}{Z} \sum_{z=1}^{Z} \frac{|\{(i,j) : \mathcal{Z}(x_i) = \mathcal{Z}(x_j) = z, (i,j) \in E\}|}{M \cdot n_z}
 \]
 
-Empirically measured: $\alpha \in [0.6, 0.7]$ for clustered data.
+Assumed value: $\alpha \in [0.6, 0.7]$ for clustered data. This was not measured in the canonical run.
 
 \subsection{Zone-Guidance Efficiency Factor $\beta$}
 
@@ -516,31 +455,27 @@ The zone-guidance efficiency is:
 \beta = 1 - \frac{\mathbb{E}[\text{nodes visited in target zone}]}{\mathbb{E}[\text{total nodes visited}]}
 \]
 
-For $Z = 10$ zones with balanced sizes: $\beta \approx 0.3$.
+Assumed value for $Z = 10$ zones with balanced sizes: $\beta \approx 0.3$. Not measured.
 
 \subsection{QPS Calculation}
 
 Queries per second:
 \[
-\qps = \frac{n_{\text{queries}}}{T_{\text{total}}} = \frac{500}{T_{\text{batch}}}
+\qps = \frac{n_{\text{queries}}}{T_{\text{total}}} = \frac{1000}{T_{\text{batch}}}
 \]
 
-where $T_{\text{batch}}$ is measured over 10 runs with warmup.
+where $T_{\text{batch}}$ is the median over 5 timed repeats after one warm-up pass.
 
 %==============================================================================
 \section{Reproducibility}
 %==============================================================================
 
 \begin{verbatim}
-# Generate benchmark figures
 cd v8
-python -m visualization.generate_ieee_figures \
-    --output figures_ieee \
-    --format pdf
-
-# Results saved to:
-# - figures_ieee/benchmark_results.json
-# - figures_ieee/fig_*.pdf
+python -m benchmarks.run_benchmarks --scale 10k 100k 1m --out-dir results/2026-11-08
+python -m visualization.generate_ieee_figures
+python -m visualization.make_tables
+# Figures are written to v8/figures/, tables to v8/tables/.
 \end{verbatim}
 
 \end{document}

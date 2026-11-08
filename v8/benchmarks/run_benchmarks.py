@@ -1,413 +1,536 @@
 """
-ZGQ v8 Benchmark Suite
-=======================
+ZGQ v8 reproducible benchmark harness
+=====================================
 
-Comprehensive benchmarking tools for comparing ZGQ against
-HNSW and other ANNS algorithms.
+Compares ZGQ (several M values), hnswlib HNSW (M=16) and FAISS IVF-PQ on
+seeded synthetic clustered-Gaussian data.
+
+Protocol (recorded in summary.json under ``protocol``):
+    * every random source is seeded (data, queries, index builds)
+    * HNSW M=16 vs ZGQ M=16 is the matched comparison; ZGQ M=24 and M=32 are
+      labeled variants with a larger graph, not a like-for-like comparison
+    * one warm-up pass over all queries before timing each search setting
+    * each setting is timed ``--repeats`` times (default 5) over the whole
+      query batch; median and IQR across repeats are reported
+    * build time and index memory (RSS delta around build) are recorded once
+      per index, not per search setting
+    * single thread by default (``--threads 1``) for build and search
 
 Usage:
-    python -m benchmarks.run_benchmarks --dataset 10k
-    python -m benchmarks.compare_algorithms
+    python -m benchmarks.run_benchmarks --scale 10k 100k --out-dir results/2025-01-01
+    python -m benchmarks.run_benchmarks --scale tiny --n-queries 50 --repeats 2 --out-dir /tmp/smoke
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import numpy as np
-import time
-import json
 import argparse
+import datetime
+import gc
+import json
+import multiprocessing
+import os
+import platform
+import subprocess
+import sys
+import time
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Tuple, Optional
-import hnswlib
+from types import SimpleNamespace
+from typing import Callable, Dict, List, Optional, Tuple
 
-from zgq import ZGQIndex
-from zgq.index import ZGQConfig
-from zgq.search import compute_ground_truth, compute_recall
+import hnswlib
+import numpy as np
+from zgq import ZGQConfig, ZGQIndex
+from zgq.search import compute_recall
+
+try:
+    import faiss
+except ImportError:  # optional baseline
+    faiss = None
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover
+    psutil = None
+
+from benchmarks.check_results import SCHEMA_VERSION, validate_summary
+
+SCALES = {"tiny": 2_000, "10k": 10_000, "100k": 100_000, "1m": 1_000_000}
+DIMENSION = 128
+DEFAULT_EF = (16, 32, 64, 128, 256)
+DEFAULT_NPROBE = (1, 4, 16, 64, 256)
+HNSW_M = 16
+ZGQ_MS = (16, 24, 32)
+EF_CONSTRUCTION = 200
+
+
+# ----------------------------------------------------------------------------
+# Data
+# ----------------------------------------------------------------------------
 
 
 def generate_test_data(
-    n_vectors: int = 10000,
-    n_queries: int = 100,
-    dimension: int = 128,
-    random_state: int = 42
+    n_vectors: int,
+    n_queries: int,
+    dimension: int = DIMENSION,
+    seed: int = 42,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Seeded clustered Gaussian data. Queries: 70% near clusters, 30% random.
+
+    Vectors and queries come from separate streams so changing ``n_queries``
+    never changes the database.
     """
-    Generate synthetic test data.
-    
-    Creates normally distributed vectors suitable for ANNS evaluation.
-    
-    Args:
-        n_vectors: Number of database vectors
-        n_queries: Number of query vectors
-        dimension: Vector dimension
-        random_state: Random seed
-        
-    Returns:
-        (vectors, queries): Generated data
-    """
-    rng = np.random.RandomState(random_state)
-    
-    # Generate clustered data for more realistic evaluation
+    rng = np.random.RandomState(seed)
     n_clusters = max(10, n_vectors // 1000)
-    
-    # Cluster centers
     centers = rng.randn(n_clusters, dimension).astype(np.float32)
-    
-    # Assign vectors to clusters
-    cluster_assignments = rng.randint(0, n_clusters, n_vectors)
-    
-    # Generate vectors around centers
-    vectors = np.zeros((n_vectors, dimension), dtype=np.float32)
-    for i in range(n_vectors):
-        center = centers[cluster_assignments[i]]
-        noise = rng.randn(dimension).astype(np.float32) * 0.3
-        vectors[i] = center + noise
-    
-    # Generate queries (some from clusters, some random)
-    queries = np.zeros((n_queries, dimension), dtype=np.float32)
-    for i in range(n_queries):
-        if rng.random() < 0.7:  # 70% from clusters
-            center = centers[rng.randint(0, n_clusters)]
-            noise = rng.randn(dimension).astype(np.float32) * 0.3
-            queries[i] = center + noise
-        else:  # 30% random
-            queries[i] = rng.randn(dimension).astype(np.float32)
-    
-    return vectors, queries
+    assign = rng.randint(0, n_clusters, n_vectors)
+
+    vectors = np.empty((n_vectors, dimension), dtype=np.float32)
+    chunk = 50_000
+    for s in range(0, n_vectors, chunk):
+        e = min(s + chunk, n_vectors)
+        noise = rng.randn(e - s, dimension).astype(np.float32) * 0.3
+        vectors[s:e] = centers[assign[s:e]] + noise
+
+    qrng = np.random.RandomState(seed + 1)
+    from_cluster = qrng.random_sample(n_queries) < 0.7
+    q_assign = qrng.randint(0, n_clusters, n_queries)
+    q_noise = qrng.randn(n_queries, dimension).astype(np.float32) * 0.3
+    q_random = qrng.randn(n_queries, dimension).astype(np.float32)
+    queries = np.where(from_cluster[:, None], centers[q_assign] + q_noise, q_random)
+    return vectors, np.ascontiguousarray(queries, dtype=np.float32)
 
 
-def save_test_data(
-    vectors: np.ndarray,
-    queries: np.ndarray,
-    ground_truth: np.ndarray,
-    output_dir: Path,
-    size_suffix: str
-) -> None:
-    """Save test data to files."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    np.save(output_dir / f'vectors_{size_suffix}.npy', vectors)
-    np.save(output_dir / 'queries_100.npy', queries)
-    np.save(output_dir / f'ground_truth_{size_suffix}.npy', ground_truth)
-    
-    print(f"Saved test data to {output_dir}")
+def exact_ground_truth(vectors: np.ndarray, queries: np.ndarray, k: int) -> np.ndarray:
+    """Exact top-k L2 neighbors by chunked brute force (numpy only)."""
+    vnorm = np.einsum("ij,ij->i", vectors, vectors)
+    out = np.empty((len(queries), k), dtype=np.int64)
+    step = max(1, int(2e7 // len(vectors)))  # bound the distance matrix size
+    for s in range(0, len(queries), step):
+        q = queries[s : s + step]
+        d2 = vnorm[None, :] - 2.0 * (q @ vectors.T)
+        part = np.argpartition(d2, k - 1, axis=1)[:, :k]
+        order = np.argsort(np.take_along_axis(d2, part, axis=1), axis=1)
+        out[s : s + step] = np.take_along_axis(part, order, axis=1)
+    return out
 
 
-def load_test_data(
-    data_dir: Path,
-    size_suffix: str = '10k'
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Load test data from files."""
-    vectors = np.load(data_dir / f'vectors_{size_suffix}.npy')
-    queries = np.load(data_dir / 'queries_100.npy')
-    ground_truth = np.load(data_dir / f'ground_truth_{size_suffix}.npy')
-    
-    return vectors, queries, ground_truth
+# ----------------------------------------------------------------------------
+# Environment
+# ----------------------------------------------------------------------------
 
 
-class HNSWBaseline:
-    """HNSW baseline using hnswlib for fair comparison."""
-    
-    def __init__(
-        self,
-        M: int = 16,
-        ef_construction: int = 200,
-        ef_search: int = 50,
-        space: str = 'l2'
-    ):
-        self.M = M
-        self.ef_construction = ef_construction
-        self.ef_search = ef_search
-        self.space = space
-        
-        self.index = None
-        self.n_vectors = 0
-        self.dimension = 0
-    
-    def build(self, vectors: np.ndarray) -> float:
-        """Build HNSW index, return build time."""
-        self.n_vectors, self.dimension = vectors.shape
-        
-        self.index = hnswlib.Index(space=self.space, dim=self.dimension)
-        self.index.init_index(
-            max_elements=self.n_vectors,
-            ef_construction=self.ef_construction,
-            M=self.M,
-            random_seed=42
-        )
-        
-        start = time.time()
-        self.index.add_items(vectors, np.arange(self.n_vectors))
-        build_time = time.time() - start
-        
-        self.index.set_ef(self.ef_search)
-        
-        return build_time
-    
-    def search(
-        self,
-        queries: np.ndarray,
-        k: int = 10
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Search for k nearest neighbors."""
-        queries = queries.astype(np.float32)
-        
-        if len(queries.shape) == 1:
-            queries = queries.reshape(1, -1)
-        
-        ids, distances = self.index.knn_query(queries, k=k)
-        
-        return ids, distances
-
-
-def benchmark_algorithm(
-    name: str,
-    build_fn,
-    search_fn,
-    vectors: np.ndarray,
-    queries: np.ndarray,
-    ground_truth: np.ndarray,
-    k: int = 10,
-    n_warmup: int = 3,
-    n_runs: int = 5
-) -> Dict:
-    """
-    Benchmark a single algorithm.
-    
-    Args:
-        name: Algorithm name
-        build_fn: Function to build index, returns build_time
-        search_fn: Function to search, takes (queries, k)
-        vectors: Database vectors
-        queries: Query vectors
-        ground_truth: Ground truth neighbors
-        k: Number of neighbors
-        n_warmup: Warmup iterations
-        n_runs: Benchmark iterations
-        
-    Returns:
-        Benchmark results dictionary
-    """
-    print(f"\n{'='*60}")
-    print(f"Benchmarking: {name}")
-    print(f"{'='*60}")
-    
-    # Build
-    print("\nBuilding index...")
-    build_time = build_fn(vectors)
-    print(f"  Build time: {build_time:.3f}s")
-    
-    # Warmup
-    print("\nWarming up...")
-    for _ in range(n_warmup):
-        _ = search_fn(queries[:10], k)
-    
-    # Benchmark search
-    print("\nBenchmarking search...")
-    latencies = []
-    
-    for run in range(n_runs):
-        start = time.time()
-        predicted, _ = search_fn(queries, k)
-        elapsed = time.time() - start
-        latencies.append(elapsed)
-    
-    # Compute metrics
-    avg_total = np.mean(latencies)
-    avg_per_query = avg_total / len(queries) * 1000  # ms
-    throughput = len(queries) / avg_total
-    
-    # Final search for recall
-    predicted, distances = search_fn(queries, k)
-    recall = compute_recall(predicted, ground_truth, k)
-    
-    results = {
-        'name': name,
-        'build_time_s': build_time,
-        'latency_per_query_ms': avg_per_query,
-        'throughput_qps': throughput,
-        f'recall@{k}': recall
-    }
-    
-    print(f"\nResults:")
-    print(f"  Build time:    {build_time:.3f}s")
-    print(f"  Query latency: {avg_per_query:.4f}ms")
-    print(f"  Throughput:    {throughput:,.0f} QPS")
-    print(f"  Recall@{k}:     {recall:.1f}%")
-    
-    return results
-
-
-def run_benchmarks(
-    dataset_size: str = '10k',
-    data_dir: Optional[Path] = None
-) -> Dict:
-    """
-    Run full benchmark suite.
-    
-    Args:
-        dataset_size: Dataset size ('10k', '100k', '1m')
-        data_dir: Data directory (default: benchmarks/data)
-        
-    Returns:
-        All benchmark results
-    """
-    if data_dir is None:
-        data_dir = Path(__file__).parent / 'data'
-    
-    print("="*60)
-    print("ZGQ v8 BENCHMARK SUITE")
-    print("="*60)
-    
-    # Load or generate data
+def _cpu_name() -> str:
     try:
-        vectors, queries, ground_truth = load_test_data(data_dir, dataset_size)
-        print(f"\nLoaded existing test data ({dataset_size})")
-    except FileNotFoundError:
-        print(f"\nGenerating test data ({dataset_size})...")
-        
-        size_map = {
-            '10k': 10000,
-            '100k': 100000,
-            '1m': 1000000
-        }
-        n_vectors = size_map.get(dataset_size, 10000)
-        
-        vectors, queries = generate_test_data(n_vectors=n_vectors)
-        
-        print("Computing ground truth...")
-        ground_truth, _ = compute_ground_truth(vectors, queries, k=100)
-        
-        save_test_data(vectors, queries, ground_truth, data_dir, dataset_size)
-    
-    print(f"\nDataset: {vectors.shape[0]:,} vectors × {vectors.shape[1]} dimensions")
-    print(f"Queries: {queries.shape[0]}")
-    
-    k = 10
-    all_results = []
-    
-    # Benchmark HNSW (baseline)
-    print("\n" + "="*60)
-    print("1/2: HNSW Baseline")
-    print("="*60)
-    
-    hnsw = HNSWBaseline(M=16, ef_construction=200, ef_search=50)
-    hnsw_results = benchmark_algorithm(
-        "HNSW",
-        hnsw.build,
-        hnsw.search,
-        vectors, queries, ground_truth, k
-    )
-    all_results.append(hnsw_results)
-    
-    # Benchmark ZGQ v8
-    print("\n" + "="*60)
-    print("2/2: ZGQ v8")
-    print("="*60)
-    
-    zgq_config = ZGQConfig(
-        n_zones='auto',
-        use_hierarchy=True,
-        M=16,
-        ef_construction=200,
-        ef_search=64,
-        use_pq=True,
-        pq_m='auto',
-        use_residual_pq=True,
-        verbose=True
-    )
-    zgq_index = ZGQIndex(zgq_config)
-    
-    def zgq_build(vecs):
-        start = time.time()
-        zgq_index.build(vecs)
-        return time.time() - start
-    
-    def zgq_search(qs, k):
-        return zgq_index.batch_search(qs, k, n_probe=8)
-    
-    zgq_results = benchmark_algorithm(
-        "ZGQ v8",
-        zgq_build,
-        zgq_search,
-        vectors, queries, ground_truth, k
-    )
-    all_results.append(zgq_results)
-    
-    # Comparison summary
-    print("\n" + "="*60)
-    print("COMPARISON SUMMARY")
-    print("="*60)
-    
-    hnsw_lat = hnsw_results['latency_per_query_ms']
-    zgq_lat = zgq_results['latency_per_query_ms']
-    speedup = hnsw_lat / zgq_lat
-    
-    recall_diff = zgq_results[f'recall@{k}'] - hnsw_results[f'recall@{k}']
-    
-    print(f"\n{'Metric':<20} {'HNSW':<15} {'ZGQ v8':<15} {'Result':<15}")
-    print("-" * 65)
-    print(f"{'Latency (ms)':<20} {hnsw_lat:<15.4f} {zgq_lat:<15.4f} {speedup:.2f}x {'✓' if speedup > 1 else '✗'}")
-    print(f"{'Recall@10':<20} {hnsw_results[f'recall@{k}']:<15.1f} {zgq_results[f'recall@{k}']:<15.1f} {'+' if recall_diff >= 0 else ''}{recall_diff:.1f}%")
-    print(f"{'Build time (s)':<20} {hnsw_results['build_time_s']:<15.3f} {zgq_results['build_time_s']:<15.3f}")
-    print(f"{'Throughput (QPS)':<20} {hnsw_results['throughput_qps']:<15,.0f} {zgq_results['throughput_qps']:<15,.0f}")
-    
-    # Winner determination
-    print("\n" + "-"*65)
-    if speedup > 1.0 and recall_diff >= -1.0:
-        print(f"🏆 WINNER: ZGQ v8 ({speedup:.2f}x faster with comparable recall)")
-    elif speedup > 1.0:
-        print(f"⚠️ ZGQ v8 is {speedup:.2f}x faster but recall is {abs(recall_diff):.1f}% lower")
-    else:
-        print(f"❌ HNSW is faster ({1/speedup:.2f}x)")
-    
-    # Save results
-    output_file = Path(__file__).parent / f'benchmark_results_{dataset_size}.json'
-    with open(output_file, 'w') as f:
-        json.dump(all_results, f, indent=2)
-    print(f"\n✓ Results saved to {output_file}")
-    
+        if sys.platform == "darwin":
+            return subprocess.check_output(
+                ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+            ).strip()
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return platform.processor() or "unknown"
+
+
+def _git(args: List[str]) -> Optional[str]:
+    try:
+        return subprocess.check_output(
+            ["git"] + args,
+            cwd=Path(__file__).parent,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return None
+
+
+def collect_environment() -> Dict:
+    import numba
+    import scipy
+    import sklearn
+    import zgq
+
+    libs = {
+        "numpy": np.__version__,
+        "scipy": scipy.__version__,
+        "scikit-learn": sklearn.__version__,
+        "numba": numba.__version__,
+        "hnswlib": getattr(hnswlib, "__version__", "unknown"),
+        "faiss": getattr(faiss, "__version__", None) if faiss else None,
+        "psutil": psutil.__version__ if psutil else None,
+        "zgq": zgq.__version__,
+    }
+    if libs["hnswlib"] == "unknown":
+        try:
+            from importlib.metadata import version
+
+            libs["hnswlib"] = version("hnswlib")
+        except Exception:
+            pass
+    status = _git(["status", "--porcelain", "--untracked-files=no"])
     return {
-        'results': all_results,
-        'comparison': {
-            'speedup': speedup,
-            'recall_diff': recall_diff,
-            'winner': 'ZGQ' if speedup > 1.0 and recall_diff >= -1.0 else 'HNSW'
-        }
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "cpu": _cpu_name(),
+        "cpu_count": os.cpu_count(),
+        "ram_gb": round(psutil.virtual_memory().total / 2**30, 1) if psutil else None,
+        "libraries": libs,
+        "git_commit": _git(["rev-parse", "HEAD"]),
+        "git_dirty": bool(status) if status is not None else None,
     }
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run ZGQ v8 benchmarks')
-    parser.add_argument(
-        '--dataset', '-d',
-        type=str,
-        default='10k',
-        choices=['10k', '100k', '1m'],
-        help='Dataset size'
+def rss_mb() -> float:
+    if psutil is None:
+        return float("nan")
+    gc.collect()
+    return psutil.Process().memory_info().rss / 2**20
+
+
+# ----------------------------------------------------------------------------
+# Index adapters: each returns (index_obj, build_time_s, rss_delta_mb, search_fn)
+# ----------------------------------------------------------------------------
+
+
+@contextmanager
+def _graph_threads(n_threads: int):
+    """Make the hnswlib index created inside ZGQ use ``n_threads`` threads.
+
+    ZGQ builds its own hnswlib index and does not expose a thread setting.
+    Wrapping Index keeps the build deterministic at 1 thread.
+    """
+    import zgq.core.graph as graph_mod
+
+    class _Index(hnswlib.Index):
+        def init_index(self, *a, **kw):
+            super().init_index(*a, **kw)
+            self.set_num_threads(n_threads)
+
+    original = graph_mod.hnswlib
+    graph_mod.hnswlib = SimpleNamespace(Index=_Index)
+    try:
+        yield
+    finally:
+        graph_mod.hnswlib = original
+
+
+def _measured_build(build: Callable[[], object]) -> Tuple[object, float, float]:
+    before = rss_mb()
+    t0 = time.perf_counter()
+    obj = build()
+    elapsed = time.perf_counter() - t0
+    after = rss_mb()
+    return obj, elapsed, after - before
+
+
+def build_hnsw(vectors, M, seed, threads):
+    def build():
+        idx = hnswlib.Index(space="l2", dim=vectors.shape[1])
+        idx.init_index(
+            max_elements=len(vectors),
+            ef_construction=EF_CONSTRUCTION,
+            M=M,
+            random_seed=seed,
+        )
+        idx.set_num_threads(threads)
+        idx.add_items(vectors, np.arange(len(vectors)))
+        return idx
+
+    idx, t, mem = _measured_build(build)
+
+    def search(queries, k, ef):
+        idx.set_ef(ef)
+        return idx.knn_query(queries, k=k)[0]
+
+    return idx, t, mem, search
+
+
+def build_zgq(vectors, M, seed, threads):
+    def build():
+        np.random.seed(seed)
+        cfg = ZGQConfig(M=M, ef_construction=EF_CONSTRUCTION, random_state=seed)
+        with _graph_threads(threads):
+            return ZGQIndex(cfg).build(vectors)
+
+    idx, t, mem = _measured_build(build)
+
+    def search(queries, k, ef):
+        return idx.batch_search(queries, k, ef_search=ef, fast_mode=True)[0]
+
+    return idx, t, mem, search
+
+
+def ivfpq_params(n: int) -> Dict:
+    return {"nlist": int(2 * np.sqrt(n)), "pq_m": 32, "nbits": 8}
+
+
+def build_ivfpq(vectors, seed, threads):
+    p = ivfpq_params(len(vectors))
+    d = vectors.shape[1]
+    faiss.omp_set_num_threads(threads)
+
+    def build():
+        np.random.seed(seed)
+        quantizer = faiss.IndexFlatL2(d)
+        idx = faiss.IndexIVFPQ(quantizer, d, p["nlist"], p["pq_m"], p["nbits"])
+        idx.cp.seed = seed
+        idx.pq.cp.seed = seed
+        idx.train(vectors)
+        idx.add(vectors)
+        return idx
+
+    idx, t, mem = _measured_build(build)
+
+    def search(queries, k, nprobe):
+        idx.nprobe = nprobe
+        return idx.search(queries, k)[1]
+
+    return idx, t, mem, search
+
+
+# ----------------------------------------------------------------------------
+# Measurement
+# ----------------------------------------------------------------------------
+
+
+def stats(values: List[float]) -> Dict:
+    a = np.asarray(values, dtype=np.float64)
+    q1, med, q3 = np.percentile(a, [25, 50, 75])
+    return {
+        "median": float(med),
+        "q1": float(q1),
+        "q3": float(q3),
+        "iqr": float(q3 - q1),
+        "n": int(len(a)),
+    }
+
+
+def measure_point(
+    search, queries, gt, k, param, repeats, warmup
+) -> Tuple[Dict, List[Dict]]:
+    for _ in range(warmup):
+        search(queries, k, param)
+
+    runs, recalls, lats, qpss = [], [], [], []
+    for r in range(repeats):
+        t0 = time.perf_counter()
+        ids = search(queries, k, param)
+        elapsed = time.perf_counter() - t0
+        recall = float(compute_recall(np.asarray(ids), gt, k))
+        lat = elapsed / len(queries) * 1000.0
+        qps = len(queries) / elapsed
+        recalls.append(recall)
+        lats.append(lat)
+        qpss.append(qps)
+        runs.append(
+            {
+                "repeat": r,
+                "elapsed_s": elapsed,
+                "recall_pct": recall,
+                "latency_ms_per_query": lat,
+                "qps": qps,
+            }
+        )
+    summary = {
+        "recall_pct": stats(recalls),
+        "latency_ms_per_query": stats(lats),
+        "qps": stats(qpss),
+    }
+    return summary, runs
+
+
+def run_index(spec, vectors, queries, gt, args, scale, raw_dir) -> Dict:
+    label, algo, builder, build_params, param_name, params = spec
+    raw_dir = Path(raw_dir)
+    print(f"  [{scale}] {label}: building ...", flush=True)
+    idx, build_t, mem, search = builder(vectors)
+    print(f"  [{scale}] {label}: build {build_t:.2f}s, rss +{mem:.1f} MB", flush=True)
+
+    points, raw_runs = [], []
+    for p in params:
+        pt, runs = measure_point(
+            search, queries, gt, args.k, p, args.repeats, args.warmup
+        )
+        sp = {param_name: int(p)}
+        points.append({"search_param": sp, **pt})
+        for r in runs:
+            raw_runs.append({"search_param": sp, **r})
+        print(
+            f"    {param_name}={p:<4} recall={pt['recall_pct']['median']:.1f}% "
+            f"lat={pt['latency_ms_per_query']['median']:.4f}ms "
+            f"(IQR {pt['latency_ms_per_query']['iqr']:.4f})",
+            flush=True,
+        )
+
+    raw_name = f"raw/{scale}_{label}.json"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    with open(raw_dir.parent / raw_name, "w") as f:
+        json.dump(
+            {
+                "label": label,
+                "scale": scale,
+                "build": {"time_s": build_t, "rss_delta_mb": mem},
+                "runs": raw_runs,
+            },
+            f,
+            indent=1,
+        )
+
+    del idx, search
+    gc.collect()
+    return {
+        "label": label,
+        "algo": algo,
+        "comparison": "baseline"
+        if algo != "zgq"
+        else ("matched" if build_params["M"] == HNSW_M else "variant"),
+        "build_params": build_params,
+        "build": {"time_s": build_t, "rss_delta_mb": mem},
+        "points": points,
+        "raw_file": raw_name,
+    }
+
+
+def index_specs(n, args):
+    ef = args.ef
+    specs = [
+        (
+            f"HNSW-M{HNSW_M}",
+            "hnsw",
+            lambda v: build_hnsw(v, HNSW_M, args.seed, args.threads),
+            {"M": HNSW_M, "ef_construction": EF_CONSTRUCTION},
+            "ef",
+            ef,
+        )
+    ]
+    for M in args.zgq_m:
+        specs.append(
+            (
+                f"ZGQ-M{M}",
+                "zgq",
+                (lambda v, M=M: build_zgq(v, M, args.seed, args.threads)),
+                {
+                    "M": M,
+                    "ef_construction": EF_CONSTRUCTION,
+                    "n_zones": "auto",
+                    "use_pq": True,
+                    "search_mode": "batch_search fast_mode rerank_factor=3",
+                },
+                "ef",
+                ef,
+            )
+        )
+    if faiss is not None and not args.no_ivfpq:
+        specs.append(
+            (
+                "IVFPQ",
+                "ivfpq",
+                lambda v: build_ivfpq(v, args.seed, args.threads),
+                ivfpq_params(n),
+                "nprobe",
+                args.nprobe,
+            )
+        )
+    return specs
+
+
+def _index_worker(scale: str, label: str, argv_dict: Dict) -> Dict:
+    """Build and measure one index in a fresh process.
+
+    A fresh process per index keeps the RSS delta meaningful: in a long-lived
+    process the allocator reuses memory freed by earlier indexes, which makes
+    later builds look free.
+    """
+    args = argparse.Namespace(**argv_dict)
+    n = SCALES[scale]
+    vectors, queries = generate_test_data(n, args.n_queries, DIMENSION, args.seed)
+    gt = exact_ground_truth(vectors, queries, args.k)
+    if args.threads > 0 and faiss is not None:
+        faiss.omp_set_num_threads(args.threads)
+    spec = next(s for s in index_specs(n, args) if s[0] == label)
+    return run_index(spec, vectors, queries, gt, args, scale, Path(args.out_dir) / "raw")
+
+
+def run(args) -> Dict:
+    out_dir = Path(args.out_dir)
+    raw_dir = out_dir / "raw"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    summary = {
+        "schema_version": SCHEMA_VERSION,
+        "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds"
+        ),
+        "environment": collect_environment(),
+        "protocol": {
+            "seed": args.seed,
+            "k": args.k,
+            "n_queries": args.n_queries,
+            "repeats": args.repeats,
+            "warmup_passes": args.warmup,
+            "threads": args.threads,
+            "latency_metric": "wall time of one batch call / n_queries, single process",
+            "memory_metric": "RSS delta (MB) across index build in a fresh process, after gc.collect()",
+            "data": "clustered Gaussian, dim 128, 70% cluster queries / 30% uniform",
+            "ground_truth": "exact brute force L2",
+        },
+        "scales": {},
+    }
+    ctx = multiprocessing.get_context("spawn")
+    for scale in args.scale:
+        n = SCALES[scale]
+        print(f"\n=== scale {scale}: {n:,} vectors, {args.n_queries} queries ===", flush=True)
+        indexes = []
+        for spec in index_specs(n, args):
+            with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
+                indexes.append(pool.submit(
+                    _index_worker, scale, spec[0], vars(args)).result())
+        summary["scales"][scale] = {
+            "n_vectors": n, "dimension": DIMENSION, "n_queries": args.n_queries,
+            "indexes": indexes,
+        }
+        with open(out_dir / "summary.json", "w") as f:  # incremental save
+            json.dump(summary, f, indent=2)
+
+    errors = validate_summary(summary, base_dir=out_dir)
+    if errors:
+        raise RuntimeError("summary failed schema validation: " + "; ".join(errors))
+    print(f"\nWrote {out_dir / 'summary.json'}")
+    return summary
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Run the ZGQ v8 benchmark harness")
+    p.add_argument(
+        "--scale",
+        nargs="+",
+        default=["10k"],
+        choices=list(SCALES),
+        help="dataset scale(s): tiny (2K, smoke only), 10k, 100k, 1m",
     )
-    parser.add_argument(
-        '--generate', '-g',
-        action='store_true',
-        help='Force regenerate test data'
+    p.add_argument("--out-dir", default="results", help="output directory")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--k", type=int, default=10)
+    p.add_argument("--n-queries", type=int, default=1000)
+    p.add_argument("--repeats", type=int, default=5)
+    p.add_argument("--warmup", type=int, default=1, help="warm-up passes per setting")
+    p.add_argument("--threads", type=int, default=1)
+    p.add_argument("--ef", type=int, nargs="+", default=list(DEFAULT_EF))
+    p.add_argument("--nprobe", type=int, nargs="+", default=list(DEFAULT_NPROBE))
+    p.add_argument("--zgq-m", type=int, nargs="+", default=list(ZGQ_MS))
+    p.add_argument(
+        "--no-ivfpq", action="store_true", help="skip the FAISS IVF-PQ baseline"
     )
-    
-    args = parser.parse_args()
-    
-    if args.generate:
-        data_dir = Path(__file__).parent / 'data'
-        size_map = {'10k': 10000, '100k': 100000, '1m': 1000000}
-        n_vectors = size_map[args.dataset]
-        
-        print(f"Generating {args.dataset} test data...")
-        vectors, queries = generate_test_data(n_vectors=n_vectors)
-        
-        print("Computing ground truth (this may take a while)...")
-        ground_truth, _ = compute_ground_truth(vectors, queries, k=100)
-        
-        save_test_data(vectors, queries, ground_truth, data_dir, args.dataset)
-        print("Done!")
-    else:
-        run_benchmarks(args.dataset)
+    return p
+
+
+def main(argv=None) -> int:
+    run(build_parser().parse_args(argv))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

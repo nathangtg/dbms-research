@@ -11,7 +11,7 @@ Zone-Guided Quantization (ZGQ) is a novel Approximate Nearest Neighbor Search (A
 **Secondary Hypotheses:**
 - H1: Hierarchical zone structure enables O(log N) zone selection vs O(√N) for flat partitioning
 - H2: Zone-guided navigation reduces effective search space by leveraging spatial locality
-- H3: Residual PQ reduces quantization error by 15-20% vs standard PQ
+- H3: Residual PQ reduces quantization error vs standard PQ (hypothesis, not measured; no result is committed)
 
 ## 3. Algorithm Components
 
@@ -83,7 +83,7 @@ E[||r - r̂||²] ≈ (d/m) * σ²_residual
 where σ²_residual < σ²_data (residuals have lower variance)
 ```
 
-Improvement: 15-20% lower reconstruction error.
+The size of the improvement depends on the data and has not been measured here.
 
 ## 4. Complexity Analysis
 
@@ -165,14 +165,11 @@ Compression: ~32x for m=16, d=128
 2. **IVF-PQ:** Inverted file with product quantization
 3. **Brute Force:** Exact nearest neighbor search
 
-### 6.3 Expected Results
+### 6.3 Results
 
-| Method | Recall@10 | Latency | Memory |
-|--------|-----------|---------|--------|
-| Brute Force | 100% | High | O(Nd) |
-| IVF-PQ | 60-80% | Medium | Low |
-| HNSW | 90-95% | Low | O(NM) |
-| **ZGQ v8** | 90-95% | **Lower** | O(Nm) |
+Measured results (recall, latency, QPS, build time, memory) are in
+[BENCHMARKS.md](BENCHMARKS.md), generated from `results/2026-11-08/summary.json`.
+This document makes no performance predictions.
 
 ## 7. Limitations and Future Work
 
@@ -205,3 +202,12 @@ These innovations combine to achieve faster query times than HNSW while maintain
 2. Jegou, H., Douze, M., & Schmid, C. (2011). Product quantization for nearest neighbor search. IEEE TPAMI.
 
 3. Johnson, J., Douze, M., & Jégou, H. (2019). Billion-scale similarity search with GPUs. IEEE TBD.
+
+## Conditions on the theoretical claims
+
+The path reduction lemma (Lemma 6.1 of the retired proof draft, see git tag `pre-v8-cleanup`) assumes that spatial locality in insertion
+order reduces edge lengths. The query time theorem (Theorem 6.2) requires `N > 10^4` and a bound on
+alpha. The 10K benchmark sits at that boundary. See "Assumptions behind the theory" in
+[BENCHMARKS.md](BENCHMARKS.md) for how the measured results relate to both. The earlier drafts were
+deleted because they carried untraceable empirical tables; they remain at git tag `pre-v8-cleanup`
+(`draft_papers/`).

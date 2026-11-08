@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format typecheck benchmark clean docs help
+.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full figures tables claims-check links-check clean build docs example verify all help paper
 
 # Default Python interpreter
 PYTHON ?= python3
@@ -9,8 +9,8 @@ help:  ## Show this help message
 install:  ## Install package in production mode
 	$(PYTHON) -m pip install .
 
-dev:  ## Install package in development mode with all dependencies
-	$(PYTHON) -m pip install -e ".[all]"
+dev:  ## Install package in development mode with dev dependencies
+	$(PYTHON) -m pip install -e ".[dev]"
 
 test:  ## Run all tests
 	$(PYTHON) -m pytest tests/ -v
@@ -32,12 +32,44 @@ format:  ## Format code with black and isort
 typecheck:  ## Run type checking with mypy
 	$(PYTHON) -m mypy zgq/ --ignore-missing-imports
 
-benchmark:  ## Run benchmark suite
-	$(PYTHON) -m benchmarks.run_benchmarks --dataset 10k
+benchmark:  ## Run canonical benchmark at 10K into results/latest
+	$(PYTHON) -m benchmarks.run_benchmarks --scale 10k --out-dir results/latest
 
-benchmark-full:  ## Run full benchmark suite (all sizes)
-	$(PYTHON) -m benchmarks.run_benchmarks --dataset 10k
-	$(PYTHON) -m benchmarks.run_benchmarks --dataset 100k
+benchmark-full:  ## Run canonical benchmark at 10K and 100K into results/latest
+	$(PYTHON) -m benchmarks.run_benchmarks --scale 10k 100k --out-dir results/latest
+
+benchmark-smoke:  ## Tiny-scale benchmark run plus schema check
+	rm -rf .smoke_results
+	$(PYTHON) -m benchmarks.run_benchmarks --scale tiny --n-queries 50 --repeats 2 \
+		--ef 32 64 --nprobe 4 16 --zgq-m 16 24 --out-dir .smoke_results
+	$(PYTHON) -m benchmarks.check_results .smoke_results/summary.json
+	rm -rf .smoke_results
+
+benchmark-check:  ## Validate committed canonical results against the schema
+	@for f in results/*/summary.json; do $(PYTHON) -m benchmarks.check_results $$f --canonical || exit 1; done
+
+RESULTS ?= results/2026-11-08/summary.json
+
+figures:  ## Regenerate figures/ from the canonical summary.json (no benchmarking)
+	$(PYTHON) -m visualization.generate_ieee_figures --results $(RESULTS) --output figures
+
+tables:  ## Regenerate tables/ (Markdown and LaTeX) from the canonical summary.json
+	$(PYTHON) -m visualization.make_tables --results $(RESULTS) --output tables
+
+paper:  ## Build ../latex/paper.pdf with latexmk (falls back to pdflatex); build files go to ../latex/build
+	@mkdir -p ../latex/build
+	@if command -v latexmk >/dev/null 2>&1; then \
+		cd ../latex && latexmk -pdf -interaction=nonstopmode -outdir=build paper.tex; \
+	elif command -v pdflatex >/dev/null 2>&1; then \
+		cd ../latex && for i in 1 2; do pdflatex -interaction=nonstopmode -output-directory=build paper.tex || exit 1; done; \
+	else echo "neither latexmk nor pdflatex found; install a TeX distribution"; exit 1; fi
+	@echo "Built ../latex/build/paper.pdf (the tracked ../latex/paper.pdf is not overwritten)"
+
+claims-check:  ## Fail if a retired benchmark number appears in docs or LaTeX
+	$(PYTHON) scripts/check_claims.py
+
+links-check:  ## Fail on broken Markdown links or LaTeX figure paths
+	$(PYTHON) scripts/check_links.py
 
 clean:  ## Clean build artifacts
 	rm -rf build/
@@ -56,12 +88,6 @@ clean:  ## Clean build artifacts
 build:  ## Build package for distribution
 	$(PYTHON) -m build
 
-publish-test:  ## Publish to TestPyPI
-	$(PYTHON) -m twine upload --repository testpypi dist/*
-
-publish:  ## Publish to PyPI
-	$(PYTHON) -m twine upload dist/*
-
 docs:  ## Generate documentation
 	@echo "Documentation is in docs/ directory"
 	@echo "View API.md and THEORY.md for documentation"
@@ -69,15 +95,20 @@ docs:  ## Generate documentation
 example:  ## Run quickstart example
 	$(PYTHON) examples/quickstart.py
 
-verify:  ## Verify installation and run quick tests
+verify:  ## Verify installation and run quick tests (includes benchmark-smoke)
 	$(PYTHON) -c "from zgq import ZGQIndex, ZGQConfig; print('ZGQ v8 imported successfully')"
 	$(PYTHON) -c "import numpy as np; from zgq import ZGQIndex, ZGQConfig; \
-		config = ZGQConfig(dimension=64); \
+		config = ZGQConfig(); \
 		index = ZGQIndex(config); \
-		data = np.random.randn(100, 64).astype(np.float32); \
+		data = np.random.randn(500, 64).astype(np.float32); \
 		index.build(data); \
 		q = np.random.randn(64).astype(np.float32); \
 		idx, dist = index.search(q, k=5); \
 		print(f'Search test passed: found {len(idx)} neighbors')"
+	$(MAKE) benchmark-smoke
+	$(MAKE) benchmark-check
+	$(MAKE) claims-check
+	$(MAKE) links-check
+	$(PYTHON) -c "import matplotlib" && $(MAKE) figures tables
 
 all: format lint typecheck test  ## Run all checks (format, lint, typecheck, test)

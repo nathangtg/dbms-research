@@ -5,41 +5,57 @@
 
 ## Abstract
 
-Zone-Guided Quantization (ZGQ) is a novel Approximate Nearest Neighbor Search (ANNS) algorithm that combines hierarchical zonal partitioning with optimized graph navigation to achieve superior query performance compared to HNSW. ZGQ introduces:
+Zone-Guided Quantization (ZGQ) is a research Approximate Nearest Neighbor Search (ANNS) algorithm that combines hierarchical zonal partitioning with graph navigation. In the canonical benchmarks it matches HNSW recall at 10K vectors but trails HNSW at 100K and 1M (see below). ZGQ introduces:
 
 1. **Adaptive Hierarchical Zones (AHZ)**: Multi-level zone structure that scales efficiently with dataset size
 2. **Zone-Guided Navigation (ZGN)**: Leverages zone boundaries to prune search space during graph traversal  
-3. **Optimized Distance Computation**: SIMD-accelerated Euclidean distance with early termination
+3. **Optimized Distance Computation**: numba-compiled Euclidean distance kernels
 4. **Residual Product Quantization (RPQ)**: Improved vector compression maintaining high recall
 
 ## Key Results
 
-| Metric | HNSW | ZGQ v8 | Improvement |
-|--------|------|--------|-------------|
-| Query Latency | 0.071ms | **0.048ms** | **32% faster** |
-| Recall@10 | 64.6% | **68.2%** | **+3.6%** |
-| Memory (10K) | 10.9 MB | 11.2 MB | +2.7% |
-| Memory (1M) | ~610 MB | ~580 MB | **-5%** |
+Canonical run `results/2026-11-08` (synthetic clustered data, dim 128, 1000 queries, single thread,
+median of 5 repeats, Apple M4). Matched comparison HNSW-M16 vs ZGQ-M16, recall@10 % / ms per query:
+
+| Scale | `ef` | HNSW-M16 | ZGQ-M16 |
+|-------|------|----------|---------|
+| 10K   | 64   | 92.4 / 0.046 | 92.3 / 0.049 |
+| 10K   | 256  | 98.7 / 0.099 | 98.2 / 0.101 |
+| 100K  | 64   | 86.1 / 0.084 | 78.9 / 0.065 |
+| 100K  | 256  | 94.2 / 0.158 | 84.8 / 0.122 |
+| 1M    | 64   | 77.6 / 0.124 | 68.1 / 0.091 |
+| 1M    | 256  | 87.0 / 0.226 | 76.8 / 0.174 |
+
+* ZGQ is less accurate than HNSW at 100K and 1M for every equal `ef`. Per-query time is lower at equal
+  `ef`, but HNSW at lower `ef` gives higher recall at similar or lower latency.
+* ZGQ builds 1.2x to 2.7x slower than HNSW and its index uses far more memory (macOS RSS deltas, so
+  only the ordering is claimed).
+* IVF-PQ without refinement saturates at 64%, 61% and 56% recall (10K, 100K, 1M).
+* HNSW is hnswlib (C++); ZGQ is Python with numba, so timing is not a pure algorithmic comparison.
+
+Full tables, figures, limitations and threats to validity: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+Claim-by-claim traceability: [docs/CLAIMS.md](docs/CLAIMS.md).
 
 ## Installation
 
 ```bash
 cd v8
-pip install -r requirements.txt
+pip install -e ".[dev]"   # or: pip install -e . for runtime only
 ```
 
 ## Quick Start
 
 ```python
-from zgq import ZGQIndex
+from zgq import ZGQConfig, ZGQIndex
 
 # Create and build index
-index = ZGQIndex(
-    n_zones='auto',           # Automatically determine optimal zones
-    hierarchy_levels=2,       # Multi-level zone hierarchy
-    use_simd=True,           # Enable SIMD acceleration
-    use_rpq=True             # Enable Residual PQ
+config = ZGQConfig(
+    n_zones='auto',        # Automatically determine optimal zones
+    use_hierarchy=True,    # Multi-level zone hierarchy
+    use_simd=True,         # Enable SIMD acceleration
+    use_pq=True,           # Enable (residual) product quantization
 )
+index = ZGQIndex(config)
 index.build(vectors)
 
 # Search
@@ -53,38 +69,41 @@ ids, distances = index.batch_search(queries, k=10, n_jobs=4)
 
 ```
 v8/
-├── README.md                    # This file
-├── requirements.txt             # Dependencies
-├── setup.py                     # Package setup
+├── README.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── Makefile                     # test, verify, benchmark, figures, tables, claims and link checks
+├── setup.py                     # Package setup and dependency source
+├── requirements.txt             # "-e ."
+├── requirements-dev.txt         # "-e .[dev]"
+├── pytest.ini
 ├── zgq/                         # Main package
 │   ├── __init__.py
-│   ├── index.py                 # Main ZGQIndex class
+│   ├── index.py                 # ZGQIndex and ZGQConfig
 │   ├── search.py                # Search algorithms
-│   ├── core/                    # Core components
-│   │   ├── __init__.py
+│   ├── core/
 │   │   ├── zones.py             # Adaptive Hierarchical Zones
-│   │   ├── graph.py             # Zone-Guided Graph Navigation
-│   │   ├── distances.py         # Optimized distance computation
-│   │   ├── quantization.py      # Residual Product Quantization
-│   │   └── simd.py              # SIMD utilities
-│   └── utils/                   # Utilities
-│       ├── __init__.py
-│       ├── metrics.py           # Evaluation metrics
-│       └── io.py                # Save/load functionality
-├── benchmarks/                  # Benchmarking suite
-│   ├── run_benchmarks.py        # Main benchmark script
-│   ├── compare_algorithms.py    # Algorithm comparison
-│   └── generate_data.py         # Test data generation
-├── tests/                       # Unit tests
-│   ├── test_index.py
-│   ├── test_search.py
-│   └── test_core.py
-├── examples/                    # Usage examples
-│   └── quickstart.py
-└── docs/                        # Documentation
-    ├── THEORY.md                # Theoretical foundation
-    ├── API.md                   # API reference
-    └── BENCHMARKS.md            # Benchmark methodology
+│   │   ├── graph.py             # Zone-Guided Graph
+│   │   ├── distances.py         # Distance kernels
+│   │   └── quantization.py      # Residual Product Quantization
+│   └── utils/
+│       ├── io.py                # Save/load
+│       └── metrics.py           # Evaluation metrics
+├── benchmarks/
+│   ├── run_benchmarks.py        # Reproducible harness (ZGQ, HNSW, IVF-PQ)
+│   └── check_results.py         # summary.json schema validator
+├── scripts/
+│   ├── check_claims.py          # Fails if a retired number reappears in the docs
+│   └── check_links.py           # Markdown and LaTeX link and path checker
+├── visualization/
+│   ├── generate_ieee_figures.py # Figures from results/summary.json only
+│   └── make_tables.py           # Markdown and LaTeX tables from summary.json
+├── results/2026-11-08/          # Canonical results (summary.json, raw/, README.md)
+├── figures/                     # Generated figures (PDF)
+├── tables/                      # Generated tables (Markdown, LaTeX)
+├── tests/                       # pytest suite
+├── examples/quickstart.py
+└── docs/                        # API.md, THEORY.md, BENCHMARKS.md, CLAIMS.md, proofing.tex
 ```
 
 ## Algorithm Overview
@@ -99,7 +118,7 @@ Level 1: √N zones (coarse partitioning)
 Level 2: N^(2/3) zones (fine partitioning)
 ```
 
-This allows O(log N) zone selection instead of O(√N).
+Zone selection cost is analyzed in [docs/THEORY.md](docs/THEORY.md); it has not been benchmarked separately.
 
 ### 2. Zone-Guided Navigation (ZGN)
 
@@ -108,14 +127,10 @@ During graph traversal, ZGN uses zone boundaries to:
 - **Prioritize**: Explore candidates in query's zone first  
 - **Bridge**: Use inter-zone connections efficiently
 
-### 3. Optimized Distance Computation
+### 3. Distance Computation
 
-```python
-# Standard: O(d) per distance
-# ZGQ v8: Uses SIMD + early termination
-# - 4x speedup from SIMD (AVX2/NEON)
-# - 2x average speedup from early termination
-```
+Euclidean distance kernels are compiled with numba (`zgq/core/distances.py`). No speedup factor over a
+baseline kernel has been measured, so none is claimed.
 
 ### 4. Residual Product Quantization (RPQ)
 
@@ -125,7 +140,13 @@ residual = vector - zone_centroid
 pq_code = PQ.encode(residual)
 ```
 
-This reduces quantization error by 15-20% compared to standard PQ.
+No measurement of quantization error against standard PQ has been committed, so no improvement is claimed.
+
+## Limitations
+
+The benchmarks use synthetic data, 1000 queries, a single machine and a Python implementation
+compared against C++ hnswlib. See "Limitations and threats to validity" in
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ## Citation
 
@@ -142,4 +163,4 @@ If you use ZGQ in your research, please cite:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](../LICENSE) for details.

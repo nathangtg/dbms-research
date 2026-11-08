@@ -5,6 +5,17 @@ All notable changes to the ZGQ project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Removed v1 to v7 from the working tree (kept at git tag `pre-v8-cleanup`).
+- Reproducible benchmark harness with schema check, tests, smoke target and committed canonical results.
+- Figures and tables are generated only from `results/<date>/summary.json`.
+- Added a lock around the numba asymmetric-distance kernel launch in `zgq/core/quantization.py` (avoids a numba workqueue abort when called from several threads; no measurable change in `batch_search` time for `n_jobs` 1 vs 4).
+- Deleted `docs/theory/` drafts (untraceable empirical tables; kept at tag `pre-v8-cleanup`). THEORY.md no longer predicts results or states a 15-20% RPQ error gain.
+- Docs reconciled to measured results; retired numbers are listed in `docs/CLAIMS.md` and blocked by `make claims-check`.
+
 ## [8.0.0] - 2024-12-04
 
 ### Major Release: Complete Algorithm Redesign
@@ -57,13 +68,13 @@ This release represents a major overhaul of the ZGQ algorithm, addressing the sc
 
 ### Fixed
 
-- **Critical**: Recall degradation at scale (v7 dropped from 55% to 21% at 100K)
-  - Root cause: Fixed zone count didn't adapt to larger datasets
-  - Solution: Adaptive zone sizing maintains consistent recall across scales
-  
-- Zone pruning now properly leverages hierarchical structure
-- Graph connectivity issues at zone boundaries
-- Memory leaks in long-running search scenarios
+- `ZGQIndex.batch_search(n_jobs>1, fast_mode=False)` aborted the process (nested numba parallel
+  launch in the asymmetric distance kernel). A lock in `quantization.py` prevents it; covered by tests.
+
+The v7 recall collapse at 100K (55.1% to 21.2%) and the v7 "35% faster than HNSW at 10K" figures that
+earlier versions of this file cited came from v7 scripts that are no longer in the tree. They are not
+reproducible from committed results and are not restated here. Earlier "Fixed" entries about zone pruning,
+graph connectivity at zone boundaries and memory leaks had no committed test or measurement and were removed.
 
 ### Removed
 
@@ -73,11 +84,14 @@ This release represents a major overhaul of the ZGQ algorithm, addressing the sc
 
 ### Performance
 
-Expected improvements over v7:
-- **Recall at 100K**: 21% → 75%+ (target: match HNSW baseline)
-- **Latency at 10K**: Maintain 35% improvement over HNSW
-- **Memory**: 20-30% reduction through RPQ
-- **Build time**: 15% faster through parallel zone construction
+Measured values (canonical run `results/2026-11-08`, synthetic data, single thread; see
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
+
+- 10K vectors: ZGQ-M16 recall equals HNSW-M16 at equal `ef` (92.3% vs 92.4% at `ef=64`), about 5% slower per query.
+- 100K and 1M vectors: ZGQ-M16 recall is below HNSW-M16 at every equal `ef` (100K `ef=64`: 78.9% vs 86.1%; 1M: 68.1% vs 77.6%).
+- Build time is 1.2x to 2.7x slower than HNSW-M16.
+- Memory use is much higher than HNSW (RSS delta ordering only; macOS measurements).
+- No recall, latency, memory or build-time improvement over v7 is claimed. v7 is not part of the canonical run.
 
 ## [7.0.0] - 2024-11-XX
 
@@ -85,11 +99,10 @@ Expected improvements over v7:
 
 V7 introduced the unified HNSW approach with zone metadata but suffered from scaling issues:
 
-- Achieved 35% faster search than HNSW at 10K vectors
-- Recall dropped significantly at 100K scale (55.1% → 21.2%)
+- Reported (not reproducible from committed results) faster search than HNSW at 10K and a recall drop at 100K
 - Fixed zone count (100 zones) didn't adapt to dataset size
 
-### Known Issues (Fixed in v8)
+### Known Issues
 
 - Zone partitioning used fixed count regardless of data size
 - Unified HNSW approach didn't leverage zone structure during search

@@ -1,0 +1,400 @@
+{
+ "schema_version": "zgq-bench/1",
+ "created_utc": "2000-01-01T00:00:00Z",
+ "environment": {},
+ "protocol": {},
+ "scales": {
+  "10k": {
+   "n_vectors": 10000,
+   "dimension": 8,
+   "n_queries": 10,
+   "indexes": [
+    {
+     "label": "HNSW-M16",
+     "algo": "hnsw",
+     "comparison": "baseline",
+     "build": {
+      "time_s": 1.0,
+      "rss_delta_mb": 1.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "ef": 64
+       },
+       "recall_pct": {
+        "median": 90.0,
+        "q1": 90.0,
+        "q3": 90.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.05,
+        "q1": 0.05,
+        "q3": 0.05,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 20000.0,
+        "q1": 20000.0,
+        "q3": 20000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "ef": 256
+       },
+       "recall_pct": {
+        "median": 98.0,
+        "q1": 98.0,
+        "q3": 98.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.1,
+        "q1": 0.1,
+        "q3": 0.1,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 10000.0,
+        "q1": 10000.0,
+        "q3": 10000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    },
+    {
+     "label": "ZGQ-M16",
+     "algo": "zgq",
+     "comparison": "matched",
+     "build": {
+      "time_s": 2.0,
+      "rss_delta_mb": 50.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "ef": 64
+       },
+       "recall_pct": {
+        "median": 85.0,
+        "q1": 85.0,
+        "q3": 85.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.06,
+        "q1": 0.06,
+        "q3": 0.06,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 16666.666666666668,
+        "q1": 16666.666666666668,
+        "q3": 16666.666666666668,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "ef": 256
+       },
+       "recall_pct": {
+        "median": 95.0,
+        "q1": 95.0,
+        "q3": 95.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.12,
+        "q1": 0.12,
+        "q3": 0.12,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 8333.333333333334,
+        "q1": 8333.333333333334,
+        "q3": 8333.333333333334,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    },
+    {
+     "label": "IVFPQ",
+     "algo": "ivfpq",
+     "comparison": "baseline",
+     "build": {
+      "time_s": 1.5,
+      "rss_delta_mb": 2.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "nprobe": 4
+       },
+       "recall_pct": {
+        "median": 40.0,
+        "q1": 40.0,
+        "q3": 40.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.02,
+        "q1": 0.02,
+        "q3": 0.02,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 50000.0,
+        "q1": 50000.0,
+        "q3": 50000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "nprobe": 16
+       },
+       "recall_pct": {
+        "median": 60.0,
+        "q1": 60.0,
+        "q3": 60.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.05,
+        "q1": 0.05,
+        "q3": 0.05,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 20000.0,
+        "q1": 20000.0,
+        "q3": 20000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "100k": {
+   "n_vectors": 100000,
+   "dimension": 8,
+   "n_queries": 10,
+   "indexes": [
+    {
+     "label": "HNSW-M16",
+     "algo": "hnsw",
+     "comparison": "baseline",
+     "build": {
+      "time_s": 1.0,
+      "rss_delta_mb": 1.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "ef": 64
+       },
+       "recall_pct": {
+        "median": 90.0,
+        "q1": 90.0,
+        "q3": 90.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.05,
+        "q1": 0.05,
+        "q3": 0.05,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 20000.0,
+        "q1": 20000.0,
+        "q3": 20000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "ef": 256
+       },
+       "recall_pct": {
+        "median": 98.0,
+        "q1": 98.0,
+        "q3": 98.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.1,
+        "q1": 0.1,
+        "q3": 0.1,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 10000.0,
+        "q1": 10000.0,
+        "q3": 10000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    },
+    {
+     "label": "ZGQ-M16",
+     "algo": "zgq",
+     "comparison": "matched",
+     "build": {
+      "time_s": 2.0,
+      "rss_delta_mb": 50.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "ef": 64
+       },
+       "recall_pct": {
+        "median": 85.0,
+        "q1": 85.0,
+        "q3": 85.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.06,
+        "q1": 0.06,
+        "q3": 0.06,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 16666.666666666668,
+        "q1": 16666.666666666668,
+        "q3": 16666.666666666668,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "ef": 256
+       },
+       "recall_pct": {
+        "median": 95.0,
+        "q1": 95.0,
+        "q3": 95.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.12,
+        "q1": 0.12,
+        "q3": 0.12,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 8333.333333333334,
+        "q1": 8333.333333333334,
+        "q3": 8333.333333333334,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    },
+    {
+     "label": "IVFPQ",
+     "algo": "ivfpq",
+     "comparison": "baseline",
+     "build": {
+      "time_s": 1.5,
+      "rss_delta_mb": 2.0
+     },
+     "points": [
+      {
+       "search_param": {
+        "nprobe": 4
+       },
+       "recall_pct": {
+        "median": 40.0,
+        "q1": 40.0,
+        "q3": 40.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.02,
+        "q1": 0.02,
+        "q3": 0.02,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 50000.0,
+        "q1": 50000.0,
+        "q3": 50000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      },
+      {
+       "search_param": {
+        "nprobe": 16
+       },
+       "recall_pct": {
+        "median": 60.0,
+        "q1": 60.0,
+        "q3": 60.0,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "latency_ms_per_query": {
+        "median": 0.05,
+        "q1": 0.05,
+        "q3": 0.05,
+        "iqr": 0.0,
+        "n": 3
+       },
+       "qps": {
+        "median": 20000.0,
+        "q1": 20000.0,
+        "q3": 20000.0,
+        "iqr": 0.0,
+        "n": 3
+       }
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

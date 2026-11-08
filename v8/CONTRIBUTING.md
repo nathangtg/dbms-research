@@ -32,13 +32,13 @@ Please be respectful and constructive in all interactions. We welcome contributo
 
 3. Install development dependencies:
    ```bash
-   pip install -r requirements.txt
-   pip install -e .
+   pip install -e ".[dev]"
    ```
 
 4. Verify installation:
    ```bash
-   pytest tests/
+   make test
+   make verify
    ```
 
 ## Development Workflow
@@ -182,10 +182,35 @@ def test_index_build():
 When making performance changes, run benchmarks:
 
 ```bash
-python -m benchmarks.run_benchmarks --dataset 10k
+make benchmark-smoke   # quick sanity check
+make benchmark         # canonical 10K run into results/latest
 ```
 
 Include benchmark results in your PR if performance is affected.
+
+### Documenting numbers
+
+Every performance number in a doc must come from a committed `results/<date>/summary.json`.
+Regenerate figures and tables instead of typing numbers:
+
+```bash
+make figures   # figures/ from results/2026-11-08/summary.json
+make tables    # tables/ (Markdown and LaTeX)
+```
+
+### Building the paper
+
+```bash
+make paper   # latexmk -pdf (pdflatex fallback); output in ../latex/build/paper.pdf
+```
+
+Build files are written to `latex/build/`, which is git-ignored, so the tracked `latex/paper.pdf` is
+not overwritten. Copy the result over `latex/paper.pdf` only when you intend to update the tracked PDF.
+Without latexmk or pdflatex, install a TeX distribution (for example MacTeX or TeX Live).
+
+`make verify` also runs `make claims-check` (retired numbers must not reappear in the docs) and
+`make links-check` (Markdown and LaTeX links and paths must resolve). Add new claims to
+`docs/CLAIMS.md` with their source.
 
 ## Pull Requests
 
@@ -196,6 +221,7 @@ Include benchmark results in your PR if performance is affected.
 - [ ] Type hints are added
 - [ ] Documentation is updated
 - [ ] CHANGELOG.md is updated
+- [ ] `make test` and `make verify` pass
 
 ### PR Description
 
