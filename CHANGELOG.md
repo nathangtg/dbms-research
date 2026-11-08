@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Phases 4 to 8 below are not part of a tagged release. Phase 3 is the 8.0.0 code base and phases 1 and 2
 are the pre-8.0.0 history.
 
+### Changed
+
+- The `v8/` directory was hoisted to the repository root, so paths such as `v8/zgq` are now `zgq`. File history
+  is preserved through renames. Dependency management moved to uv. Older entries below keep the `v8/` paths of
+  their time.
+
 ### Added
 
 Phase 7, build-order study (`results/2026-11-09-novelty/README.md`):

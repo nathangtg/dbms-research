@@ -125,7 +125,7 @@ ids, distances = index.batch_search(queries, k=10, n_jobs=4)
 
 ## History
 
-Earlier iterations (v1 to v7) were removed from the working tree. They remain available in git history at the tag `pre-v8-cleanup`. The v8 code previously lived in a `v8/` subdirectory and was moved to the repository root; file history is preserved.
+Earlier iterations (v1 to v7) were removed from the working tree. They remain available in git history at the tag `pre-v8-cleanup`. The v8 code previously lived in a `v8/` subdirectory and was moved to the repository root; file history is preserved. The study narrative is in [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md) and the release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Algorithm Overview
 

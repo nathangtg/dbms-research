@@ -120,6 +120,11 @@ aggregated run before it can be stated as a finding.
 - Multi-thread and incremental-insertion behaviour. Raw partial files exist under `results/2026-11-09-novelty/`
   (`incremental/`, `parallel/`) and are unanalyzed.
 
+## Repository layout
+
+The `v8/` directory was hoisted to the repository root, and dependency management moved to uv. Paths in
+older entries of this log and of the changelog refer to the layout of their time.
+
 ## Limitations
 
 - Synthetic data. The canonical and improvement runs use clustered Gaussian vectors of dimension 128. Rankings
