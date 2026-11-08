@@ -1,0 +1,2 @@
+# Development dependencies are declared once, in setup.py (extras_require["dev"]).
+-e .[dev]

@@ -16,10 +16,6 @@ Usage:
     python -m visualization.generate_ieee_figures --skip-benchmark  # Use cached results
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -68,7 +64,6 @@ plt.rcParams.update({
     'lines.markersize': 6,
 })
 
-
 def setup_ieee_style():
     """Apply IEEE-compliant matplotlib style."""
     plt.rcParams['text.usetex'] = False
@@ -80,7 +75,6 @@ def setup_ieee_style():
     plt.rcParams['savefig.dpi'] = IEEE_DPI
     plt.rcParams['savefig.bbox'] = 'tight'
     plt.rcParams['savefig.pad_inches'] = 0.05
-
 
 # ============================================================================
 # Live Benchmark Runner
@@ -352,7 +346,6 @@ class BenchmarkRunner:
             self.results_cache = json.load(f)
         return self.results_cache
 
-
 # ============================================================================
 # Figure Generation Functions
 # ============================================================================
@@ -371,7 +364,6 @@ def add_winner_annotation(ax, x, y, text, color=COLORS['winner'], fontsize=8):
         bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.9),
     )
 
-
 def add_comparison_annotation(ax, text, position='upper right', fontsize=8):
     """Add a comparison summary box."""
     positions = {
@@ -388,7 +380,6 @@ def add_comparison_annotation(ax, text, position='upper right', fontsize=8):
         ha=ha, va=va,
         bbox=dict(boxstyle='round,pad=0.4', facecolor='#f8f9fa', edgecolor='#dee2e6', alpha=0.95),
     )
-
 
 def fig_recall_vs_qps(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
@@ -462,7 +453,6 @@ def fig_recall_vs_qps(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path
     print(f"✓ Generated: {output_path}")
     return output_path
 
-
 def fig_scaling_analysis(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
     Figure 2: Scaling Analysis
@@ -532,7 +522,6 @@ def fig_scaling_analysis(results: Dict, output_dir: Path, fmt: str = 'pdf') -> P
     print(f"✓ Generated: {output_path}")
     return output_path
 
-
 def fig_latency_comparison(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
     Figure 3: Latency Comparison with Recall Labels
@@ -591,7 +580,6 @@ def fig_latency_comparison(results: Dict, output_dir: Path, fmt: str = 'pdf') ->
     plt.close()
     print(f"✓ Generated: {output_path}")
     return output_path
-
 
 def fig_throughput_bars(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
@@ -673,7 +661,6 @@ def fig_throughput_bars(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Pa
     print(f"✓ Generated: {output_path}")
     return output_path
 
-
 def fig_build_time(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
     Figure 5: Index Build Time Comparison
@@ -723,7 +710,6 @@ def fig_build_time(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     plt.close()
     print(f"✓ Generated: {output_path}")
     return output_path
-
 
 def fig_pareto_frontier(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
@@ -796,7 +782,6 @@ def fig_pareto_frontier(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Pa
     plt.close()
     print(f"✓ Generated: {output_path}")
     return output_path
-
 
 def fig_summary_comparison(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
@@ -907,7 +892,6 @@ def fig_summary_comparison(results: Dict, output_dir: Path, fmt: str = 'pdf') ->
     print(f"✓ Generated: {output_path}")
     return output_path
 
-
 def fig_radar_chart(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     """
     Figure 8: Radar Chart - Multi-dimensional Comparison
@@ -988,7 +972,6 @@ def fig_radar_chart(results: Dict, output_dir: Path, fmt: str = 'pdf') -> Path:
     print(f"✓ Generated: {output_path}")
     return output_path
 
-
 def generate_latex_includes(figures: List[Path], output_dir: Path):
     """Generate LaTeX include file with proper captions."""
     
@@ -1022,7 +1005,6 @@ def generate_latex_includes(figures: List[Path], output_dir: Path):
             f.write("\\end{figure}\n\n")
     
     print(f"✓ Generated: {latex_path}")
-
 
 def generate_all_figures(
     output_dir: Path,
@@ -1100,7 +1082,6 @@ def generate_all_figures(
             print(f"    → HNSW WINS by +{best_hnsw['recall'] - best_zgq['recall']:.1f}% recall")
     
     return generated
-
 
 # ============================================================================
 # Main Entry Point

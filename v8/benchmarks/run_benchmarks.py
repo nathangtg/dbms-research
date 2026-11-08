@@ -10,10 +10,6 @@ Usage:
     python -m benchmarks.compare_algorithms
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import numpy as np
 import time
 import json
@@ -25,7 +21,6 @@ import hnswlib
 from zgq import ZGQIndex
 from zgq.index import ZGQConfig
 from zgq.search import compute_ground_truth, compute_recall
-
 
 def generate_test_data(
     n_vectors: int = 10000,
@@ -77,7 +72,6 @@ def generate_test_data(
     
     return vectors, queries
 
-
 def save_test_data(
     vectors: np.ndarray,
     queries: np.ndarray,
@@ -94,7 +88,6 @@ def save_test_data(
     
     print(f"Saved test data to {output_dir}")
 
-
 def load_test_data(
     data_dir: Path,
     size_suffix: str = '10k'
@@ -105,7 +98,6 @@ def load_test_data(
     ground_truth = np.load(data_dir / f'ground_truth_{size_suffix}.npy')
     
     return vectors, queries, ground_truth
-
 
 class HNSWBaseline:
     """HNSW baseline using hnswlib for fair comparison."""
@@ -160,7 +152,6 @@ class HNSWBaseline:
         ids, distances = self.index.knn_query(queries, k=k)
         
         return ids, distances
-
 
 def benchmark_algorithm(
     name: str,
@@ -238,7 +229,6 @@ def benchmark_algorithm(
     print(f"  Recall@{k}:     {recall:.1f}%")
     
     return results
-
 
 def run_benchmarks(
     dataset_size: str = '10k',
@@ -377,7 +367,6 @@ def run_benchmarks(
             'winner': 'ZGQ' if speedup > 1.0 and recall_diff >= -1.0 else 'HNSW'
         }
     }
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run ZGQ v8 benchmarks')

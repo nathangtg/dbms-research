@@ -12,7 +12,6 @@ Usage:
     python -m visualization.compare_ivf_pq
 """
 
-import sys
 import os
 import time
 import numpy as np
@@ -21,7 +20,6 @@ from pathlib import Path
 import faiss
 
 # Ensure we can import from parent directory if needed
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ============================================================================
 # Data Generation & Simulation

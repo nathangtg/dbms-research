@@ -12,16 +12,6 @@ from pathlib import Path
 readme_path = Path(__file__).parent / "README.md"
 long_description = readme_path.read_text(encoding="utf-8") if readme_path.exists() else ""
 
-# Read requirements
-requirements_path = Path(__file__).parent / "requirements.txt"
-requirements = []
-if requirements_path.exists():
-    requirements = [
-        line.strip()
-        for line in requirements_path.read_text().splitlines()
-        if line.strip() and not line.startswith("#")
-    ]
-
 setup(
     name="zgq",
     version="8.0.0",

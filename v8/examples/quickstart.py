@@ -7,15 +7,11 @@ This example demonstrates basic usage of the ZGQ library.
 
 import numpy as np
 import time
-import sys
 import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from zgq import ZGQIndex
 from zgq.index import ZGQConfig
 from zgq.search import compute_ground_truth, compute_recall
-
 
 def main():
     print("="*60)
@@ -126,7 +122,6 @@ def main():
     
     # Cleanup
     os.remove('/tmp/zgq_example.index')
-
 
 if __name__ == '__main__':
     main()
