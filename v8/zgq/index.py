@@ -29,6 +29,7 @@ from zgq.core.zones import AdaptiveHierarchicalZones, ZoneConfig
 from zgq.core.graph import ZoneGuidedGraph, GraphConfig
 from zgq.core.quantization import ResidualProductQuantizer, RPQConfig, suggest_pq_params
 from zgq.core.distances import DistanceComputer
+from zgq.core import compressed as _cmp_mod
 
 
 def _batch_rerank_numpy(queries, vectors, candidate_ids, k):
@@ -153,6 +154,25 @@ class ZGQConfig:
         metric: Distance metric ('l2', 'cosine', 'ip')
         verbose: Print progress information
         random_state: Random seed for reproducibility
+        insertion_order: HNSW insertion order, 'zone' (default) or 'random'
+        zone_replicas: Zones each vector is stored in for zone scans (1 = off)
+        adaptive_probe: Choose the probe count per query from centroid distances
+        min_probe, max_probe: Bounds on the adaptive probe count
+        probe_ratio: A zone is probed when its centroid distance is at most
+            probe_ratio times the nearest centroid distance (adaptive only)
+        search_mode: 'graph' (default), 'zone_scan' or 'global_entry'.
+            Applies to search() and batch_zone_search(), not to the
+            fast_mode batch_search path.
+        compressed_search: Search the level-0 graph with PQ/RPQ asymmetric
+            distances (per-candidate zone centroid) instead of hnswlib with
+            raw vectors. Used by search() and batch_search().
+        rerank_budget: With compressed_search, exact-rerank this many top ADC
+            candidates (needs the raw vectors; 0 = codes only).
+        drop_full_vectors: With compressed_search, free the hnswlib index
+            (which holds a vector copy) and norms after build; the raw
+            vectors are kept only if rerank_budget > 0. Such an index cannot
+            be saved and only supports the compressed search path.
+        compressed_entry_zones: Zones whose entry point seeds the compressed search.
     """
     
     # Zone settings
@@ -180,6 +200,41 @@ class ZGQConfig:
     # General settings
     verbose: bool = False
     random_state: int = 42
+
+    # Opt-in recall options (defaults reproduce the previous behavior exactly)
+    insertion_order: str = 'zone'
+    zone_replicas: int = 1
+    adaptive_probe: bool = False
+    min_probe: int = 1
+    max_probe: int = 32
+    probe_ratio: float = 1.3
+    search_mode: str = 'graph'
+    compressed_search: bool = False
+    rerank_budget: int = 0
+    drop_full_vectors: bool = False
+    compressed_entry_zones: int = 4
+
+    def __post_init__(self):
+        if self.insertion_order not in ('zone', 'random'):
+            raise ValueError("insertion_order must be 'zone' or 'random'")
+        if self.search_mode not in ('graph', 'zone_scan', 'global_entry'):
+            raise ValueError(
+                "search_mode must be 'graph', 'zone_scan' or 'global_entry'"
+            )
+        if self.zone_replicas < 1:
+            raise ValueError("zone_replicas must be >= 1")
+        if not 1 <= self.min_probe <= self.max_probe:
+            raise ValueError("require 1 <= min_probe <= max_probe")
+        if self.probe_ratio < 1.0:
+            raise ValueError("probe_ratio must be >= 1.0")
+        if self.rerank_budget < 0:
+            raise ValueError("rerank_budget must be >= 0")
+        if self.compressed_entry_zones < 1:
+            raise ValueError("compressed_entry_zones must be >= 1")
+        if self.drop_full_vectors and not self.compressed_search:
+            raise ValueError("drop_full_vectors requires compressed_search=True")
+        if self.compressed_search and not self.use_pq:
+            raise ValueError("compressed_search requires use_pq=True")
 
 
 class ZGQIndex:
@@ -237,6 +292,8 @@ class ZGQIndex:
         
         # Build timing
         self.build_stats: Dict = {}
+        self.last_batch_stats: Dict = {}
+        self._cmp: Optional[Dict] = None
     
     def build(self, vectors: np.ndarray) -> 'ZGQIndex':
         """
@@ -284,6 +341,10 @@ class ZGQIndex:
         self.zones = AdaptiveHierarchicalZones(zone_config)
         self.zones.build(vectors)
         
+        if self.config.zone_replicas > 1:
+            self.zones.build_replicas(vectors, self.config.zone_replicas)
+            self.build_stats['replica_overhead'] = self.zones.get_replica_overhead()
+
         self.build_stats['zones_time'] = time.time() - step_start
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['zones_time']:.2f}s")
@@ -299,7 +360,8 @@ class ZGQIndex:
             ef_search=self.config.ef_search,
             use_zone_guidance=self.config.use_zone_guidance,
             space=self.config.metric,
-            random_seed=self.config.random_state
+            random_seed=self.config.random_state,
+            insertion_order=self.config.insertion_order
         )
         
         self.graph = ZoneGuidedGraph(graph_config)
@@ -370,6 +432,11 @@ class ZGQIndex:
         if self.config.verbose:
             print(f"  ✓ Completed in {self.build_stats['norms_time']:.2f}s")
         
+        if self.config.compressed_search:
+            step_start = time.time()
+            self._build_compressed()
+            self.build_stats['compressed_time'] = time.time() - step_start
+
         # Finalize
         self.is_built = True
         self.build_stats['total_time'] = time.time() - build_start
@@ -419,9 +486,133 @@ class ZGQIndex:
         Returns:
             (ids, distances): Arrays of shape (k,)
         """
+        if self.config.compressed_search:
+            if not self.is_built:
+                raise RuntimeError("Index must be built before searching")
+            ids, dists = self._compressed_batch_search(
+                np.asarray(query, dtype=np.float32)[None, :], k, ef_search
+            )
+            return ids[0], dists[0]
+        ids, distances, _ = self._search_impl(query, k, n_probe, ef_search, use_pq_rerank)
+        return ids, distances
+
+    # ------------------------------------------------------------------
+    # Compressed search (graph + PQ/RPQ codes)
+    # ------------------------------------------------------------------
+
+    def _build_compressed(self) -> None:
+        """Extract level-0 links and precompute the index-side ADC structures."""
+        cfg = self.config
+        links, _ = _cmp_mod.extract_level0_links(self.graph.hnsw, self.dimension)
+        cw = _cmp_mod.effective_codebooks(self.pq)
+        residual = bool(self.pq.config.use_residuals)
+        centroids = np.ascontiguousarray(self.zones.fine_centroids, dtype=np.float32)
+        n_zones = len(centroids)
+        entry_ids = np.full(n_zones, -1, dtype=np.int32)
+        for z, pts in self.graph.zone_entry_points.items():
+            if len(pts):
+                entry_ids[int(z)] = pts[0]
+        zone_dtype = np.uint16 if n_zones < 65536 else np.int32
+        self._cmp = {
+            'links': links,
+            'cw': cw,
+            'residual': residual,
+            'centroids': centroids,
+            'entry_ids': entry_ids,
+            'cross': _cmp_mod.zone_cross_table(centroids, cw) if residual else None,
+            'zone_of': (self.zones.assignments.astype(zone_dtype) if residual
+                        else np.zeros(0, dtype=zone_dtype)),
+        }
+        if cfg.drop_full_vectors:
+            self.graph = None
+            self.vector_norms = None
+            if cfg.rerank_budget == 0:
+                self.vectors = None
+
+    def _tables(self, queries: np.ndarray):
+        """Per-query ADC tables: (A, Qz, zone_distances)."""
+        c = self._cmp
+        A, zd = _cmp_mod.query_tables(queries, c['cw'], c['centroids'])
+        if c['residual']:
+            Qz = zd
+        else:
+            Qz = np.einsum('ij,ij->i', queries, queries)[:, None].astype(np.float32)
+        return A, Qz, zd
+
+    def _entries(self, queries: np.ndarray, zd: Optional[np.ndarray] = None) -> np.ndarray:
+        """Entry point ids of the nearest zones, (nq, compressed_entry_zones)."""
+        c = self._cmp
+        if zd is None:
+            zd = self._tables(queries)[2]
+        nz = min(self.config.compressed_entry_zones, zd.shape[1])
+        nearest = np.argpartition(zd, nz - 1, axis=1)[:, :nz]
+        return c['entry_ids'][nearest].astype(np.int64)
+
+    def _compressed_batch_search(self, queries, k, ef_search=None, chunk=256):
+        cfg = self.config
+        ef = ef_search if ef_search is not None else cfg.ef_search
+        ef = max(ef, k, cfg.rerank_budget)
+        c = self._cmp
+        nq = len(queries)
+        out_ids = np.zeros((nq, k), dtype=np.int64)
+        out_d = np.zeros((nq, k), dtype=np.float32)
+        for s in range(0, nq, chunk):
+            q = np.ascontiguousarray(queries[s:s + chunk], dtype=np.float32)
+            A, Qz, zd = self._tables(q)
+            ids, dists = _cmp_mod.beam_search_batch(
+                c['links'], self.pq_codes, c['zone_of'], A, Qz, c['cross'],
+                self._entries(q, zd), ef)
+            if cfg.rerank_budget > 0 and self.vectors is not None:
+                r = min(cfg.rerank_budget, ef)
+                cand = ids[:, :r]
+                safe = np.where(cand >= 0, cand, 0)
+                diff = q[:, None, :] - self.vectors[safe]
+                ex = np.einsum('ijk,ijk->ij', diff, diff)
+                ex[cand < 0] = np.inf
+                order = np.argsort(ex, axis=1)[:, :k]
+                out_ids[s:s + chunk] = np.take_along_axis(cand, order, axis=1)
+                out_d[s:s + chunk] = np.take_along_axis(ex, order, axis=1)
+            else:
+                out_ids[s:s + chunk] = ids[:, :k]
+                out_d[s:s + chunk] = dists[:, :k]
+        return out_ids, out_d
+
+    def compressed_memory_bytes(self) -> Dict:
+        """Actual bytes of the stored compressed-mode arrays (compare with
+        ``zgq.memory_model.zgq_compressed_bytes``)."""
+        c = self._cmp
+        comps = {
+            'level0_links': c['links'].nbytes,
+            'pq_codes': self.pq_codes.nbytes,
+            'pq_codebooks': self.pq.codebooks.nbytes,
+            'zone_entry_points': c['entry_ids'].nbytes,
+            'zone_centroids': c['centroids'].nbytes,
+        }
+        if c['residual']:
+            comps['zone_ids'] = c['zone_of'].nbytes
+            comps['zone_codebook_cross_table'] = c['cross'].nbytes
+        if self.vectors is not None and self.config.rerank_budget > 0:
+            comps['raw_vectors'] = self.vectors.nbytes
+        total = sum(comps.values())
+        return {'components': comps, 'total_bytes': total,
+                'bytes_per_vector': total / self.n_vectors}
+
+    def _choose_zones(self, query: np.ndarray, n_probe: int) -> np.ndarray:
+        """Zones to probe: fixed n_probe, or adaptive from the centroid distance ratio."""
+        cfg = self.config
+        if not cfg.adaptive_probe:
+            return self.zones.select_zones(query, n_probe)
+        zones = self.zones.select_zones(query, cfg.max_probe)
+        d = np.sum((self.zones.fine_centroids[zones] - query) ** 2, axis=1)
+        # d is squared L2; the ratio applies to distances
+        n = int(np.sum(d <= (cfg.probe_ratio ** 2) * d[0]))
+        n = max(cfg.min_probe, min(n, cfg.max_probe, len(zones)))
+        return zones[:n]
+
+    def _search_impl(self, query, k, n_probe, ef_search, use_pq_rerank):
         if not self.is_built:
             raise RuntimeError("Index must be built before searching")
-        
+
         query = np.ascontiguousarray(query.astype(np.float32))
         
         if query.shape[0] != self.dimension:
@@ -430,17 +621,32 @@ class ZGQIndex:
             )
         
         # Step 1: Select zones to search
-        selected_zones = self.zones.select_zones(query, n_probe)
-        
+        selected_zones = self._choose_zones(query, n_probe)
+        n_probed = len(selected_zones)
+
         # Step 2: Search graph with zone guidance
         if ef_search is not None:
             self.graph.set_ef(ef_search)
-        
-        # Get candidates from graph
-        k_candidates = min(k * n_probe, self.n_vectors)
-        candidate_ids, candidate_dists = self.graph.search(
-            query, k_candidates, selected_zones
-        )
+
+        mode = self.config.search_mode
+        if mode == 'zone_scan':
+            # IVF-style: candidates are all members (and replicas) of probed zones
+            candidate_ids = self.zones.get_zone_candidates(selected_zones)
+            if len(candidate_ids) == 0:
+                candidate_ids, _ = self.graph.search(query, k, selected_zones)
+        else:
+            # Get candidates from graph
+            k_candidates = min(k * n_probed, self.n_vectors)
+            candidate_ids, candidate_dists = self.graph.search(
+                query, k_candidates, selected_zones
+            )
+            if mode == 'global_entry':
+                # Seed the candidate set with the entry points of probed zones
+                seeds = [self.graph.zone_entry_points.get(int(z), []) for z in selected_zones]
+                seeds = np.array([i for g in seeds for i in g], dtype=np.int64)
+                candidate_ids = np.unique(
+                    np.concatenate([np.asarray(candidate_ids, dtype=np.int64), seeds])
+                )
         
         # Step 3: PQ-based re-ranking (if enabled and more candidates than k)
         if self.config.use_pq and use_pq_rerank and len(candidate_ids) > k:
@@ -474,8 +680,61 @@ class ZGQIndex:
         final_ids = candidate_ids[top_k]
         final_distances = exact_distances[top_k]
         
-        return final_ids, final_distances
-    
+        return final_ids, final_distances, n_probed
+
+    def batch_zone_search(
+        self,
+        queries: np.ndarray,
+        k: int = 10,
+        n_probe: int = 8,
+        ef_search: Optional[int] = None,
+        use_pq_rerank: bool = True,
+        n_jobs: int = 1
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Batch version of the zone path (`search`), honoring `use_pq_rerank` and the
+        opt-in `search_mode`, replicas and adaptive probing.
+
+        Sets `self.last_batch_stats` with the mean and per-query probe counts.
+        With n_jobs > 1 queries run in threads; the shared hnswlib ef is set once
+        up front and the numba ADC kernel launch is serialized by a lock in
+        zgq/core/quantization.py.
+        """
+        if not self.is_built:
+            raise RuntimeError("Index must be built before searching")
+        queries = np.ascontiguousarray(queries.astype(np.float32))
+        if queries.shape[1] != self.dimension:
+            raise ValueError(
+                f"Query dimension {queries.shape[1]} != index dimension {self.dimension}"
+            )
+        n_queries = len(queries)
+        if ef_search is not None:
+            self.graph.set_ef(ef_search)
+
+        def one(i):
+            return self._search_impl(queries[i], k, n_probe, None, use_pq_rerank)
+
+        if n_jobs == 1:
+            results = [one(i) for i in range(n_queries)]
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+                results = list(executor.map(one, range(n_queries)))
+
+        all_ids = np.zeros((n_queries, k), dtype=np.int64)
+        all_distances = np.zeros((n_queries, k), dtype=np.float32)
+        probes = np.zeros(n_queries, dtype=np.int32)
+        for i, (ids, dists, n_probed) in enumerate(results):
+            n_results = min(k, len(ids))
+            all_ids[i, :n_results] = ids[:n_results]
+            all_distances[i, :n_results] = dists[:n_results]
+            probes[i] = n_probed
+        self.last_batch_stats = {
+            'mean_probes': float(probes.mean()) if n_queries else 0.0,
+            'probes': probes,
+        }
+        return all_ids, all_distances
+
     def batch_search(
         self,
         queries: np.ndarray,
@@ -519,6 +778,9 @@ class ZGQIndex:
                 f"Query dimension {queries.shape[1]} != index dimension {self.dimension}"
             )
         
+        if self.config.compressed_search:
+            return self._compressed_batch_search(queries, k, ef_search)
+
         # DIRECT HNSW MODE: Zero Python overhead, pure hnswlib speed
         # ZGQ advantage comes from better graph construction, not search overhead
         if turbo_mode and self.graph is not None:
@@ -666,6 +928,8 @@ class ZGQIndex:
         if self.is_built:
             stats['build_stats'] = self.build_stats
             stats['n_zones'] = len(self.zones.fine_centroids) if self.zones else 0
+            if self.zones and self.zones.n_replicas > 1:
+                stats['replica_overhead'] = self.zones.get_replica_overhead()
             
             if self.pq:
                 stats['pq_info'] = self.pq.get_memory_usage(self.n_vectors)
@@ -681,6 +945,11 @@ class ZGQIndex:
         """
         if not self.is_built:
             raise RuntimeError("Cannot save index that hasn't been built")
+        if self.config.drop_full_vectors:
+            raise RuntimeError(
+                "Cannot save an index built with drop_full_vectors=True "
+                "(the hnswlib graph was released)"
+            )
         
         state = {
             'version': '8.0.0',
@@ -695,7 +964,14 @@ class ZGQIndex:
                 'pq_bits': self.config.pq_bits,
                 'use_residual_pq': self.config.use_residual_pq,
                 'metric': self.config.metric,
-                'random_state': self.config.random_state
+                'random_state': self.config.random_state,
+                'insertion_order': self.config.insertion_order,
+                'zone_replicas': self.config.zone_replicas,
+                'adaptive_probe': self.config.adaptive_probe,
+                'min_probe': self.config.min_probe,
+                'max_probe': self.config.max_probe,
+                'probe_ratio': self.config.probe_ratio,
+                'search_mode': self.config.search_mode
             },
             'data': {
                 'vectors': self.vectors,

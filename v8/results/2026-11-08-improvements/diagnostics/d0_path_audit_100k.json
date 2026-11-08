@@ -1,0 +1,86 @@
+{
+  "scale": "100k",
+  "n_vectors": 100000,
+  "dim": 128,
+  "k": 10,
+  "seed": 42,
+  "n_queries": 1000,
+  "M": 16,
+  "ef_construction": 200,
+  "threads": 1,
+  "zgq_build_s": 18.764096332997724,
+  "n_zones_default": 306,
+  "select_zones_calls_in_fast_mode_50_queries": 0,
+  "select_zones_calls_in_zone_mode_5_queries": 5,
+  "rows": [
+    {
+      "ef": 16,
+      "plain_hnsw_rf1": {
+        "recall": 63.77,
+        "latency_ms": 0.0365039579992299
+      },
+      "zgq_graph_rf1": {
+        "recall": 59.75,
+        "latency_ms": 0.029194167000241578
+      },
+      "plain_hnsw_rf3": {
+        "recall": 75.71000000000001,
+        "latency_ms": 0.059019041997089516
+      },
+      "zgq_graph_rf3": {
+        "recall": 70.52000000000001,
+        "latency_ms": 0.04509037500247359
+      },
+      "zgq_batch_search_fast": {
+        "recall": 70.52000000000001,
+        "latency_ms": 0.04490266599896131
+      }
+    },
+    {
+      "ef": 64,
+      "plain_hnsw_rf1": {
+        "recall": 86.05000000000001,
+        "latency_ms": 0.08469008300016867
+      },
+      "zgq_graph_rf1": {
+        "recall": 78.92,
+        "latency_ms": 0.06051270900206873
+      },
+      "plain_hnsw_rf3": {
+        "recall": 86.05000000000001,
+        "latency_ms": 0.08940437500132248
+      },
+      "zgq_graph_rf3": {
+        "recall": 78.92,
+        "latency_ms": 0.0647388330035028
+      },
+      "zgq_batch_search_fast": {
+        "recall": 78.92,
+        "latency_ms": 0.06408158300473588
+      }
+    },
+    {
+      "ef": 256,
+      "plain_hnsw_rf1": {
+        "recall": 94.19,
+        "latency_ms": 0.1609402090034564
+      },
+      "zgq_graph_rf1": {
+        "recall": 84.77,
+        "latency_ms": 0.11703970799862873
+      },
+      "plain_hnsw_rf3": {
+        "recall": 94.19,
+        "latency_ms": 0.16335241600609152
+      },
+      "zgq_graph_rf3": {
+        "recall": 84.77,
+        "latency_ms": 0.12081579199730186
+      },
+      "zgq_batch_search_fast": {
+        "recall": 84.77,
+        "latency_ms": 0.12008133399649523
+      }
+    }
+  ]
+}

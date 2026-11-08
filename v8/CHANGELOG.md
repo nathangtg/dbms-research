@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in `ZGQConfig` options, defaults unchanged: `insertion_order`, `zone_replicas`, `adaptive_probe` (`min_probe`, `max_probe`, `probe_ratio`), `search_mode` ('graph', 'zone_scan', 'global_entry'); `ZGQIndex.batch_zone_search`. Persisted by save/load. Measured vs matched HNSW-M16 on synthetic data (`results/2026-11-08-improvements/final/README.md`): `insertion_order='random'` closes the recall gap (86.9% vs 87.0% at 1M, ef 256) at 1.0x to 1.1x latency, 1.43x build and 1.81x analytic bytes; overlap, adaptive probing and global entry do not beat HNSW-M16 on recall/latency. No real dataset was run.
+- Opt-in compressed ZGQ search (`compressed_search`, `rerank_budget`, `drop_full_vectors`, `compressed_entry_zones`), `ZGQIndex.compressed_memory_bytes()`, analytic size model `zgq.memory_model` (checked against hnswlib files and FAISS serialization) and `benchmarks/run_compression.py`. Measured at 100K and 1M: compressed ZGQ loses to IVF-PQ(R) and HNSW+SQ8 at equal memory (`results/2026-11-08-improvements/compression/README.md`). The PQ shortlist in `ZGQIndex.search` uses the nearest zone's centroid for all candidates; correcting it gains 0.6 to 4.7 recall points at n_probe >= 4 and does not remove the shortlist loss, so the default path is unchanged.
+
+- `benchmarks/compare_improvements.py` (tables from a `summary.json`), `--improvements` flag in `benchmarks/run_benchmarks.py` (variants off by default; canonical results unchanged).
+
 ### Changed
 
+- `ResidualProductQuantizer.encode` processes rows in chunks of 50,000 (identical codes, bounded temporary memory at 1M vectors).
 - Removed v1 to v7 from the working tree (kept at git tag `pre-v8-cleanup`).
 - Reproducible benchmark harness with schema check, tests, smoke target and committed canonical results.
 - Figures and tables are generated only from `results/<date>/summary.json`.

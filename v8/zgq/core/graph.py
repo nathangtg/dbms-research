@@ -48,6 +48,10 @@ class GraphConfig:
     
     random_seed: int = 42
 
+    # Insertion order for the underlying HNSW build: 'zone' (zone by zone,
+    # closest to centroid first; the default) or 'random' (seeded permutation).
+    insertion_order: str = 'zone'
+
 
 class ZoneGuidedGraph:
     """
@@ -109,6 +113,12 @@ class ZoneGuidedGraph:
         self.zone_centroids = zone_centroids.copy()
         self.n_zones = len(zone_centroids)
         
+        if self.config.insertion_order not in ('zone', 'random'):
+            raise ValueError(
+                f"insertion_order must be 'zone' or 'random', "
+                f"got {self.config.insertion_order!r}"
+            )
+
         # Build HNSW index
         self._build_hnsw(vectors)
         
@@ -138,8 +148,14 @@ class ZoneGuidedGraph:
         # Insert vectors zone-by-zone, with zone centroids first
         # This creates stronger intra-zone connections and better cross-zone bridges
         
+        if self.config.insertion_order == 'random':
+            # Same ids, seeded random order (diagnostic ablation)
+            perm = np.random.RandomState(self.config.random_seed).permutation(
+                self.n_vectors
+            ).astype(np.int64)
+            self.hnsw.add_items(vectors[perm], perm)
         # First, add zone centroids as anchor points (if we have zone info)
-        if self.zone_centroids is not None and len(self.zone_centroids) > 0:
+        elif self.zone_centroids is not None and len(self.zone_centroids) > 0:
             # Create insertion order: sort by zone, then by distance to centroid
             zone_order = []
             for zone_id in range(self.n_zones):
@@ -381,7 +397,8 @@ class ZoneGuidedGraph:
                 'ef_search': self.config.ef_search,
                 'use_zone_guidance': self.config.use_zone_guidance,
                 'zone_priority_factor': self.config.zone_priority_factor,
-                'space': self.config.space
+                'space': self.config.space,
+                'insertion_order': self.config.insertion_order
             },
             'n_vectors': self.n_vectors,
             'dimension': self.dimension,

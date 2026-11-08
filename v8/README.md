@@ -33,6 +33,21 @@ median of 5 repeats, Apple M4). Matched comparison HNSW-M16 vs ZGQ-M16, recall@1
 * IVF-PQ without refinement saturates at 64%, 61% and 56% recall (10K, 100K, 1M).
 * HNSW is hnswlib (C++); ZGQ is Python with numba, so timing is not a pure algorithmic comparison.
 
+### Recall-improvement options (opt-in)
+
+All on synthetic clustered Gaussian data, dim 128. **No real dataset (for example SIFT1M) has been run.**
+Details in [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and `results/2026-11-08-improvements/final/README.md`.
+
+* The recall gap to HNSW-M16 at 100K and 1M is caused by zone-ordered graph insertion. With
+  `ZGQConfig(insertion_order="random")` ZGQ-M16 reaches 86.9% vs 87.0% (1M) and 93.4% vs 94.2% (100K) at ef 256, at
+  1.0x to 1.1x HNSW-M16 latency, 1.4x to 1.8x build time and 1.8x analytic index bytes. The gap closes, but this is
+  HNSW with extra stored data, not an improvement over HNSW. The default is unchanged.
+* Overlapping zones, adaptive probing and a global graph with zone-aware entry do not beat HNSW-M16 on the
+  recall/latency trade-off (3.5x to 167x latency at equal recall for the zone-path variants).
+* Compression-first ZGQ loses to IVF-PQ(R) and HNSW+SQ8 at equal memory.
+* The benchmarked `batch_search(fast_mode=True)` path does not read zones at search time, so the zone-navigation
+  description in the abstract does not describe the measured path.
+
 Full tables, figures, limitations and threats to validity: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 Claim-by-claim traceability: [docs/CLAIMS.md](docs/CLAIMS.md).
 
@@ -91,7 +106,8 @@ v8/
 │       └── metrics.py           # Evaluation metrics
 ├── benchmarks/
 │   ├── run_benchmarks.py        # Reproducible harness (ZGQ, HNSW, IVF-PQ)
-│   └── check_results.py         # summary.json schema validator
+│   ├── check_results.py         # summary.json schema validator
+│   └── compare_improvements.py  # Variant vs HNSW-M16 tables from summary.json
 ├── scripts/
 │   ├── check_claims.py          # Fails if a retired number reappears in the docs
 │   └── check_links.py           # Markdown and LaTeX link and path checker

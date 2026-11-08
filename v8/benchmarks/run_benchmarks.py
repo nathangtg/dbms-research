@@ -15,6 +15,8 @@ Protocol (recorded in summary.json under ``protocol``):
     * build time and index memory (RSS delta around build) are recorded once
       per index, not per search setting
     * single thread by default (``--threads 1``) for build and search
+    * ``--improvements`` adds opt-in ZGQ variants (off by default, so the
+      canonical specs and results are unchanged)
 
 Usage:
     python -m benchmarks.run_benchmarks --scale 10k 100k --out-dir results/2025-01-01
@@ -53,6 +55,7 @@ except ImportError:  # pragma: no cover
     psutil = None
 
 from benchmarks.check_results import SCHEMA_VERSION, validate_summary
+from zgq import memory_model as mm
 
 SCALES = {"tiny": 2_000, "10k": 10_000, "100k": 100_000, "1m": 1_000_000}
 DIMENSION = 128
@@ -61,6 +64,10 @@ DEFAULT_NPROBE = (1, 4, 16, 64, 256)
 HNSW_M = 16
 ZGQ_MS = (16, 24, 32)
 EF_CONSTRUCTION = 200
+IMPROVE_NPROBE = (1, 4, 16, 64)
+IMPROVE_RATIO_PCT = (105, 115, 130, 150, 200)
+IMPROVE_GLOBAL_PROBE = 8
+IMPROVE_MAX_PROBE = 64
 
 
 # ----------------------------------------------------------------------------
@@ -342,11 +349,22 @@ def measure_point(
     return summary, runs
 
 
-def run_index(spec, vectors, queries, gt, args, scale, raw_dir) -> Dict:
+def run_index(spec, vectors, queries, gt, args, scale, raw_dir, built=None) -> Dict:
+    """Measure one index. ``built`` = (idx, build_t, mem, search, analytic) lets
+    several variants share one graph build (used by the improvement variants)."""
     label, algo, builder, build_params, param_name, params = spec
     raw_dir = Path(raw_dir)
-    print(f"  [{scale}] {label}: building ...", flush=True)
-    idx, build_t, mem, search = builder(vectors)
+    if built is None:
+        print(f"  [{scale}] {label}: building ...", flush=True)
+        idx, build_t, mem, search = builder(vectors)
+        analytic = None
+        if algo == "hnsw":
+            analytic = _bytes_entry(
+                mm.hnswlib_bytes(len(vectors), vectors.shape[1], build_params["M"]),
+                "zgq.memory_model.hnswlib_bytes",
+            )
+    else:
+        idx, build_t, mem, search, analytic = built
     print(f"  [{scale}] {label}: build {build_t:.2f}s, rss +{mem:.1f} MB", flush=True)
 
     points, raw_runs = [], []
@@ -355,7 +373,8 @@ def run_index(spec, vectors, queries, gt, args, scale, raw_dir) -> Dict:
             search, queries, gt, args.k, p, args.repeats, args.warmup
         )
         sp = {param_name: int(p)}
-        points.append({"search_param": sp, **pt})
+        extra = getattr(search, "point_info", None)
+        points.append({"search_param": sp, **pt, **(extra() if extra else {})})
         for r in runs:
             raw_runs.append({"search_param": sp, **r})
         print(
@@ -381,7 +400,7 @@ def run_index(spec, vectors, queries, gt, args, scale, raw_dir) -> Dict:
 
     del idx, search
     gc.collect()
-    return {
+    entry = {
         "label": label,
         "algo": algo,
         "comparison": "baseline"
@@ -392,6 +411,163 @@ def run_index(spec, vectors, queries, gt, args, scale, raw_dir) -> Dict:
         "points": points,
         "raw_file": raw_name,
     }
+    if analytic is not None:
+        entry["analytic_bytes"] = analytic
+    return entry
+
+
+def _bytes_entry(model: Dict, source: str) -> Dict:
+    return {
+        "bytes_per_vector": model["bytes_per_vector"],
+        "total_bytes": model["total_bytes"],
+        "source": source,
+    }
+
+
+# ----------------------------------------------------------------------------
+# Opt-in recall-improvement variants (--improvements). Each group shares one
+# graph build; variants differ only in search settings and zone replicas.
+# ----------------------------------------------------------------------------
+
+
+def _zgq_search_fn(idx, v, search_mode, adaptive, nopq, replicas, sweep):
+    """Return a search closure for one variant. ``sweep`` is 'ef', 'nprobe'
+    or 'ratio'. The closure configures the shared index before each call."""
+    cfg = idx.config
+    info = {}
+
+    def search(queries, k, p):
+        cfg.search_mode = search_mode
+        cfg.adaptive_probe = adaptive
+        cfg.min_probe, cfg.max_probe = 1, IMPROVE_MAX_PROBE
+        ef = None
+        n_probe = IMPROVE_GLOBAL_PROBE
+        if sweep == "ef":
+            ef = int(p)
+        elif sweep == "nprobe":
+            n_probe = int(p)
+        else:
+            cfg.probe_ratio = p / 100.0
+            n_probe = IMPROVE_MAX_PROBE
+        ids = idx.batch_zone_search(
+            queries, k, n_probe=n_probe, ef_search=ef, use_pq_rerank=not nopq
+        )[0]
+        info["mean_probes"] = idx.last_batch_stats["mean_probes"]
+        return ids
+
+    search.point_info = lambda: {"mean_probes": info.get("mean_probes")}
+    return search
+
+
+def improvement_groups(n, args):
+    """Groups of (build_fn, [variant, ...]). A variant is
+    (label, params_description, sweep_name, sweep_values, search_kwargs, replicas)."""
+    ef = tuple(args.ef)
+    nprobe = tuple(args.improve_nprobe)
+    ratios = tuple(args.improve_ratio_pct)
+
+    def zone_variants(pq_tag):
+        nopq = pq_tag == "-nopq"
+        return [
+            (f"ZGQ-M16+global-entry{pq_tag}", "ef", ef,
+             dict(search_mode="global_entry", adaptive=False, nopq=nopq, sweep="ef"), 1),
+            (f"ZGQ-M16+zonescan{pq_tag}", "nprobe", nprobe,
+             dict(search_mode="zone_scan", adaptive=False, nopq=nopq, sweep="nprobe"), 1),
+            (f"ZGQ-M16+overlap2{pq_tag}", "nprobe", nprobe,
+             dict(search_mode="zone_scan", adaptive=False, nopq=nopq, sweep="nprobe"), 2),
+            (f"ZGQ-M16+adaptive{pq_tag}", "ratio_pct", ratios,
+             dict(search_mode="zone_scan", adaptive=True, nopq=nopq, sweep="ratio"), 1),
+        ]
+
+    zone = zone_variants("-nopq") + zone_variants("")
+    rand = [
+        (lab.replace("ZGQ-M16", "ZGQ-M16+random"), pn, vals, kw, rep)
+        for lab, pn, vals, kw, rep in zone
+        if "global-entry" in lab
+    ]
+    return [
+        {"key": "zone-graph", "insertion_order": "zone", "variants": zone},
+        {"key": "random-graph", "insertion_order": "random", "variants": rand},
+    ]
+
+
+def _improvement_worker(scale: str, group_key: str, argv_dict: Dict) -> List[Dict]:
+    """Build one ZGQ graph in a fresh process and measure all its variants."""
+    args = argparse.Namespace(**argv_dict)
+    n = SCALES[scale]
+    vectors, queries = generate_test_data(n, args.n_queries, DIMENSION, args.seed)
+    gt = exact_ground_truth(vectors, queries, args.k)
+    group = next(g for g in improvement_groups(n, args) if g["key"] == group_key)
+    order = group["insertion_order"]
+    out_dir = Path(args.out_dir) / "raw"
+
+    print(f"  [{scale}] group {group_key}: building ...", flush=True)
+
+    def build():
+        np.random.seed(args.seed)
+        cfg = ZGQConfig(
+            M=HNSW_M, ef_construction=EF_CONSTRUCTION, random_state=args.seed,
+            insertion_order=order,
+        )
+        with _graph_threads(args.threads):
+            return ZGQIndex(cfg).build(vectors)
+
+    idx, build_t, mem = _measured_build(build)
+    print(f"  [{scale}] group {group_key}: build {build_t:.2f}s", flush=True)
+    base_model = mm.zgq_default_bytes(
+        n, vectors.shape[1], HNSW_M, idx.pq.config.m, 8, len(idx.zones.fine_centroids)
+    )
+
+    results = []
+    if group_key == "random-graph":
+        # random insertion order on the canonical fast path (batch_search)
+        fast = lambda q, k, e: idx.batch_search(q, k, ef_search=e, fast_mode=True)[0]
+        results.append(run_index(
+            ("ZGQ-M16+random", "zgq", None,
+             {"M": HNSW_M, "ef_construction": EF_CONSTRUCTION, "insertion_order": order,
+              "n_zones": "auto", "use_pq": True,
+              "search_mode": "batch_search fast_mode rerank_factor=3"},
+             "ef", args.ef),
+            vectors, queries, gt, args, scale, out_dir,
+            built=(idx, build_t, mem, fast,
+                   _bytes_entry(base_model, "zgq.memory_model.zgq_default_bytes")),
+        ))
+        results[-1]["comparison"] = "variant"
+
+    for label, param_name, values, kw, replicas in group["variants"]:
+        extra_t = 0.0
+        if replicas > 1 or idx.zones.n_replicas > 1:
+            t0 = time.perf_counter()
+            idx.zones.build_replicas(vectors, replicas)
+            extra_t = time.perf_counter() - t0 if replicas > 1 else 0.0
+        search = _zgq_search_fn(idx, vectors, replicas=replicas, **kw)
+        model = dict(base_model)
+        extra_bytes = n * (replicas - 1) * 4
+        model["total_bytes"] = base_model["total_bytes"] + extra_bytes
+        model["bytes_per_vector"] = model["total_bytes"] / n
+        params = {
+            "M": HNSW_M, "ef_construction": EF_CONSTRUCTION,
+            "insertion_order": order, "zone_replicas": replicas,
+            "search_mode": kw["search_mode"], "adaptive_probe": kw["adaptive"],
+            "use_pq_rerank": not kw["nopq"],
+            "shared_build": group_key,
+        }
+        if kw["sweep"] == "ef":
+            params["n_probe"] = IMPROVE_GLOBAL_PROBE
+        if kw["adaptive"]:
+            params["max_probe"] = IMPROVE_MAX_PROBE
+        spec = (label, "zgq", None, params, param_name, values)
+        # build time = shared graph build + this variant's replica build
+        res = run_index(
+            spec, vectors, queries, gt, args, scale, out_dir,
+            built=(idx, build_t + extra_t, mem, search,
+                   _bytes_entry(model, "zgq.memory_model.zgq_default_bytes + n*(r-1)*4 replica ids")),
+        )
+        res["build"]["shared_graph_time_s"] = build_t
+        res["build"]["replica_time_s"] = extra_t
+        res["comparison"] = "variant"
+        results.append(res)
+    return results
 
 
 def index_specs(n, args):
@@ -488,6 +664,11 @@ def run(args) -> Dict:
             with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
                 indexes.append(pool.submit(
                     _index_worker, scale, spec[0], vars(args)).result())
+        if args.improvements:
+            for group in improvement_groups(n, args):
+                with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
+                    indexes.extend(pool.submit(
+                        _improvement_worker, scale, group["key"], vars(args)).result())
         summary["scales"][scale] = {
             "n_vectors": n, "dimension": DIMENSION, "n_queries": args.n_queries,
             "indexes": indexes,
@@ -521,6 +702,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ef", type=int, nargs="+", default=list(DEFAULT_EF))
     p.add_argument("--nprobe", type=int, nargs="+", default=list(DEFAULT_NPROBE))
     p.add_argument("--zgq-m", type=int, nargs="+", default=list(ZGQ_MS))
+    p.add_argument(
+        "--improvements",
+        action="store_true",
+        help="also run the opt-in ZGQ recall-improvement variants (overlap, "
+        "adaptive probing, global entry, random insertion); default specs unchanged",
+    )
+    p.add_argument("--improve-nprobe", type=int, nargs="+", default=list(IMPROVE_NPROBE))
+    p.add_argument(
+        "--improve-ratio-pct", type=int, nargs="+", default=list(IMPROVE_RATIO_PCT),
+        help="adaptive probe_ratio sweep in percent (130 = 1.3)",
+    )
     p.add_argument(
         "--no-ivfpq", action="store_true", help="skip the FAISS IVF-PQ baseline"
     )

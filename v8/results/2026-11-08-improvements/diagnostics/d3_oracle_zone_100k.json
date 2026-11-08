@@ -1,0 +1,64 @@
+{
+  "scale": "100k",
+  "n_vectors": 100000,
+  "dim": 128,
+  "k": 10,
+  "seed": 42,
+  "n_queries": 1000,
+  "M": 16,
+  "ef_construction": 200,
+  "threads": 1,
+  "zgq_build_s": 18.717317208996974,
+  "n_zones_default": 306,
+  "n_zones": 306,
+  "zone_size": {
+    "min": 1,
+    "median": 185.0,
+    "max": 1069
+  },
+  "oracle_zone_recall": 0.6950999999999999,
+  "rows": [
+    {
+      "n_probe": 1,
+      "frac_true_neighbors_outside_select_zones": 0.4059,
+      "frac_true_neighbors_outside_flat_nearest": 0.3302999999999999,
+      "frac_queries_nn1_zone_probed": 0.607
+    },
+    {
+      "n_probe": 2,
+      "frac_true_neighbors_outside_select_zones": 0.2315,
+      "frac_true_neighbors_outside_flat_nearest": 0.11679999999999999,
+      "frac_queries_nn1_zone_probed": 0.765
+    },
+    {
+      "n_probe": 4,
+      "frac_true_neighbors_outside_select_zones": 0.18309999999999998,
+      "frac_true_neighbors_outside_flat_nearest": 0.0345,
+      "frac_queries_nn1_zone_probed": 0.811
+    },
+    {
+      "n_probe": 8,
+      "frac_true_neighbors_outside_select_zones": 0.171,
+      "frac_true_neighbors_outside_flat_nearest": 0.0059,
+      "frac_queries_nn1_zone_probed": 0.825
+    },
+    {
+      "n_probe": 16,
+      "frac_true_neighbors_outside_select_zones": 0.0902,
+      "frac_true_neighbors_outside_flat_nearest": 0.0002999999999999999,
+      "frac_queries_nn1_zone_probed": 0.908
+    },
+    {
+      "n_probe": 32,
+      "frac_true_neighbors_outside_select_zones": 0.023399999999999997,
+      "frac_true_neighbors_outside_flat_nearest": 0.0,
+      "frac_queries_nn1_zone_probed": 0.974
+    },
+    {
+      "n_probe": 64,
+      "frac_true_neighbors_outside_select_zones": 0.0,
+      "frac_true_neighbors_outside_flat_nearest": 0.0,
+      "frac_queries_nn1_zone_probed": 1.0
+    }
+  ]
+}

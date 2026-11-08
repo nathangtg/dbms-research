@@ -2,6 +2,7 @@
 
 Every performance number or comparative statement that appeared in the docs, with its source and
 status. Sources are paths inside `results/2026-11-08/summary.json` (the canonical run) unless noted.
+Improvement-option rows cite `results/2026-11-08-improvements/final/comparison.md`, a table generated from that folder's `summary.json` by `python -m benchmarks.compare_improvements`.
 
 Statuses: **verified** (traced to the committed results), **corrected** (replaced by a measured value),
 **removed** (deleted because it is unsupported or contradicted), **flagged** (not edited, or only
@@ -33,7 +34,20 @@ analytic; needs the authors' attention).
 | 100K ef=256 QPS: HNSW-M16 6,326; ZGQ-M16 8,210 | `100k.indexes points[ef=256].qps` | verified |
 | 100K ef=64 ZGQ-M24 78.6%, ZGQ-M32 80.1% | `100k.indexes points[ef=64]` | verified |
 | ZGQ recall higher than HNSW at ef=16 is a fast_mode rerank_factor=3 artifact | `results/2026-11-08/README.md protocol; zgq/index.py batch_search` | verified (mechanism from code) |
+| Compression at equal memory (100K/1M): IVFPQR-pq32-r64 92.9%/85.7% at 109.9/105.3 B/vec; ZGQ-C-PQ-M8-pq16 5.5% (100K), ZGQ-C-RPQ-M8-pq16 12.2% (1M) in the same band; HNSWSQ8-M8 90.0%/80.3% at 208.6 B/vec; ZGQ-C-RPQ-M8-pq32 60.1% at 201.2 B/vec (100K); ZGQ-C+rerank50 95.7% at 777.2 B/vec vs HNSW-M16 96.7% at 660.5 (100K) | `results/2026-11-08-improvements/compression/compression_summary.json` (non-canonical schema `zgq-compression/1`; analytic bytes/vector, 8 build threads) | verified |
+| ADC shortlist check: nearest-zone table vs per-candidate-zone ADC, recall 43.4% vs 48.1% at n_probe 64, exact scoring 99.9% (100K, 200 queries) | `results/2026-11-08-improvements/compression/adc_check_100k.json` | verified |
 | Machine: Apple M4, 10 cores, 16 GB, macOS, Python 3.13.7 | `summary.json environment` | verified |
+| All improvement data is synthetic clustered Gaussian, dim 128, seed 42, 1000 queries, 5 repeats, 1 thread, Apple M4 16 GB; no real dataset (for example SIFT1M) was run; ZGQ-M24/M32 skipped | `results/2026-11-08-improvements/final/summary.json` (`environment`, `protocol`), `results/2026-11-08-improvements/final/README.md` | verified |
+| Zone-ordered ZGQ-M16 recall gap to HNSW-M16 at ef=256: -0.5 pt (10K), -9.4 pt (100K), -10.2 pt (1M); ZGQ latency 1.0x / 0.8x / 0.8x of HNSW; build 2.97x / 1.64x / 1.04x | `results/2026-11-08-improvements/final/comparison.md` (equal-ef and build tables), from `results/2026-11-08-improvements/final/summary.json` | verified |
+| Analytic index bytes of every ZGQ variant are 1.81 to 1.84x HNSW-M16 (1197 MB vs 660 MB at 1M); RSS used only as ordering (macOS) | `results/2026-11-08-improvements/final/summary.json` `indexes[].analytic_bytes`; ZGQ-M16 default entry uses the +random value (same components) | verified |
+| Random insertion (`insertion_order="random"`) at ef=256: recall 98.7% / 93.4% / 86.9% (10K/100K/1M) vs HNSW-M16 98.7 / 94.2 / 87.0, i.e. within 0.8 pt; latency 1.1x / 1.1x / 1.0x; build 2.95x / 1.82x / 1.43x of HNSW-M16; at 80% recall 1.2x / 1.1x / 1.1x HNSW latency | `results/2026-11-08-improvements/final/comparison.md` (rows `ZGQ-M16+random`) | verified |
+| Diagnostic: zone-ordered insertion is the main cause of the gap: 100K ef 256 recall 84.77 (zone order) vs 93.41 (random order) vs 94.19 (plain hnswlib); the benchmarked fast path calls `select_zones` 0 times | `results/2026-11-08-improvements/diagnostics/d0_path_audit_100k.json`, `d1_insertion_order_100k.json`, `diagnostics/README.md` | verified |
+| Overlapping zones (`zone_replicas=2`, zone_scan, exact rerank): n_probe=1 recall 38.5% vs 22.8% without overlap (10K); at 1M 80% recall costs 23.4 ms (166.8x HNSW-M16 0.140 ms) vs 11.5 ms (82.3x) without overlap; max recall 99.0% at 125 ms; +4 B/vector; build 1.05x. Negative | `results/2026-11-08-improvements/final/comparison.md` (rows `ZGQ-M16+overlap2-nopq`, `+zonescan-nopq`) | verified |
+| Overlap with the default PQ shortlist tops out at 44.3% / 34.4% / 16.6% recall (10K/100K/1M) | `results/2026-11-08-improvements/final/comparison.md` (rows `ZGQ-M16+overlap2`) | verified |
+| Adaptive probing (exact rerank): 97.3% max recall at 26.9 ms (1M), 100% at 1.63 ms (100K); 80% recall at 5.18 ms vs 11.5 ms fixed n_probe (1M); 37.0x HNSW-M16 latency at 80% (1M), 4.3x at 90% (100K); build 1.04x. With PQ shortlist it caps at 17.9% / 38.6% / 43.5% (1M/100K/10K) | `results/2026-11-08-improvements/final/comparison.md` (rows `ZGQ-M16+adaptive-nopq`, `+adaptive`) | verified |
+| Global graph with zone-aware entry (exact rerank): +20.4 pt at ef 16, -9.9 pt at ef 256 (100K) at 6.3x to 1.4x HNSW-M16 latency; +20.5 pt / -10.8 pt (1M) at 5.5x to 1.3x; with PQ shortlist -50.2 pt at ef 256 (100K) and 31.7% max recall (1M); with random insertion and exact rerank +30.9 pt at ef 16 and -1.0 pt at ef 256 (1M) at 6.6x / 1.6x latency | `results/2026-11-08-improvements/final/comparison.md` (rows `ZGQ-M16+global-entry*`, `ZGQ-M16+random+global-entry*`) | verified |
+| Equal-recall (80/90/95%) latency of every variant vs HNSW-M16 by linear interpolation; HNSW-M16 max recall 94.2% (100K), 87.0% (1M) so 95% (and 90% at 1M) has no HNSW reference | `results/2026-11-08-improvements/final/comparison.md` (equal-recall tables) | verified |
+| Compression-first idea: ZGQ compressed loses to IVF-PQ(R) and HNSW+SQ8 at equal memory in every band (restated in the final README) | see the compression rows above; `results/2026-11-08-improvements/final/README.md` idea 4 | verified |
 
 ## Claims removed, corrected or flagged
 

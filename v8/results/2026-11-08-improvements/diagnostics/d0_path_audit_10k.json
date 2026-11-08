@@ -1,0 +1,86 @@
+{
+  "scale": "10k",
+  "n_vectors": 10000,
+  "dim": 128,
+  "k": 10,
+  "seed": 42,
+  "n_queries": 1000,
+  "M": 16,
+  "ef_construction": 200,
+  "threads": 1,
+  "zgq_build_s": 2.401221041996905,
+  "n_zones_default": 92,
+  "select_zones_calls_in_fast_mode_50_queries": 0,
+  "select_zones_calls_in_zone_mode_5_queries": 5,
+  "rows": [
+    {
+      "ef": 16,
+      "plain_hnsw_rf1": {
+        "recall": 69.23,
+        "latency_ms": 0.01858895800251048
+      },
+      "zgq_graph_rf1": {
+        "recall": 69.82000000000001,
+        "latency_ms": 0.018475583994586486
+      },
+      "plain_hnsw_rf3": {
+        "recall": 82.44000000000001,
+        "latency_ms": 0.03053116700175451
+      },
+      "zgq_graph_rf3": {
+        "recall": 82.36,
+        "latency_ms": 0.03036716699716635
+      },
+      "zgq_batch_search_fast": {
+        "recall": 82.36,
+        "latency_ms": 0.030582166997191962
+      }
+    },
+    {
+      "ef": 64,
+      "plain_hnsw_rf1": {
+        "recall": 92.41,
+        "latency_ms": 0.04572225000447361
+      },
+      "zgq_graph_rf1": {
+        "recall": 92.30000000000001,
+        "latency_ms": 0.04571858300187159
+      },
+      "plain_hnsw_rf3": {
+        "recall": 92.4,
+        "latency_ms": 0.04915458300092723
+      },
+      "zgq_graph_rf3": {
+        "recall": 92.29,
+        "latency_ms": 0.047884500003419816
+      },
+      "zgq_batch_search_fast": {
+        "recall": 92.29,
+        "latency_ms": 0.0487813340005232
+      }
+    },
+    {
+      "ef": 256,
+      "plain_hnsw_rf1": {
+        "recall": 98.72999999999999,
+        "latency_ms": 0.09939679200033424
+      },
+      "zgq_graph_rf1": {
+        "recall": 98.21,
+        "latency_ms": 0.09936770800413797
+      },
+      "plain_hnsw_rf3": {
+        "recall": 98.72000000000001,
+        "latency_ms": 0.10171816700312775
+      },
+      "zgq_graph_rf3": {
+        "recall": 98.2,
+        "latency_ms": 0.1015052079965244
+      },
+      "zgq_batch_search_fast": {
+        "recall": 98.2,
+        "latency_ms": 0.1013775839965092
+      }
+    }
+  ]
+}

@@ -86,3 +86,56 @@ def test_generate_data_seeded():
     assert (v1 == v2).all() and (q1 == q2).all()
     assert (v1 == v3).all()  # database does not depend on n_queries
     assert not (v1 == v4).all()
+
+
+def test_default_specs_unchanged_without_improvements(smoke):
+    _, summary = smoke
+    labels = [i["label"] for i in summary["scales"]["tiny"]["indexes"]]
+    assert labels == ["HNSW-M16", "ZGQ-M16", "ZGQ-M24", "IVFPQ"]
+
+
+@pytest.fixture(scope="module")
+def improved(tmp_path_factory):
+    out = tmp_path_factory.mktemp("improve")
+    args = rb.build_parser().parse_args([
+        "--scale", "tiny", "--out-dir", str(out), "--n-queries", "30",
+        "--repeats", "2", "--ef", "32", "64", "--zgq-m", "16", "--no-ivfpq",
+        "--improvements", "--improve-nprobe", "2", "8", "--improve-ratio-pct", "110", "150",
+    ])
+    return out, rb.run(args)
+
+
+def test_improvement_variants_present_and_valid(improved):
+    out, summary = improved
+    idx = {i["label"]: i for i in summary["scales"]["tiny"]["indexes"]}
+    for label in ("HNSW-M16", "ZGQ-M16", "ZGQ-M16+random",
+                  "ZGQ-M16+overlap2-nopq", "ZGQ-M16+overlap2", "ZGQ-M16+adaptive-nopq",
+                  "ZGQ-M16+global-entry-nopq", "ZGQ-M16+random+global-entry-nopq"):
+        assert label in idx, label
+    assert validate_summary(json.loads((out / "summary.json").read_text()), base_dir=out) == []
+
+
+def test_improvement_analytic_bytes_and_probes(improved):
+    _, summary = improved
+    idx = {i["label"]: i for i in summary["scales"]["tiny"]["indexes"]}
+    base = idx["ZGQ-M16+zonescan-nopq"]["analytic_bytes"]["total_bytes"]
+    n = summary["scales"]["tiny"]["n_vectors"]
+    assert idx["ZGQ-M16+overlap2-nopq"]["analytic_bytes"]["total_bytes"] == base + 4 * n
+    assert idx["HNSW-M16"]["analytic_bytes"]["bytes_per_vector"] > 0
+    for pt in idx["ZGQ-M16+adaptive-nopq"]["points"]:
+        assert 1 <= pt["mean_probes"] <= rb.IMPROVE_MAX_PROBE
+    # replicas never reduce zone-scan recall
+    r1 = [p["recall_pct"]["median"] for p in idx["ZGQ-M16+zonescan-nopq"]["points"]]
+    r2 = [p["recall_pct"]["median"] for p in idx["ZGQ-M16+overlap2-nopq"]["points"]]
+    assert all(b >= a - 1e-9 for a, b in zip(r1, r2))
+
+
+def test_compare_improvements_report(improved):
+    from benchmarks.compare_improvements import latency_at_recall, report
+
+    _, summary = improved
+    text = report(summary)
+    assert "### tiny" in text and "Equal recall" in text and "ZGQ-M16+random" in text
+    base = next(i for i in summary["scales"]["tiny"]["indexes"] if i["label"] == "HNSW-M16")
+    assert latency_at_recall(base, 101.0) is None
+    assert latency_at_recall(base, 0.0) > 0

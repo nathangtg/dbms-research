@@ -1,0 +1,93 @@
+{
+  "scale": "100k",
+  "n_vectors": 100000,
+  "dim": 128,
+  "k": 10,
+  "seed": 42,
+  "n_queries": 1000,
+  "M": 16,
+  "ef_construction": 200,
+  "threads": 1,
+  "zgq_build_s": 18.717317208996974,
+  "n_zones_default": 306,
+  "ef_search": 64,
+  "rows": [
+    {
+      "n_probe": 1,
+      "with_pq_rerank": {
+        "recall": 63.09,
+        "latency_ms": 0.09421095799916657
+      },
+      "without_pq_rerank": {
+        "recall": 63.09,
+        "latency_ms": 0.09346104200085392
+      }
+    },
+    {
+      "n_probe": 2,
+      "with_pq_rerank": {
+        "recall": 73.84,
+        "latency_ms": 0.24501716700615364
+      },
+      "without_pq_rerank": {
+        "recall": 73.84,
+        "latency_ms": 0.10223354199843016
+      }
+    },
+    {
+      "n_probe": 4,
+      "with_pq_rerank": {
+        "recall": 57.3,
+        "latency_ms": 0.280281917002867
+      },
+      "without_pq_rerank": {
+        "recall": 80.19000000000001,
+        "latency_ms": 0.1432151669941959
+      }
+    },
+    {
+      "n_probe": 8,
+      "with_pq_rerank": {
+        "recall": 46.04,
+        "latency_ms": 0.3435675419968902
+      },
+      "without_pq_rerank": {
+        "recall": 83.71000000000001,
+        "latency_ms": 0.20892441699834308
+      }
+    },
+    {
+      "n_probe": 16,
+      "with_pq_rerank": {
+        "recall": 41.73,
+        "latency_ms": 0.4609762089967262
+      },
+      "without_pq_rerank": {
+        "recall": 85.56000000000002,
+        "latency_ms": 0.330685375003668
+      }
+    },
+    {
+      "n_probe": 32,
+      "with_pq_rerank": {
+        "recall": 40.660000000000004,
+        "latency_ms": 0.6867257919948315
+      },
+      "without_pq_rerank": {
+        "recall": 88.83,
+        "latency_ms": 0.5628299999953015
+      }
+    },
+    {
+      "n_probe": 64,
+      "with_pq_rerank": {
+        "recall": 40.23,
+        "latency_ms": 1.336678583000321
+      },
+      "without_pq_rerank": {
+        "recall": 93.87,
+        "latency_ms": 1.2251740420033457
+      }
+    }
+  ]
+}
