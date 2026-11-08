@@ -1,27 +1,25 @@
 from typing import Optional, Tuple
 
 import numpy as np
-from numba import njit, prange, float32
+from numba import float32, njit, prange
 
 
 class DistanceComputer:
-    """Distances from a query to many vectors for metric 'l2' (squared), 'cosine' or 'ip'."""
-
-    def __init__(self, metric: str = 'l2'):
+    def __init__(self, metric: str = "l2"):
         self.metric = metric
 
     def compute(
         self,
         query: np.ndarray,
         vectors: np.ndarray,
-        precomputed_norms: Optional[np.ndarray] = None
+        precomputed_norms: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """precomputed_norms are the squared norms ||vectors||^2, shape (N,)."""
-        if self.metric == 'l2':
+        if self.metric == "l2":
             return self._euclidean_squared(query, vectors, precomputed_norms)
-        if self.metric == 'cosine':
+        if self.metric == "cosine":
             return self._cosine_distance(query, vectors, precomputed_norms)
-        if self.metric == 'ip':
+        if self.metric == "ip":
             return self._inner_product_distance(query, vectors)
         raise ValueError(f"Unknown metric: {self.metric}")
 
@@ -29,7 +27,7 @@ class DistanceComputer:
         self,
         query: np.ndarray,
         vectors: np.ndarray,
-        precomputed_norms: Optional[np.ndarray] = None
+        precomputed_norms: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """Uses ||a - b||^2 = ||a||^2 + ||b||^2 - 2<a,b>, clipped at 0 against rounding."""
         query = query.astype(np.float32)
@@ -53,7 +51,7 @@ class DistanceComputer:
         self,
         query: np.ndarray,
         vectors: np.ndarray,
-        precomputed_norms: Optional[np.ndarray] = None
+        precomputed_norms: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         query = query.astype(np.float32)
         vectors = vectors.astype(np.float32)
@@ -68,37 +66,31 @@ class DistanceComputer:
 
         inner_products = vectors @ query
 
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             cosine_sim = inner_products / vector_norms
             cosine_sim = np.nan_to_num(cosine_sim, nan=0.0)
 
         return (1 - cosine_sim).astype(np.float32)
 
     def _inner_product_distance(
-        self,
-        query: np.ndarray,
-        vectors: np.ndarray
+        self, query: np.ndarray, vectors: np.ndarray
     ) -> np.ndarray:
         """Negative inner product, so smaller is better."""
         query = query.astype(np.float32)
         vectors = vectors.astype(np.float32)
         return (-vectors @ query).astype(np.float32)
 
-    def compute_single(
-        self,
-        a: np.ndarray,
-        b: np.ndarray
-    ) -> float:
-        if self.metric == 'l2':
+    def compute_single(self, a: np.ndarray, b: np.ndarray) -> float:
+        if self.metric == "l2":
             diff = a - b
             return float(np.dot(diff, diff))
-        if self.metric == 'cosine':
+        if self.metric == "cosine":
             norm_a = np.sqrt(np.dot(a, a))
             norm_b = np.sqrt(np.dot(b, b))
             if norm_a > 0 and norm_b > 0:
                 return float(1 - np.dot(a, b) / (norm_a * norm_b))
             return 1.0
-        if self.metric == 'ip':
+        if self.metric == "ip":
             return float(-np.dot(a, b))
         raise ValueError(f"Unknown metric: {self.metric}")
 
@@ -113,7 +105,9 @@ class SIMDDistance:
     """Numba-compiled distance kernels."""
 
     @staticmethod
-    @njit(float32[:](float32[:], float32[:, :]), fastmath=True, parallel=True, cache=True)
+    @njit(
+        float32[:](float32[:], float32[:, :]), fastmath=True, parallel=True, cache=True
+    )
     def euclidean_squared_batch(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
         n = vectors.shape[0]
         d = vectors.shape[1]
@@ -141,9 +135,7 @@ class SIMDDistance:
     @staticmethod
     @njit(float32(float32[:], float32[:], float32), fastmath=True, cache=True)
     def euclidean_squared_early_term(
-        a: np.ndarray,
-        b: np.ndarray,
-        bound: float
+        a: np.ndarray, b: np.ndarray, bound: float
     ) -> float:
         """Squared distance, or bound + 1 once the partial sum exceeds bound (every 8 dims)."""
         d = a.shape[0]
@@ -159,7 +151,9 @@ class SIMDDistance:
         return dist
 
     @staticmethod
-    @njit(float32[:](float32[:, :], float32[:]), fastmath=True, parallel=True, cache=True)
+    @njit(
+        float32[:](float32[:, :], float32[:]), fastmath=True, parallel=True, cache=True
+    )
     def compute_norms_batch(vectors: np.ndarray, out: np.ndarray) -> np.ndarray:
         n = vectors.shape[0]
         d = vectors.shape[1]
@@ -181,11 +175,7 @@ class EarlyTerminationComputer:
         self._check_interval = max(8, dimension // 16)
 
     def compute_with_bound(
-        self,
-        query: np.ndarray,
-        vectors: np.ndarray,
-        indices: np.ndarray,
-        bound: float
+        self, query: np.ndarray, vectors: np.ndarray, indices: np.ndarray, bound: float
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Indices and distances of the candidates within bound."""
         query = query.astype(np.float32)
@@ -195,9 +185,11 @@ class EarlyTerminationComputer:
         valid_distances = []
 
         for idx in indices:
-            dist = float(SIMDDistance.euclidean_squared_early_term(
-                query, vectors[idx], np.float32(bound)
-            ))
+            dist = float(
+                SIMDDistance.euclidean_squared_early_term(
+                    query, vectors[idx], np.float32(bound)
+                )
+            )
             if dist <= bound:
                 valid_indices.append(idx)
                 valid_distances.append(dist)
@@ -206,8 +198,7 @@ class EarlyTerminationComputer:
 
 
 def select_top_k_distances(
-    distances: np.ndarray,
-    k: int
+    distances: np.ndarray, k: int
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Indices and values of the k smallest distances, ascending (argpartition, O(N))."""
     n = len(distances)

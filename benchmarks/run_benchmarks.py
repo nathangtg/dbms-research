@@ -161,10 +161,10 @@ def collect_environment() -> Dict:
     }
     if libs["hnswlib"] == "unknown":
         try:
-            from importlib.metadata import version
+            from importlib.metadata import PackageNotFoundError, version
 
             libs["hnswlib"] = version("hnswlib")
-        except Exception:
+        except PackageNotFoundError:
             pass
     status = _git(["status", "--porcelain", "--untracked-files=no"])
     return {

@@ -35,7 +35,9 @@ def test_repo_docs_have_no_retired_claims():
 
 
 def test_links_check_detects_broken(tmp_path):
-    (tmp_path / "x.md").write_text("[ok](y.md) [bad](nope.md) [web](https://example.com) [a](#anchor)\n")
+    (tmp_path / "x.md").write_text(
+        "[ok](y.md) [bad](nope.md) [web](https://example.com) [a](#anchor)\n"
+    )
     (tmp_path / "y.md").write_text("hi\n")
     (tmp_path / "p.tex").write_text("\\includegraphics[width=1cm]{fig/missing.pdf}\n")
     assert check_links.check_file(tmp_path / "x.md") == ["nope.md"]

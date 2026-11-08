@@ -43,8 +43,14 @@ def test_global_entry_not_worse_than_graph(data):
     truth = np.argsort(d, axis=1)[:, :10]
     g = _idx(data, insertion_order="random")
     e = _idx(data, insertion_order="random", search_mode="global_entry")
-    rg = np.mean([len(set(a) & set(b)) / 10 for a, b in zip(g.batch_zone_search(qs, 10, use_pq_rerank=False)[0], truth)])
-    re_ = np.mean([len(set(a) & set(b)) / 10 for a, b in zip(e.batch_zone_search(qs, 10, use_pq_rerank=False)[0], truth)])
+    rg = np.mean([
+        len(set(a) & set(b)) / 10
+        for a, b in zip(g.batch_zone_search(qs, 10, use_pq_rerank=False)[0], truth)
+    ])
+    re_ = np.mean([
+        len(set(a) & set(b)) / 10
+        for a, b in zip(e.batch_zone_search(qs, 10, use_pq_rerank=False)[0], truth)
+    ])
     assert re_ >= rg
 
 
@@ -53,8 +59,9 @@ def test_global_entry_save_load(data, tmp_path):
     e = _idx(data, insertion_order="random", search_mode="global_entry")
     p = str(tmp_path / "g.zgq")
     e.save(p)
-    l = ZGQIndex.load(p)
-    assert l.config.search_mode == "global_entry" and l.graph.config.insertion_order == "random"
+    loaded = ZGQIndex.load(p)
+    assert loaded.config.search_mode == "global_entry"
+    assert loaded.graph.config.insertion_order == "random"
     assert np.array_equal(
-        e.batch_zone_search(qs, 10)[0], l.batch_zone_search(qs, 10)[0]
+        e.batch_zone_search(qs, 10)[0], loaded.batch_zone_search(qs, 10)[0]
     )

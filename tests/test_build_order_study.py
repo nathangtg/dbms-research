@@ -115,7 +115,10 @@ def _fake_run(strategy, seed, shift, n_q=50, exp="e1"):
         hits_all[str(ef)] = hits.tolist()
         r = float(hits.sum()) / (n_q * 10) * 100
         lat = 0.01 * ef**0.5
-        stat = lambda v: {"median": v, "q1": v, "q3": v, "iqr": 0.0, "n": 1}
+
+        def stat(v):
+            return {"median": v, "q1": v, "q3": v, "iqr": 0.0, "n": 1}
+
         points.append(
             {"ef": ef, "recall_pct": stat(r), "latency_ms_per_query": stat(lat)}
         )

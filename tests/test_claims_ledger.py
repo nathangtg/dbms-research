@@ -33,7 +33,8 @@ def test_matched_rows_match_summary():
 def test_build_time_row_matches_summary():
     summary = json.loads(SUMMARY.read_text())
     text = CLAIMS.read_text()
-    m = re.search(r"Build times HNSW-M16 / ZGQ-M16: ([\d.]+)/([\d.]+) s \(10K\), ([\d.]+)/([\d.]+) s \(100K\), "
+    m = re.search(r"Build times HNSW-M16 / ZGQ-M16: ([\d.]+)/([\d.]+) s \(10K\), "
+                  r"([\d.]+)/([\d.]+) s \(100K\), "
                   r"([\d.]+)/([\d.]+) s \(1M\)", text)
     assert m
     vals = list(map(float, m.groups()))

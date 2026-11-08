@@ -36,7 +36,8 @@ def test_default_zone_assignments_unchanged(built_index):
 def test_default_search_identical(built_index, data):
     _, queries = data
     assert [built_index.search(q, k=10)[0].tolist() for q in queries] == GOLDEN["search"]
-    assert [built_index.search(q, k=10, n_probe=4)[0].tolist() for q in queries] == GOLDEN["search_np4"]
+    results = [built_index.search(q, k=10, n_probe=4)[0].tolist() for q in queries]
+    assert results == GOLDEN["search_np4"]
     assert [
         built_index.search(q, k=10, use_pq_rerank=False)[0].tolist() for q in queries
     ] == GOLDEN["search_nopq"]

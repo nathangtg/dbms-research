@@ -70,7 +70,10 @@ def to_markdown(summary: Dict) -> str:
 
 def to_latex(summary: Dict) -> str:
     head = _header()
-    esc = lambda t: t.replace("%", r"\%").replace("_", r"\_")  # noqa: E731
+
+    def esc(text: str) -> str:
+        return text.replace("%", r"\%").replace("_", r"\_")
+
     lines = [r"\begin{tabular}{lllr" + "l" * (len(head) - 4) + "}", r"\hline",
              " & ".join(esc(h) for h in head) + r" \\", r"\hline"]
     lines += [" & ".join(esc(c) for c in r) + r" \\" for r in result_rows(summary)]

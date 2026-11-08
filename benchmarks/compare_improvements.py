@@ -78,11 +78,8 @@ def report(summary: Dict) -> str:
         out.append(
             "Equal ef (variants swept over ef), recall delta in points and latency ratio:\n"
         )
-        out.append(
-            "| Index | " + " | ".join(f"ef={p[3]}" for p in _curve(base) if True) + " |"
-        )
         efs = sorted(p["search_param"]["ef"] for p in base["points"])
-        out[-1] = "| Index | " + " | ".join(f"ef={e}" for e in efs) + " |"
+        out.append("| Index | " + " | ".join(f"ef={e}" for e in efs) + " |")
         out.append("|---|" + "---|" * len(efs))
         bmap = {p["search_param"]["ef"]: p for p in base["points"]}
         for lab, e in idx.items():

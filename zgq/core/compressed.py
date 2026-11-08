@@ -1,34 +1,3 @@
-"""
-Compressed ZGQ search: graph + PQ codes, no raw vectors
-=======================================================
-
-Opt-in search path (``ZGQConfig.compressed_search``). Candidate scoring uses
-asymmetric distances from PQ/RPQ codes and the level-0 links of the graph.
-Zones replace the HNSW upper layers: the search starts from the entry points
-of the zones nearest to the query.
-
-ADC for residual PQ (correct per-candidate zone centroid)
----------------------------------------------------------
-A vector x in zone z is stored as c_z + r, with r approximated by the code's
-codeword concatenation r^. Then
-
-    ||q - x||^2 = ||q - c_z||^2 - 2 (q - c_z).r^ + ||r^||^2
-                = Qz[z] + sum_j A[j, code_j] + sum_j B[z, j, code_j]
-
-    A[j, c]    = -2 q_j . cw[j, c] + ||cw[j, c]||^2     (per query, m*k)
-    B[z, j, c] =  2 c_zj . cw[j, c]                      (index-side, Z*m*k)
-    Qz[z]      = ||q - c_z||^2                           (per query, Z)
-
-so every candidate is scored against its own zone centroid. Building the
-distance table from the query minus the nearest zone's centroid only, as
-``ZGQIndex.search`` does for its PQ shortlist, is wrong for candidates that
-belong to other zones.
-
-The level-0 neighbor lists are read from the file hnswlib writes with
-``save_index`` (hnswlib exposes no neighbor accessor); the layout is verified
-by a test that checks that all neighbor ids are valid.
-"""
-
 import os
 import struct
 import tempfile
@@ -39,11 +8,6 @@ from numba import njit
 
 
 def extract_level0_links(hnsw, dim: int) -> Tuple[np.ndarray, int]:
-    """Return ``(links, M0)``: int32 array (n, M0) indexed by label, -1 padded.
-
-    Reads hnswlib's serialized format: a 96-byte header followed by one level-0
-    block per element (link count word, maxM0 links, vector, label).
-    """
     fd, path = tempfile.mkstemp(suffix=".hnsw")
     os.close(fd)
     try:
@@ -69,9 +33,9 @@ def extract_level0_links(hnsw, dim: int) -> Tuple[np.ndarray, int]:
     block = block.reshape(cur_count, size_per_el)
     counts = block[:, :2].copy().view(np.uint16).reshape(-1).astype(np.int64)
     links_internal = (
-        block[:, 4:4 + 4 * maxM0].copy().view(np.int32).reshape(cur_count, maxM0)
+        block[:, 4 : 4 + 4 * maxM0].copy().view(np.int32).reshape(cur_count, maxM0)
     )
-    labels = block[:, label_offset:label_offset + 8].copy().view(np.int64).reshape(-1)
+    labels = block[:, label_offset : label_offset + 8].copy().view(np.int64).reshape(-1)
 
     # Mask slots beyond each node's link count, then map internal ids to labels
     col = np.arange(maxM0)[None, :]
@@ -94,14 +58,12 @@ def effective_codebooks(pq) -> np.ndarray:
 
 
 def zone_cross_table(centroids: np.ndarray, cw: np.ndarray) -> np.ndarray:
-    """B[z, j, c] = 2 c_zj . cw[j, c], float32 (Z, m, k)."""
     m, k, sub = cw.shape
     cj = centroids.reshape(len(centroids), m, sub)
     return (2.0 * np.einsum("zjs,jks->zjk", cj, cw)).astype(np.float32)
 
 
 def query_tables(queries: np.ndarray, cw: np.ndarray, centroids: np.ndarray):
-    """Per-query tables A (nq, m, k) and zone distances Zd (nq, Z) = ||q - c_z||^2."""
     m, k, sub = cw.shape
     qj = queries.reshape(len(queries), m, sub)
     cw_norm = np.einsum("jks,jks->jk", cw, cw)
@@ -116,10 +78,6 @@ def query_tables(queries: np.ndarray, cw: np.ndarray, centroids: np.ndarray):
 def _beam_search(
     links, codes, zone_of, A, Qz, B, use_zones, entries, ef, out_ids, out_d
 ):
-    """Beam search on the level-0 graph with ADC scoring for one query.
-
-    Fills out_ids/out_d (length ef, ascending) and returns the count found.
-    """
     n = links.shape[0]
     m = codes.shape[1]
     M0 = links.shape[1]
@@ -220,10 +178,6 @@ def _batch_beam(
 
 
 def beam_search_batch(links, codes, zone_of, A, Qz, B, entries, ef):
-    """ADC beam search for a batch. Returns ids and ADC distances, shape (nq, ef).
-
-    Rows with fewer than ef results are padded with id -1 and +inf distance.
-    """
     nq = len(A)
     ids = np.full((nq, ef), -1, dtype=np.int64)
     dists = np.full((nq, ef), np.inf, dtype=np.float32)
