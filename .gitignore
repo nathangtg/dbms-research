@@ -130,6 +130,7 @@ site/
 scratchpad.md
 scratch/
 test_*.py
+!v8/tests/test_*.py
 temp_*.py
 debug_*.py
 
