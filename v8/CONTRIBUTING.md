@@ -188,6 +188,20 @@ make benchmark         # canonical 10K run into results/latest
 
 Include benchmark results in your PR if performance is affected.
 
+### Documenting numbers
+
+Every performance number in a doc must come from a committed `results/<date>/summary.json`.
+Regenerate figures and tables instead of typing numbers:
+
+```bash
+make figures   # figures/ from results/2026-11-08/summary.json
+make tables    # tables/ (Markdown and LaTeX)
+```
+
+`make verify` also runs `make claims-check` (retired numbers must not reappear in the docs) and
+`make links-check` (Markdown and LaTeX links and paths must resolve). Add new claims to
+`docs/CLAIMS.md` with their source.
+
 ## Pull Requests
 
 ### Before Submitting
@@ -197,6 +211,7 @@ Include benchmark results in your PR if performance is affected.
 - [ ] Type hints are added
 - [ ] Documentation is updated
 - [ ] CHANGELOG.md is updated
+- [ ] `make test` and `make verify` pass
 
 ### PR Description
 

@@ -1,4 +1,4 @@
-.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full clean build docs example verify all help
+.PHONY: install dev test test-fast test-cov lint format typecheck benchmark benchmark-smoke benchmark-check benchmark-full figures tables claims-check links-check clean build docs example verify all help
 
 # Default Python interpreter
 PYTHON ?= python3
@@ -48,6 +48,20 @@ benchmark-smoke:  ## Tiny-scale benchmark run plus schema check
 benchmark-check:  ## Validate committed canonical results against the schema
 	@for f in results/*/summary.json; do $(PYTHON) -m benchmarks.check_results $$f --canonical || exit 1; done
 
+RESULTS ?= results/2026-11-08/summary.json
+
+figures:  ## Regenerate figures/ from the canonical summary.json (no benchmarking)
+	$(PYTHON) -m visualization.generate_ieee_figures --results $(RESULTS) --output figures
+
+tables:  ## Regenerate tables/ (Markdown and LaTeX) from the canonical summary.json
+	$(PYTHON) -m visualization.make_tables --results $(RESULTS) --output tables
+
+claims-check:  ## Fail if a retired benchmark number appears in docs or LaTeX
+	$(PYTHON) scripts/check_claims.py
+
+links-check:  ## Fail on broken Markdown links or LaTeX figure paths
+	$(PYTHON) scripts/check_links.py
+
 clean:  ## Clean build artifacts
 	rm -rf build/
 	rm -rf dist/
@@ -83,5 +97,9 @@ verify:  ## Verify installation and run quick tests (includes benchmark-smoke)
 		idx, dist = index.search(q, k=5); \
 		print(f'Search test passed: found {len(idx)} neighbors')"
 	$(MAKE) benchmark-smoke
+	$(MAKE) benchmark-check
+	$(MAKE) claims-check
+	$(MAKE) links-check
+	$(PYTHON) -c "import matplotlib" && $(MAKE) figures tables
 
 all: format lint typecheck test  ## Run all checks (format, lint, typecheck, test)

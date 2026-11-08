@@ -4,13 +4,15 @@
 
 ## Overview
 
-This repository documents the development of **ZGQ (Zonal Graph Quantization)**, a novel ANNS algorithm designed to optimize the memory-performance trade-off in high-dimensional vector search. ZGQ combines hierarchical zonal partitioning with optimized graph navigation to achieve superior query performance compared to industry standards like HNSW.
+This repository documents the development of **ZGQ (Zonal Graph Quantization)**, a novel ANNS algorithm designed to optimize the memory-performance trade-off in high-dimensional vector search. ZGQ combines hierarchical zonal partitioning with optimized graph navigation. It is evaluated against HNSW and IVF-PQ; the measured results (below) do not show an advantage over HNSW.
 
-**Key Advantages:**
-- **Higher Recall:** Achieves up to 94.8% Recall@10 (vs 92.9% for HNSW)
-- **Lower Latency:** 22% reduction in query latency (11.4ms vs 14.6ms)
-- **Better Throughput:** 28% increase in QPS (43,794 vs 34,190)
-- **Scalability:** Designed for billion-scale datasets with efficient memory usage
+**Status of the evidence (canonical run 2026-11-08, synthetic data, single thread, Apple M4):**
+- At 10K vectors ZGQ-M16 matches HNSW-M16 recall at equal `ef` (92.3% vs 92.4% at `ef=64`) and is about 5% slower per query.
+- At 100K and 1M vectors ZGQ is less accurate than HNSW-M16 at every equal `ef` (for example 78.9% vs 86.1% at 100K, `ef=64`), and HNSW reaches the same recall at lower latency.
+- ZGQ builds 1.2x to 2.7x slower and uses much more memory than HNSW. HNSW is hnswlib (C++); ZGQ is Python, so timing is not an algorithmic comparison.
+- IVF-PQ recall saturates at 64%, 61% and 56% (10K, 100K, 1M) without refinement.
+
+Full tables, caveats and threats to validity: [v8/docs/BENCHMARKS.md](v8/docs/BENCHMARKS.md). Every number in the docs is traced in [v8/docs/CLAIMS.md](v8/docs/CLAIMS.md).
 
 ## Repository Structure
 
@@ -53,43 +55,35 @@ To run the latest version of ZGQ (v8):
     pip install -e '.[dev]'
     ```
 
-2.  **Run a Quick Test:**
-    ```python
-    # Create a test script in v8/
-    from zgq import ZGQIndex
-    import numpy as np
-
-    # Generate random data
-    vectors = np.random.random((10000, 128)).astype('float32')
-    
-    # Initialize and build index
-    index = ZGQIndex(n_zones='auto', hierarchy_levels=2)
-    index.build(vectors)
-
-    # Search
-    query = np.random.random((1, 128)).astype('float32')
-    ids, distances = index.search(query, k=10)
-    print(f"Found neighbors: {ids}")
+2.  **Run the quick start:**
+    ```bash
+    cd v8
+    python examples/quickstart.py
     ```
 
-3.  **Run Benchmarks:**
+3.  **Run Tests and Benchmarks:**
     ```bash
-    cd v8/benchmarks
-    python run_benchmarks.py
+    cd v8
+    make test
+    make verify            # imports, tiny search, benchmark smoke, claims and link checks
+    make benchmark-smoke   # tiny-scale benchmark plus schema check
     ```
 
 ## Performance Results
 
-Our empirical benchmarks on 100k vector datasets (128 dimensions) demonstrate ZGQ's superiority in the high-recall regime:
+Canonical results (128-d synthetic clustered data, 1000 queries, single thread, median of 5 repeats) are in
+`v8/results/2026-11-08/`. Matched comparison, HNSW-M16 vs ZGQ-M16 at `ef=64`, recall@10 % / ms per query:
 
-| Algorithm | Config (ef) | Recall@10 (%) | Latency (ms) | QPS |
-|-----------|-------------|---------------|--------------|-----|
-| HNSW      | 128         | 91.06         | 12.97        | 38,552 |
-| **ZGQ**   | **128**     | **93.18**     | **11.42**    | **43,794** |
+| Scale | HNSW-M16 | ZGQ-M16 |
+|-------|----------|---------|
+| 10K   | 92.4 / 0.046 | 92.3 / 0.049 |
+| 100K  | 86.1 / 0.084 | 78.9 / 0.065 |
+| 1M    | 77.6 / 0.124 | 68.1 / 0.091 |
 
-*ZGQ achieves a 13.6% improvement in throughput while delivering higher accuracy.*
+ZGQ is faster per query at equal `ef` at 100K and 1M but loses 7 to 10 recall points. At matched recall HNSW is
+at least as fast. See [v8/docs/BENCHMARKS.md](v8/docs/BENCHMARKS.md) for the full sweep and limitations.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](v8/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
