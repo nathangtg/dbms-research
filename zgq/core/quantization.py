@@ -12,6 +12,7 @@ _PARALLEL_KERNEL_LOCK = threading.Lock()
 @dataclass
 class RPQConfig:
     m: int = 16
+    n_bits: int = 8
 
     n_train_samples: int = 100000
     n_iter: int = 25
