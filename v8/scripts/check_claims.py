@@ -38,6 +38,9 @@ RETIRED = {
     "empirical alpha": r"empirical[^.\n]{0,20}\\alpha",
 }
 EXEMPT = {"CLAIMS.md"}
+# The archived v1 preprint is kept verbatim; its retired numbers are logged in
+# docs/CLAIMS.md. Only this exact path (relative to the scan root) is exempt.
+EXEMPT_PATHS = {"v8/docs/preprint/v1.md"}
 SKIP_DIRS = {".git", ".agents", "results", "References", "node_modules", ".venv"}
 
 
@@ -51,7 +54,7 @@ def scan_files(root: Path):
             rel = p.relative_to(root)
             if any(part in SKIP_DIRS or part.startswith(".") for part in rel.parts):
                 continue
-            if p.name in EXEMPT:
+            if p.name in EXEMPT or rel.as_posix() in EXEMPT_PATHS:
                 continue
             yield p
 
