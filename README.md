@@ -92,22 +92,6 @@ and variant runs), `docs/` (API, theory, benchmarks, claims, research log), `lat
 
 Earlier iterations (v1 to v7) were removed from the working tree. They remain available in git history at the tag `pre-v8-cleanup`.
 
-## Citation
-
-If you use ZGQ in your research, please cite:
-
-```bibtex
-@misc{ginting_zgq_preprint_v1,
-  title={Zone-Guided Quantization: High-Performance Approximate Nearest Neighbor Search},
-  author={Ginting, Nathan Aldyth Prananta},
-  howpublished={TechRxiv preprint v1},
-  doi={10.36227/techrxiv.176704895.53855035/v1}
-}
-```
-
-That preprint (archived at [docs/preprint/v1.md](docs/preprint/v1.md)) is superseded by the findings in this
-repository. Its performance, memory-reduction and IVF-PQ speedup claims are not supported by the matched
-evaluation described here.
 
 ## License
 
